@@ -1,0 +1,27 @@
+
+[1] class A{}
+[2] int A;
+[3] A(){}
+[4] void A(){}
+
+-----------------------------------------------------------------
+
+[1] public default abstract final
+
+[2] public default private protected static final
+
+[3] public default private protected 
+
+[4] public default private protected static final abstract
+
+java의 상속관계
+
+- class		: 단일 상속		extends
+- interface	: 다중 상속		implements
+
+interface B {
+[public static final] int B;
+[public abstract]  void B();
+
+//어떤 것의 표준화를 만들 떄, 인터페이스 뼈대를 주어 틀 안에서만 작업하게 하려는 목적
+}
