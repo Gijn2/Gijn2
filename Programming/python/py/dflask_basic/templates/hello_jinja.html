@@ -1,0 +1,15 @@
+{% extends 'layout/base.html' %}
+
+{% block head %} <!-- [진자 문법 - head] -->
+    <title> 진자란, 뭘까..? </title>
+
+{% endblock %}
+
+
+{% block body %} <!-- [진자 문법 - body] -->
+    {% if name == '홍길동' %}
+        <h1> {{name}} 님 반갑습니다. </h1>
+    {% else %}
+        <img src="/static/image/hello_world.png"/>
+    {% endif %}
+{% endblock %}
