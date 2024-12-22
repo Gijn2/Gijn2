@@ -1,0 +1,12 @@
+
+자바 컬렉션 ( 자료구조를 정리한 것)
+
+1. List 구조: 각각의 데이터를 index 로 관리하는 것
+	ex. ArrayList: 		
+	//** 제일 많이 쓰임
+
+2. Set 구조: index 로 관리 못 함, 중복처리가 안됨.
+	ex. HashSet
+3. Map 구조: key 와 value 를 가지고 관리하는 것 
+	- Key 값으로 Value 를 찾는다
+	ex.HashMap
