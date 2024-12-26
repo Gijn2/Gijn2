@@ -83,4 +83,3 @@ print("""
     del b
     # print(b) --> 에러 발생
 
-"""
