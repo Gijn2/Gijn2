@@ -45,6 +45,7 @@ public class Ex01_변수명 {
 		
 		
 		
+		
 		// 값 저장
 		chName = '김'; // 문자형 ''
 		i = 100;
@@ -58,9 +59,6 @@ public class Ex01_변수명 {
 		System.out.println(i);
 		System.out.println(abcd);
 		System.out.println(a);
-
-
-
 	}
 
 }
