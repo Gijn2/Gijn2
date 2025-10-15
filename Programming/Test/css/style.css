@@ -1,0 +1,212 @@
+/* 공통 및 리셋 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Noto Sans KR', sans-serif;
+}
+
+body {
+    background-color: #121212; /* 다크 테마 배경 */
+    color: #E0E0E0; /* 밝은 텍스트 */
+    line-height: 1.6;
+}
+
+/* 헤더 */
+header {
+    width: 100%;
+    padding: 20px 5%;
+    background-color: #202020;
+    border-bottom: 3px solid #FF5722; /* 이그니스 테마 컬러 */
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.logo {
+    font-size: 1.8em;
+    font-weight: 700;
+    color: #FF7043;
+}
+
+/* 메인 맵 페이지 스타일 */
+.main-map-container {
+    padding: 50px 5%;
+    min-height: calc(100vh - 120px); /* 푸터 및 헤더 제외 높이 */
+}
+
+.intro-text {
+    max-width: 800px;
+    margin-bottom: 40px;
+    border-left: 5px solid #FF5722;
+    padding-left: 20px;
+}
+
+.intro-text h1 {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    color: #FFAB91;
+}
+
+/* 지도 컨테이너 및 클릭 영역 */
+.korea-map-container {
+    position: relative;
+    width: 800px; /* 지도의 최대 너비 */
+    height: 600px; /* 지도의 최대 높이 */
+    background-color: #333; /* 지도 영역 배경색 (임시) */
+    background-image: url('images/placeholder_korea_map_bg.jpg'); /* 지질학적 패턴 배경 */
+    background-size: cover;
+    margin: 0 auto;
+    border: 5px solid #444;
+}
+
+.korea-map-image {
+    width: 100%;
+    height: 100%;
+    opacity: 0.2; /* 배경 위에 투명도 적용 */
+}
+
+.map-area {
+    position: absolute;
+    background-color: rgba(255, 87, 34, 0.3); /* 클릭 영역 임시 표시 */
+    border: 2px solid transparent;
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+.map-area:hover {
+    background-color: rgba(255, 87, 34, 0.7);
+    border-color: #FFAB91;
+    cursor: pointer;
+}
+
+/* 강원도 영역 (예시 위치 및 크기) */
+.gangwon-area {
+    top: 15%;
+    left: 60%;
+    width: 20%;
+    height: 30%;
+}
+
+/* 기타 영역 (예시 위치 및 크기) */
+.other-area1 {
+    top: 50%;
+    left: 10%;
+    width: 30%;
+    height: 40%;
+    background-color: rgba(50, 50, 50, 0.5); /* 미설정 지역 다크화 */
+}
+.other-area2 {
+    top: 10%;
+    left: 20%;
+    width: 40%;
+    height: 20%;
+    background-color: rgba(50, 50, 50, 0.5);
+}
+
+/* 푸터 */
+footer {
+    padding: 20px 5%;
+    text-align: center;
+    background-color: #202020;
+    font-size: 0.8em;
+    color: #777;
+}
+
+
+/* -------------------------------------- */
+/* 불의 영역 페이지 (ignis.html) 스타일 */
+/* -------------------------------------- */
+
+.ignis-container {
+    padding: 50px 5%;
+}
+
+.ignis-title {
+    font-size: 3em;
+    color: #FF7043;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.ignis-content {
+    display: flex;
+    justify-content: space-between;
+    gap: 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* 세계관 설명 영역 */
+.world-description {
+    flex: 1;
+    padding: 20px;
+    background-color: #252525;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+
+.world-description h2 {
+    color: #FFAB91;
+    border-bottom: 2px solid #FF5722;
+    padding-bottom: 10px;
+    margin-top: 20px;
+    margin-bottom: 15px;
+}
+
+.world-description p, .world-description ul {
+    font-size: 1.05em;
+    margin-bottom: 15px;
+}
+
+.world-description ul {
+    list-style-type: disc;
+    padding-left: 25px;
+}
+
+/* 캐러셀 (슬라이드) 영역 */
+.carousel-area {
+    flex: 1;
+    max-width: 550px;
+    position: relative;
+}
+
+.carousel-slide {
+    width: 100%;
+    height: 400px;
+    background-color: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+}
+
+.slide-image {
+    width: 100%;
+    height: 100%;
+    display: none; /* JS로 제어 */
+    object-fit: cover;
+    transition: opacity 0.5s;
+}
+
+.slide-image.active {
+    display: block;
+}
+
+.carousel-controls {
+    position: absolute;
+    top: 50%;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    transform: translateY(-50%);
+    padding: 0 10px;
+}
+
+.carousel-controls button {
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+    font-size: 1.5em;
+    border-radius: 50%;
+}
