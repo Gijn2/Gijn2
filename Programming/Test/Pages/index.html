@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>판게아 대륙: 이그니스 세계관</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="logo">이그니스 기록 보관소</div>
+    </header>
+
+    <main class="main-map-container">
+        <section class="map-section">
+            <div class="intro-text">
+                <h1>판게아 대륙: 순환의 군주, 이그니스의 세계</h1>
+                <p>판게아 대륙은 활화산 산맥의 활력과 순환을 관장하는 군주, **이그니스 여신**의 통치 아래 있습니다. 그녀의 통치 원리는 **'파괴를 통한 창조의 순환'**입니다. 아래 지도에서 관심 있는 지역을 선택하여 상세 기록을 열람할 수 있습니다.</p>
+                <p>현재는 활력의 근원인 **'불의 영역 (강원도)'**만 개방되었습니다.</p>
+            </div>
+            
+            <div class="korea-map-container">
+                <img src="images/korea_pangaea_map.png" alt="판게아 대륙 한반도 지도" class="korea-map-image" usemap="#pangaeaMap">
+                
+                <div id="map-overlay-container"></div> 
+                
+                <map name="pangaeaMap" id="pangaeaMap">
+                    <area shape="poly" 
+                          coords="770, 140, 800, 170, 820, 220, 830, 300, 840, 400, 840, 500, 810, 610, 780, 630, 760, 630, 710, 580, 660, 510, 620, 440, 580, 360, 560, 280, 580, 200, 620, 150, 680, 120" 
+                          alt="불의 영역 (강원도)" 
+                          href="ignis.html" 
+                          data-region="강원도 - 순환의 고원"
+                          data-region-id="gangwon">
+                    
+                    <area shape="default" href="index.html" onclick="return handleAreaClick(event);" data-region="미개척 영역">
+                </map>
+            </div>
+        </section>
+    </main>
+    
+    <footer>
+        <p>© 2025 Ignis Archive. All Rights Reserved.</p>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
