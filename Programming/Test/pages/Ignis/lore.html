@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>세계관 정보: 불의 영역</title>
+    <link rel="stylesheet" href="../../css/ignis_style.css">
+    <link rel="stylesheet" href="../../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    
+    <header class="minimal-header sticky-header">
+        <div class="logo"><a href="../main/index.html">LOST ARCHIVE</a></div>
+        <nav class="main-nav">
+            <div class="dropdown highlight">
+                <a href="../Ignis/lore.html" class="dropdown-toggle active">
+                    세계관 (LORE) ▼
+                </a>
+                <div class="dropdown-menu">
+                    <a href="../Ignis/lore.html" class="dropdown-item">불의 영역: 순환의 고원</a>
+                    <a href="https://skybox.blockadelabs.com/44712079b78c68b922c7c2e7e32dffe8" class="dropdown-item" target="_blank">불의 영역: 미리보기</a>
+                </div>
+            </div>
+            <div class="dropdown">
+                <a href="#" class="dropdown-toggle" onclick="return handleCategoryClick(event);">
+                    이벤트 공지 ▼
+                </a>
+                <div class="dropdown-menu">
+                    <a href="#" class="dropdown-item" onclick="return handleCategoryClick(event);">공지 사항</a>
+                    <a href="#" class="dropdown-item" onclick="return handleCategoryClick(event);">업데이트</a>
+                </div>
+            </div>
+            <div class="dropdown">
+                <a href="#" class="dropdown-toggle" onclick="return handleCategoryClick(event);">
+                    개발자 노트 ▼
+                </a>
+                <div class="dropdown-menu">
+                    <a href="#" class="dropdown-item" onclick="return handleCategoryClick(event);">게임 비하인드</a>
+                    <a href="#" class="dropdown-item" onclick="return handleCategoryClick(event);">향후 로드맵</a>
+                </div>
+            </div>
+            <div class="dropdown">
+                <a href="#" class="dropdown-toggle" onclick="return handleCategoryClick(event);">
+                    커뮤니티 ▼
+                </a>
+                <div class="dropdown-menu">
+                    <a href="#" class="dropdown-item" onclick="return handleCategoryClick(event);">공식 커뮤니티</a>
+                    <a href="#" class="dropdown-item" onclick="return handleCategoryClick(event);">팬아트 갤러리</a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="ignis-container">
+        
+        <section class="lore-carousel-section" id="hero-carousel">
+            <div class="carousel-slide video-slide active" data-title="순환의 고원" data-subtitle="불멸의 불꽃, 영원한 도시">
+                <video autoplay loop muted playsinline class="hero-video">
+                    <source src="../../images/ignis/invideo-ai-1080 드론이 본 바티칸의 이면_ 화산·온천·비밀 의식 2025-10-21.mp4" type="video/mp4">
+                </video>
+                <div class="video-overlay" style="z-index: 1;"></div>
+                <div class="slide-caption" style="z-index: 2;">
+                    <h1 class="slide-title">순환의 고원</h1>
+                    <p class="slide-subtitle">불멸의 불꽃, 영원한 도시</p>
+                </div>
+            </div>
+            
+            <button class="carousel-control prev" id="prev-btn">◀</button>
+            <button class="carousel-control next" id="next-btn">▶</button>
+            <div class="carousel-indicators" id="carousel-indicators"></div>
+        </section>
+
+        <main class="lore-main">
+            <aside class="toc-area">
+                <h2>목차</h2>
+                <ul id="toc-list">
+                    <li><a href="#section-intro">불의 영역: 개요</a></li>
+                    <li><a href="#section-settlement">I. 도시와 정착지</a></li>
+                    <li><a href="#section-geography">II. 열기와 지형적 특징</a></li>
+                    <li><a href="#section-log">III. 기록 보관소 로그</a></li>
+                </ul>
+            </aside>
+            
+            <article class="lore-article">
+                
+                <section id="section-intro">
+                    <h2>불의 영역: 개요</h2>
+                    <p>
+                        '순환의 고원(The Plateau of Cycle)'은 끊임없는 지열 에너지와 고대 신의 축복으로 유지되는, 인류 최후의 고도 문명 중 하나입니다. 그러나 이곳은 '열기 광증'이라 불리는 바이러스와 통제 기업의 갈등 속에서 영원한 생존의 딜레마를 안고 있습니다.
+                    </p>
+                </section>
+
+                <section id="section-settlement">
+                    <h2>I. 도시와 정착지</h2>
+                    
+                    <h3 id="subsection-plateau">A. 순환의 고원 (The Plateau of Cycle)</h3>
+                    <p>
+                        지상 최후의 도시. '이그니스 여신'의 힘으로 유지되는 보호막 아래 존재하며, 끊임없이 활동하는 활화산 산맥에서 공급받는 지열 에너지로 운영됩니다. 모든 시민은 통치 기업 '노바 코퍼리카'의 엄격한 통제 하에 있으며, 100년 단위의 '순환 계획'에 따라 통제된 삶을 살아갑니다.
+                    </p>
+
+                    <h3 id="subsection-settlement-other">B. 변두리 정착지</h3>
+                    <p>
+                        고원에서 추방되거나 이탈한 이들이 모여 이룬 정착지. 고원의 통제로부터 벗어난 자유를 얻었으나, 대신 고대의 미신과 숭배 의식을 받아 열악한 외부 환경에서 생존하고 있습니다.
+                    </p>
+                </section>
+
+                <section id="section-geography">
+                    <h2>II. 열기와 지형적 특징</h2>
+                    
+                    <h3 id="subsection-livingrange">A. 활화산 산맥 (The Living Range)</h3>
+                    <ul>
+                        <li>**활화산 산맥 (The Living Range):** 끊임없이 활동하는 거대한 산맥으로, 도시의 주요 에너지원인 지열 동력을 제공하지만, 불안정한 환경과 유독 가스의 주범이기도 합니다.</li>
+                        <li>**아황토 칼데라:** <span class="lore-log" data-log="칼데라 내부의 '황철석 동굴군'은 바이러스 유출의 근원지이며, 통제 불능의 상태다.">**열기 광증 유출의 근원지**</span>였던 거대한 분화구 지형입니다. 현재는 폐쇄되었으며, 통제 불가능한 열상 감염체의 활동 구역으로 남아있습니다.</li>
+                        <li>**비탄의 항구:** 칼데라 근처의 무역 항구였으나, 현재는 격리 구역의 봉쇄선 역할을 하며 고립된 채 남아있는 지역입니다.</li>
+                    </ul>
+                </section>
+                
+                <section id="section-log">
+                    <h2>III. 기록 보관소 로그</h2>
+                    <p>
+                        통제 기업 '노바 코퍼리카'의 기록 보관소에서 회수한 파편적인 정보 로그입니다. 여기에는 일반 시민에게 공개되지 않은 이그니스의 어두운 진실들이 포함되어 있습니다.
+                        <br><br>
+                        로그 1: "열기 광증은 단순한 바이러스가 아니다. 그것은 고원의 모든 에너지 흐름과 연관되어 있다. 여신 이그니스는 축복이 아니라 거대한 억압 시스템이다."
+                        <br>
+                        로그 2: "순환 계획의 진정한 목적은 인구 통제가 아니다. 가장 중요한 기술을 소수의 엘리트가 독점하고, 나머지 기록을 소거하여 지식의 순환을 막는 것이다."
+                    </p>
+                </section>
+            </article>
+        </main>
+        
+        <section class="concept-art-section">
+            <h2>컨셉 아트</h2>
+            <p>불의 영역, 순환의 고원과 관련된 초기 컨셉 아트 및 비주얼 자료입니다.</p>
+            
+            <div class="image-carousel-container" id="concept-art-carousel">
+                <div class="image-carousel-slides">
+                    
+                    <div class="image-slide active">
+                        <img src="../../images/ignis/slide_goddess.png" alt="이그니스 여신의 흑요석 갑주" class="slide-image">
+                        <div class="image-caption">이그니스 여신: 흑요석 갑주의 수호자</div>
+                    </div>
+                    
+                    <div class="image-slide">
+                        <img src="../../images/ignis/slide_onsen.png" alt="격정 스펙트럼 온천" class="slide-image">
+                        <div class="image-caption">격정 스펙트럼 온천: 위험하지만 아름다운 치유의 샘</div>
+                    </div>
+                    
+                    <div class="image-slide">
+                        <img src="../../images/ignis/slide_city.png" alt="아황토 칼데라" class="slide-image">
+                        <div class="image-caption">아황토 칼데라: 봉쇄된 열기 광증의 근원지</div>
+                    </div>
+
+                </div>
+                <button class="image-control prev" id="art-prev-btn">◀</button>
+                <button class="image-control next" id="art-next-btn">▶</button>
+            </div>
+        </section>
+
+        <section class="media-link-section">
+            <h2>미디어 아카이브</h2>
+            <p>이그니스 영역과 관련된 공식 트레일러 및 개발 영상을 화면으로 시청하세요.</p>
+            
+            <div class="media-carousel-container" id="media-carousel">
+                <div class="media-carousel-slides">
+                    
+                    <div class="media-slide">
+                        <div class="youtube-embed-container">
+                            <iframe width="560" height="315" src="https://www.youtube.com/embed/WS8RW-aNZFY?si=7JH-W09RO5A2JxC2" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+                        </div>
+                        <p class="embed-caption">게임 플레이 영상 일부</p>
+                    </div>
+                    
+                    <div class="media-slide active">
+                        <div class="youtube-embed-container">
+                            <iframe width="560" height="315" src="https://www.youtube.com/embed/vvuAw6KNn2E?si=mgqOOxV1cuQ0kD7P" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+                        </div>
+                        <p class="embed-caption">공식 트레일러 (2025)</p>
+                    </div>
+
+                    <div class="media-slide">
+                        <div class="youtube-embed-container">
+                           <iframe width="560" height="315" src="https://www.youtube.com/embed/vyQ18bG37gg?si=eshMZ7si8z_98ZLQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+                        </div>
+                        <p class="embed-caption">개발자 노트: 세계관 소개</p>
+                    </div>
+
+                </div>
+                <button class="media-control prev" id="media-prev-btn">◀</button>
+                <button class="media-control next" id="media-next-btn">▶</button>
+            </div>
+        </section>
+        
+        <footer class="minimal-footer">
+            <p>© 2025 LOST Archive. Security Level: PUBLIC.</p>
+        </footer>
+    </div>
+
+    <script src="../../js/script.js"></script>
+</body>
+</html>
