@@ -1,0 +1,1295 @@
+/* style.css - 통합 최종 코드 */
+
+/* -------------------------------------- */
+/* 공통 및 리셋 */
+/* -------------------------------------- */
+:root {
+    --header-height: 70px; /* 헤더 높이 변수화 */
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Noto Sans KR', sans-serif; 
+}
+
+body {
+    background-color: #0A0A0A; 
+    color: #F0F0F0; 
+    line-height: 1.6;
+    overflow-x: hidden; 
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* -------------------------------------- */
+/* 로딩 화면 스타일 */
+/* -------------------------------------- */
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+    color: #FF5722;
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    transition: opacity 0.5s ease-out;
+    overflow: hidden;
+}
+
+.loader-content {
+    text-align: center;
+    width: 80%;
+    max-width: 400px;
+}
+
+.loader-logo {
+    font-size: 2.5em;
+    font-weight: 900;
+    margin-bottom: 20px;
+    letter-spacing: 2px;
+}
+
+.loader-text {
+    font-size: 1em;
+    color: #B0B0B0;
+    margin-bottom: 15px;
+}
+
+.progress-container {
+    width: 100%;
+    height: 8px;
+    background-color: #1A1A1A;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+#progress-bar {
+    height: 100%;
+    width: 0%;
+    background-color: #FF5722;
+    transition: width 3.5s linear;
+}
+
+/* 메인 콘텐츠 컨테이너 */
+#main-content {
+    opacity: 0;
+    transition: opacity 0.5s ease-in; 
+    z-index: 1;
+}
+
+#main-content.loaded {
+    opacity: 1;
+}
+
+/* -------------------------------------- */
+/* 비디오 배경 스타일 (Fixed) */
+/* -------------------------------------- */
+.video-background-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: -2;
+}
+
+.hero-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: brightness(0.6) grayscale(0.2);
+}
+
+.video-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: -1;
+}
+
+/* -------------------------------------- */
+/* 헤더 및 내비게이션 (Fixed/Sticky) */
+/* -------------------------------------- */
+.minimal-header {
+    width: 100%;
+    padding: 15px 5%;
+    background-color: rgba(10, 10, 10, 0.95);
+    border-bottom: 1px solid #222;
+    position: fixed; /* 스크롤 스냅과 함께 사용하기 위해 fixed로 설정 */
+    top: 0;
+    z-index: 2000;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    backdrop-filter: blur(10px);
+    height: var(--header-height);
+}
+
+.logo a {
+    font-size: 1.4em;
+    font-weight: 900; 
+    color: #FF5722;
+    text-decoration: none;
+    letter-spacing: 1px;
+}
+
+.main-nav {
+    display: flex;
+    gap: 15px;
+}
+
+.nav-link {
+    color: #B0B0B0;
+    text-decoration: none;
+    font-weight: 500;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: all 0.2s;
+    font-size: 0.9em;
+}
+
+.nav-link:hover {
+    color: #FFF;
+    background-color: rgba(255, 87, 34, 0.1);
+}
+
+.nav-link.active {
+    color: #FF5722; 
+    font-weight: 700;
+    background-color: transparent;
+}
+
+.nav-link.highlight{
+    color: #ffffff;
+    font-weight: 700;
+    background-color: transparent;
+}
+
+/* -------------------------------------- */
+/* 드롭다운 스타일 (Minimal) */
+/* -------------------------------------- */
+.dropdown {
+    position: relative;
+    display: inline-block; 
+    /* nav-link와 동일한 기본 padding/border-radius 적용 (요청 1) */
+    padding: 8px 12px; 
+    border-radius: 6px;
+    transition: all 0.2s;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+/* highlight 클래스가 적용된 드롭다운의 기본 스타일 (요청 1) */
+.dropdown.highlight {
+    color: #ffffff;
+    font-weight: 700;
+}
+
+/* 드롭다운 호버 스타일 (nav-link:hover와 유사) */
+.dropdown:hover {
+    color: #FFF;
+    background-color: rgba(255, 87, 34, 0.1);
+}
+
+/* 드롭다운 내부의 토글 링크 스타일 */
+.dropdown-toggle {
+    display: inline-block;
+    color: inherit;
+    text-decoration: none;
+    font-weight: inherit;
+    padding: 0;
+}
+
+/* 드롭다운 토글 링크가 active일 때 스타일 조정 */
+.dropdown-toggle.active {
+    color: #FF5722 !important; 
+    font-weight: 700 !important;
+    background-color: transparent !important;
+}
+
+.dropdown-menu {
+    display: none; 
+    position: absolute;
+    top: 100%; 
+    left: 50%; 
+    transform: translateX(-50%);
+    min-width: 200px;
+    background-color: #1A1A1A; 
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 5px 0;
+    z-index: 2001; 
+}
+
+.dropdown-item {
+    color: #E0E0E0;
+    padding: 10px 15px;
+    text-decoration: none;
+    display: block;
+    white-space: nowrap; 
+    transition: background-color 0.2s;
+    font-size: 0.9em;
+}
+
+.dropdown-item:hover {
+    background-color: #2c2c2c;
+    color: #FF7043;
+}
+
+.dropdown-menu.show {
+    display: block;
+}
+
+/* -------------------------------------- */
+/* 스크롤 스냅 스타일 */
+/* -------------------------------------- */
+.scroll-snap-wrapper {
+    height: 100vh;
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
+    z-index: 1; 
+    padding-top: var(--header-height);
+}
+
+/* 개별 스냅 섹션 */
+.snap-section {
+    min-height: calc(100vh - var(--header-height));
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* -------------------------------------- */
+/* 메인 콘텐츠 (index.html) - Hero Section */
+/* -------------------------------------- */
+.minimal-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.hero-section {
+    padding: 0 5%;
+    text-align: center;
+    background-color: transparent;
+    position: relative;
+    z-index: 10;
+}
+
+.hero-title {
+    font-size: 4.5em; 
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 20px;
+    color: #FFF;
+    text-shadow: 0 0 10px rgba(255, 87, 34, 0.3);
+}
+
+.hero-title .sub-line {
+    display: block;
+    font-size: 0.6em; 
+    font-weight: 300;
+    color: #A0A0A0;
+    margin-top: 15px;
+}
+
+.hero-description {
+    font-size: 1.2em;
+    color: #B0B0B0;
+    max-width: 800px;
+    margin: 0 auto 40px;
+}
+
+.cta-button {
+    display: inline-block;
+    padding: 12px 30px;
+    background-color: #FF5722;
+    color: white;
+    text-decoration: none;
+    font-weight: 700;
+    border-radius: 8px;
+    transition: background-color 0.3s, transform 0.2s;
+    box-shadow: 0 5px 15px rgba(255, 87, 34, 0.4);
+}
+
+.cta-button:hover {
+    background-color: #E64A19;
+    transform: translateY(-2px);
+}
+
+/* -------------------------------------- */
+/* Scroll Message 애니메이션 (요청 3) */
+/* -------------------------------------- */
+@keyframes bounce-v {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-8px);
+    }
+}
+
+#scroll-message {
+    display: block;
+    color: #FF5722;
+    font-size: 1.2em;
+    animation: bounce-v 1.5s infinite ease-in-out;
+    position: relative;
+    align-self: center; 
+    margin-left: 47.75%; 
+}
+
+/* -------------------------------------- */
+/* 콘텐츠 그리드 섹션 */
+/* -------------------------------------- */
+.content-section {
+    background-color: #0A0A0A;
+    justify-content: space-between;
+}
+
+.content-section .minimal-container {
+    flex-grow: 1; 
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0; /* 내부 섹션이 패딩을 처리 */
+}
+
+.content-grid-section {
+    padding: 50px 0 100px;
+    /* minimal-grid가 가로 스크롤을 담당하므로 여기서 좌우 패딩을 제거 */
+}
+
+.section-heading {
+    text-align: center;
+    font-size: 2.5em;
+    font-weight: 700;
+    color: #FFAB91;
+    margin-bottom: 40px;
+}
+
+/* ARCHIVE CATEGORIES - 가로 정렬 및 스크롤 (요청된 수정) */
+.minimal-grid {
+    display: flex; /* 가로 정렬로 변경 */
+    overflow-x: auto; /* 가로 스크롤 가능하게 설정 */
+    gap: 30px;
+    padding: 0 5%; /* 컨테이너 내부에서 좌우 여백을 주어 카드가 붙지 않게 함 */
+    padding-bottom: 20px;
+}
+
+/* 콘텐츠 카드 */
+.content-card {
+    flex-shrink: 0; /* 가로 공간이 부족해도 카드가 축소되지 않도록 설정 */
+    width: 150px; /* 카드의 폭을 고정 */
+    display: block;
+    padding: 30px;
+    text-decoration: none;
+    color: #F0F0F0;
+    background-color: #1A1A1A;
+    border: 1px solid #333;
+    border-radius: 12px;
+    transition: all 0.3s;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+}
+
+.content-card:hover:not(.disabled-card) {
+    background-color: #252525;
+    border-color: #FF5722;
+    transform: translateY(-5px);
+}
+
+.card-icon {
+    font-size: 2.5em;
+    margin-bottom: 15px;
+}
+
+.content-card h3 {
+    font-size: 1.3em;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: #F0F0F0;
+}
+
+.content-card p {
+    font-size: 0.9em;
+    color: #B0B0B0;
+}
+
+/* 비활성화된 카드 스타일 */
+.disabled-card {
+    opacity: 0.6;
+    cursor: not-allowed;
+    border-top: 5px solid #444 !important;
+}
+
+.disabled-card:hover {
+    transform: none;
+    background-color: #1A1A1A;
+}
+
+/* 푸터 */
+.minimal-footer {
+    padding: 30px 5%;
+    text-align: center;
+    background-color: #1A1A1A;
+    border-top: 1px solid #222;
+    font-size: 0.9em;
+    color: #777;
+}
+
+/* -------------------------------------- */
+/* 4. 고정된 소셜/게임 링크 네비게이션 (Fixed) */
+/* -------------------------------------- */
+#side-fixed-nav {
+    position: fixed;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#side-fixed-nav a {
+    display: block;
+    width: 40px;
+    height: 40px;
+    padding: 8px;
+    background-color: rgba(26, 26, 26, 0.7);
+    border: 1px solid #333;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+#side-fixed-nav a:hover {
+    background-color: #FF5722;
+    border-color: #FF5722;
+    transform: scale(1.1);
+}
+
+#side-fixed-nav img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+
+
+
+/* -------------------------------------- */
+/* 반응형 디자인 */
+/* -------------------------------------- */
+@media (max-width: 1024px) {
+    /* ... (반응형 스타일 유지) ... */
+}
+
+@media (max-width: 768px) {
+    /* ... (반응형 스타일 유지) ... */
+}
+
+@media (max-width: 480px) {
+    /* ... (반응형 스타일 유지) ... */
+}
+
+/* -------------------------------------- */
+/* ARCHIVE CATEGORIES - 캐러셀 구조 및 버튼 (수정/추가됨) */
+/* -------------------------------------- */
+.carousel-container {
+    position: relative; /* 버튼 배치를 위한 기준점 */
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 0 5%; /* minimal-grid 대신 carousel-container에 좌우 패딩 적용 */
+}
+
+/* ARCHIVE CATEGORIES - 가로 정렬 및 스크롤 (수정됨) */
+.minimal-grid {
+    display: flex;
+    overflow-x: scroll; /* 가로 스크롤 기능을 유지 (JS가 사용) */
+    scroll-behavior: smooth; /* JS 스크롤 시 부드럽게 이동 */
+    gap: 30px;
+    padding-bottom: 20px;
+    
+    /* 2. 스크롤바 숨기기 (요청 사항) */
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+    padding-bottom: 0; /* 스크롤바가 숨겨지므로 패딩 제거 */
+}
+
+/* Webkit 브라우저 (Chrome, Safari) 스크롤바 숨기기 */
+.minimal-grid::-webkit-scrollbar {
+    display: none;
+}
+
+/* 콘텐츠 카드 - 기존 flex-shrink: 0 및 width: 300px 유지 */
+.content-card {
+    flex-shrink: 0;
+    width: 300px; 
+    /* ... (나머지 스타일 유지) ... */
+}
+
+/* 스크롤 버튼 스타일 */
+.scroll-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(26, 26, 26, 0.8);
+    color: #FF5722;
+    border: 1px solid #FF5722;
+    padding: 10px 15px;
+    cursor: pointer;
+    z-index: 10;
+    font-size: 1.5em;
+    border-radius: 50%; /* 원형 버튼 */
+    width: 50px;
+    height: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background-color 0.2s, opacity 0.2s;
+}
+
+.scroll-button:hover {
+    background-color: #FF5722;
+    color: #0A0A0A;
+}
+
+.scroll-button.prev {
+    left: 10px; /* carousel-container의 왼쪽 패딩 안쪽으로 */
+}
+
+.scroll-button.next {
+    right: 10px; /* carousel-container의 오른쪽 패딩 안쪽으로 */
+}
+/* ... (이후 CSS 코드 유지) ... */
+
+/* 데이터 조각 연출 (추가됨) */
+/* -------------------------------------- */
+#data-fragments {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* 클릭 방지 */
+}
+
+.data-fragment {
+    position: absolute;
+    color: rgba(13, 104, 143, 0.5); /* 주황색 투명 */
+    font-size: 0.8em;
+    opacity: 0;
+    transition: opacity 0.5s, transform 3s ease-in-out; /* 3초 동안 이동 */
+    /* 단어 반짝임 효과 (유지) */
+    animation: fragment-glow 1.5s infinite alternate;
+}
+
+/* 로딩 로고 최종 위치 조정 */
+.loader-logo {
+    /* 기존 스타일 유지 */
+    position: relative; /* 조각이 수렴할 기준점 */
+    z-index: 9999;
+}
+
+.data-fragment {
+    position: absolute;
+    /* color는 JS에서 랜덤하게 할당할 것이므로 여기서는 제거 */
+    font-size: 0.8em;
+    opacity: 0;
+    transition: opacity 0.5s, transform 3s ease-in-out; 
+    
+    /* 단어 반짝임 효과 추가 (새로 추가) */
+    animation: fragment-glow 1.5s infinite alternate;
+}
+
+/* 반짝임 애니메이션 정의 (새로 추가) */
+@keyframes fragment-glow {
+    0% { text-shadow: 0 0 5px rgba(34, 255, 240, 0.5); }
+    50% { text-shadow: 0 0 15px rgba(190, 33, 154, 0.8), 0 0 25px rgba(8, 151, 203, 0.6); }
+    100% { text-shadow: 0 0 5px rgba(189, 221, 24, 0.5); }
+}
+
+/* style.css - 최종 통합 및 최적화 코드 */
+
+/* -------------------------------------- */
+/* 공통 및 리셋 */
+/* -------------------------------------- */
+:root {
+    --header-height: 70px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Noto Sans KR', sans-serif; 
+}
+
+body {
+    background-color: #0A0A0A; 
+    color: #F0F0F0; 
+    line-height: 1.6;
+    overflow-x: hidden; 
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* -------------------------------------- */
+/* 로딩 화면 스타일 */
+/* -------------------------------------- */
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+    color: #FF5722;
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    transition: opacity 0.5s ease-out;
+    overflow: hidden;
+}
+
+.loader-content {
+    text-align: center;
+    position: relative;
+    z-index: 9999;
+    width: 80%;
+    max-width: 400px;
+}
+
+.loader-logo {
+    font-size: 2.5em; 
+    font-weight: 900;
+    margin-bottom: 20px;
+    letter-spacing: 2px;
+    color: #FF5722;
+    text-shadow: 0 0 10px rgba(255, 87, 34, 0.3);
+    position: relative;
+    transition: all 0.1s ease; 
+}
+
+.loader-text {
+    font-size: 1em;
+    color: #B0B0B0;
+    margin-bottom: 15px;
+}
+
+/* 로딩바 컨테이너 */
+.progress-container {
+    width: 100%;
+    height: 8px;
+    background-color: #1A1A1A;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* 로딩바 */
+#progress-bar {
+    height: 100%;
+    width: 0%;
+    background-color: #FF5722;
+    transition: width 0.5s ease-out; 
+}
+
+/* 메인 콘텐츠 컨테이너 */
+#main-content {
+    opacity: 0;
+    transition: opacity 0.5s ease-in; 
+    z-index: 1;
+}
+
+#main-content.loaded {
+    opacity: 1;
+}
+
+/* -------------------------------------- */
+/* 데이터 조각 연출 및 애니메이션 */
+/* -------------------------------------- */
+#data-fragments {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.data-fragment {
+    position: absolute;
+    font-size: 0.8em;
+    opacity: 0;
+    /* transform은 GPU 가속 요소이므로 성능 저하가 적습니다. */
+    transition: opacity 0.5s, transform 3s ease-in-out; 
+    
+    /* 무한 반복 반짝임 애니메이션 */
+    animation: fragment-glow 1.5s infinite alternate;
+}
+
+/* 1. 데이터 조각 - 무한 반복 반짝임 (최적화 버전) */
+@keyframes fragment-glow {
+    0% { 
+        text-shadow: 0 0 4px rgba(255, 87, 34, 0.4); 
+    }
+    50% { 
+        text-shadow: 0 0 8px rgba(255, 87, 34, 0.7), 0 0 15px rgba(255, 87, 34, 0.5); 
+    }
+    100% { 
+        text-shadow: 0 0 4px rgba(255, 87, 34, 0.4); 
+    }
+}
+
+/* 2. 로고 - 일회성 플래시 애니메이션 (JS 트리거) */
+.loader-logo.flash-glow {
+    animation: logo-flash 0.3s ease-out forwards; 
+}
+
+@keyframes logo-flash {
+    0% { 
+        text-shadow: 0 0 10px rgba(255, 255, 255, 0.5); 
+        color: #FFF; 
+    }
+    50% { 
+        text-shadow: 0 0 40px #FFF, 0 0 80px #FF5722; 
+        transform: scale(1.05); 
+        color: #FF5722;
+    }
+    100% { 
+        text-shadow: 0 0 10px rgba(255, 87, 34, 0.3); 
+        transform: scale(1);
+        color: #FF5722;
+    }
+}
+
+/* 3. 데이터 조각 - 일회성 플래시 애니메이션 (JS 트리거) */
+.data-fragment.fragment-flash-glow {
+    animation: fragment-single-flash 0.3s ease-out forwards; 
+}
+
+@keyframes fragment-single-flash {
+    0% { 
+        text-shadow: 0 0 5px rgba(255, 87, 34, 0.5); 
+    }
+    50% { 
+        text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px rgba(255, 255, 255, 0.8); 
+        opacity: 1; 
+    }
+    100% { 
+        text-shadow: 0 0 5px rgba(255, 87, 34, 0.5); 
+    }
+}
+
+/* -------------------------------------- */
+/* 헤더 및 드롭다운 메뉴 스타일 */
+/* -------------------------------------- */
+
+.minimal-header {
+    /* ... (생략된 헤더 스타일) ... */
+}
+
+/* -------------------------------------- */
+/* 비디오 배경 및 오버레이 */
+/* -------------------------------------- */
+.video-background-container {
+    /* ... (생략된 비디오 스타일) ... */
+}
+
+
+/* -------------------------------------- */
+/* 메인 콘텐츠 (index.html) - Hero Section 조정 */
+/* -------------------------------------- */
+.minimal-container {
+    /* ... (생략된 메인 콘텐츠 스타일) ... */
+}
+
+/* -------------------------------------- */
+/* 사이드 고정 네비게이션 */
+/* -------------------------------------- */
+#side-fixed-nav {
+    /* ... (생략된 사이드 네비게이션 스타일) ... */
+}
+
+/* -------------------------------------- */
+/* 하단 푸터 */
+/* -------------------------------------- */
+.minimal-footer {
+    /* ... (생략된 푸터 스타일) ... */
+}
+
+/* -------------------------------------- */
+/* 반응형 디자인 */
+/* -------------------------------------- */
+
+/* ... (생략된 미디어 쿼리 스타일) ... */
+
+/* -------------------------------------- */
+/* lore.html - 메인 콘텐츠 및 목차 스타일 */
+/* -------------------------------------- */
+
+.lore-main {
+    display: flex;
+    padding: 50px 0;
+    width: 90%;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.toc-area {
+    /* 사이드바 너비 */
+    width: 250px; 
+    padding-right: 40px;
+    /* 화면을 스크롤해도 목차가 고정되도록 설정 */
+    position: sticky; 
+    top: calc(var(--header-height) + 20px); /* 헤더 아래에 고정 */
+    align-self: flex-start; /* 컨테이너 시작점에 정렬 */
+}
+
+.toc-area h2 {
+    color: #FF5722;
+    margin-bottom: 15px;
+    font-size: 1.5rem;
+    border-bottom: 2px solid rgba(255, 87, 34, 0.5);
+    padding-bottom: 5px;
+}
+
+#toc-list {
+    list-style: none;
+    padding: 0;
+}
+
+#toc-list li a {
+    display: block;
+    padding: 8px 0;
+    color: #B0B0B0;
+    transition: color 0.2s, padding-left 0.2s;
+    font-size: 0.95rem;
+}
+
+#toc-list li a:hover {
+    color: #F0F0F0;
+    padding-left: 5px;
+    border-left: 2px solid #FF5722;
+}
+
+.lore-article {
+    /* 본문 영역이 남은 공간을 모두 차지하도록 설정 */
+    flex-grow: 1; 
+    max-width: 900px;
+    padding-left: 20px;
+}
+
+.lore-article section {
+    margin-bottom: 60px;
+    padding-top: 30px; /* 목차 스크롤 시 상단 여백 확보 */
+}
+
+/* style.css - 통합 최종 코드 */
+
+/* -------------------------------------- */
+/* 공통 및 리셋 */
+/* -------------------------------------- */
+:root {
+    --header-height: 70px; /* 헤더 높이 변수화 */
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Noto Sans KR', sans-serif; 
+}
+
+body {
+    background-color: #0A0A0A; 
+    color: #F0F0F0; 
+    line-height: 1.6;
+    overflow-x: hidden; 
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* -------------------------------------- */
+/* 로딩 화면 스타일 */
+/* -------------------------------------- */
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+    color: #FF5722;
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    transition: opacity 0.5s ease-out;
+    overflow: hidden;
+}
+
+/* ... (로딩 화면 기타 스타일 유지) ... */
+
+/* -------------------------------------- */
+/* 헤더 및 드롭다운 메뉴 스타일 */
+/* -------------------------------------- */
+
+.minimal-header {
+    /* ... (기존 헤더 스타일 유지) ... */
+}
+
+/* -------------------------------------- */
+/* lore.html - 배경 영상 Hero Section 스타일 */
+/* -------------------------------------- */
+
+/* carousel-section을 전체 화면 높이로 설정 */
+.lore-carousel-section {
+    position: relative;
+    width: 100%;
+    /* 화면 높이에 맞게 조정 (헤더 높이만큼 뺌) */
+    height: calc(100vh - var(--header-height)); 
+    overflow: hidden;
+    margin-top: var(--header-height); /* 헤더 아래에 배치 */
+}
+
+/* 비디오가 배경 전체를 덮도록 설정 */
+.lore-carousel-section .hero-video {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    z-index: 0;
+    transform: translate(-50%, -50%);
+}
+
+/* 비디오 위의 오버레이 (색상 필터) */
+.lore-carousel-section .video-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5); /* 어둡게 오버레이 */
+    z-index: 1;
+}
+
+/* 가운데 도시 이름(캡션) 스타일 */
+.lore-carousel-section .slide-caption {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: #F0F0F0;
+    z-index: 2; /* 오버레이보다 위로 */
+}
+
+.lore-carousel-section .slide-caption .slide-title {
+    font-size: 5rem;
+    font-weight: 900;
+    text-shadow: 0 0 10px rgba(255, 87, 34, 0.8), 0 0 20px rgba(255, 87, 34, 0.5);
+    margin-bottom: 10px;
+}
+
+.lore-carousel-section .slide-caption .slide-subtitle {
+    font-size: 1.5rem;
+    font-weight: 300;
+    color: #FF5722;
+}
+
+/* 비디오 슬라이드만 활성화 (배경으로 사용) */
+.lore-carousel-section .carousel-slide.video-slide.active {
+    display: block; 
+}
+
+/* 이미지 슬라이드 제거로 인해 나머지 슬라이드 스타일은 기능하지 않습니다. */
+.lore-carousel-section .carousel-slide:not(.video-slide) {
+    display: none; /* Hero 섹션에서 이미지 슬라이드 숨김 */
+}
+
+
+/* -------------------------------------- */
+/* lore.html - 메인 콘텐츠 및 목차 스타일 */
+/* -------------------------------------- */
+
+.lore-main {
+    display: flex;
+    padding: 50px 0;
+    width: 90%;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.toc-area {
+    /* 사이드바 너비 */
+    width: 250px; 
+    padding-right: 40px;
+    /* 화면을 스크롤해도 목차가 고정되도록 설정 */
+    position: sticky; 
+    top: calc(var(--header-height) + 20px); /* 헤더 아래에 고정 */
+    align-self: flex-start; /* 컨테이너 시작점에 정렬 */
+}
+
+.toc-area h2 {
+    color: #FF5722;
+    margin-bottom: 15px;
+    font-size: 1.5rem;
+    border-bottom: 2px solid rgba(255, 87, 34, 0.5);
+    padding-bottom: 5px;
+}
+
+#toc-list {
+    list-style: none;
+    padding: 0;
+}
+
+#toc-list li a {
+    display: block;
+    padding: 8px 0;
+    color: #B0B0B0;
+    transition: color 0.2s, padding-left 0.2s;
+    font-size: 0.95rem;
+}
+
+#toc-list li a:hover {
+    color: #F0F0F0;
+    padding-left: 5px;
+    border-left: 2px solid #FF5722;
+}
+
+.lore-article {
+    /* 본문 영역이 남은 공간을 모두 차지하도록 설정 */
+    flex-grow: 1; 
+    max-width: 900px;
+    padding-left: 20px;
+}
+
+.lore-article section {
+    margin-bottom: 60px;
+    padding-top: 30px; /* 목차 스크롤 시 상단 여백 확보 */
+}
+
+/* -------------------------------------- */
+/* lore.html - 미디어(YouTube) 캐러셀 스타일 */
+/* -------------------------------------- */
+
+.media-link-section {
+    padding: 40px 0;
+    text-align: center;
+}
+
+.media-carousel-container {
+    position: relative;
+    width: 90%;
+    /* 크기를 800px에서 1100px로 확대 */
+    max-width: 1100px; 
+    margin: 40px auto 80px;
+    overflow: hidden;
+    background-color: #1a1a1a;
+    border: 1px solid #FF5722;
+    padding: 20px;
+}
+
+.media-carousel-slides {
+    position: relative;
+    width: 100%;
+}
+
+.media-slide {
+    display: none; /* 기본적으로 모든 슬라이드 숨김 */
+    transition: opacity 0.3s ease-in-out;
+}
+
+.media-slide.active {
+    display: block; /* 활성화된 슬라이드만 표시 */
+}
+
+/* 유튜브 iframe 컨테이너 (반응형 비율 유지) */
+.youtube-embed-container {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%; /* 16:9 비율 유지 (9/16 * 100) */
+    height: 0;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.youtube-embed-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.embed-caption {
+    text-align: center;
+    color: #B0B0B0;
+    font-style: italic;
+    margin-top: 10px;
+    font-size: 0.9rem;
+}
+
+/* 캐러셀 제어 버튼 */
+.media-control {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 87, 34, 0.7);
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+    z-index: 10;
+    transition: background-color 0.3s;
+}
+
+.media-control:hover {
+    background: #FF5722;
+}
+
+#media-prev-btn {
+    left: 10px;
+}
+
+#media-next-btn {
+    right: 10px;
+}
+
+
+/* -------------------------------------- */
+/* lore.html - 컨셉 아트 캐러셀 스타일 (New) */
+/* -------------------------------------- */
+
+.concept-art-section {
+    padding: 60px 0 80px;
+    width: 90%;
+    max-width: 1400px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.concept-art-section h2 {
+    font-size: 2.2rem;
+    color: #FF5722;
+    margin-bottom: 10px;
+}
+
+.concept-art-section p {
+    color: #B0B0B0;
+    margin-bottom: 30px;
+}
+
+.image-carousel-container {
+    position: relative;
+    width: 100%;
+    max-width: 1200px;
+    height: 600px; /* 캐러셀 높이 고정 (이미지에 따라 조정 가능) */
+    margin: 0 auto;
+    overflow: hidden;
+    border: 3px solid rgba(255, 87, 34, 0.5);
+    background-color: #151515;
+}
+
+.image-carousel-slides {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.image-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none; /* JS에 의해 제어 */
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+}
+
+.image-slide.active {
+    display: block;
+    opacity: 1;
+}
+
+.image-slide .slide-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* 이미지가 컨테이너를 꽉 채우도록 */
+}
+
+.image-caption {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 15px 20px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #F0F0F0;
+    font-size: 1.1rem;
+    text-align: left;
+}
+
+/* 이미지 캐러셀 제어 버튼 */
+.image-control {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 87, 34, 0.8);
+    color: white;
+    border: 2px solid #F0F0F0;
+    padding: 15px 20px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    z-index: 20; /* 이미지 위에 표시 */
+    transition: background-color 0.3s;
+    opacity: 0.8;
+}
+
+.image-control:hover {
+    background: #FF5722;
+    opacity: 1;
+}
+
+#art-prev-btn {
+    left: 20px;
+    border-radius: 0 5px 5px 0;
+}
+
+#art-next-btn {
+    right: 20px;
+    border-radius: 5px 0 0 5px;
+}
