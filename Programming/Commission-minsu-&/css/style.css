@@ -1,4 +1,4 @@
-/* style.css (최종 버전: 다크 모드, 모달 고정, 아이콘, 파도타기 애니메이션 적용) */
+/* style.css (최종 버전: 다크 모드, 로고 파도타기, 사이드바 아이콘, 캐러셀 이미지 중앙/하단 오버레이, Hero Video 배경 적용) */
 
 :root {
     --color-black: #000000;
@@ -117,7 +117,6 @@ ul {
 /* 호버 시 파도타기 애니메이션 적용 */
 .logo:hover .char {
     animation: wave-effect 1.5s ease-in-out infinite; 
-    /* --i 변수(1부터 9)를 사용하여 순차적 지연 효과 적용 */
     animation-delay: calc(0.05s * var(--i)); 
 }
 
@@ -131,6 +130,7 @@ ul {
 .logo .char:nth-child(7) { --wave-color: var(--color-wave-7); } /* O */
 .logo .char:nth-child(8) { --wave-color: var(--color-wave-8); } /* R */
 .logo .char:nth-child(9) { --wave-color: var(--color-wave-9); } /* K */
+.logo .char:nth-child(10) { --wave-color: var(--color-wave-10); } /* S */
 
 
 .main-header .nav-list a {
@@ -264,12 +264,30 @@ ul {
 }
 
 
+/* ================== Hero Background Video ================== */
+.hero-background-video {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    /* 비디오의 중앙을 기준으로 위치를 이동하여 화면 중앙에 오도록 함 */
+    transform: translate(-50%, -50%); 
+    
+    /* 비디오가 섹션을 완전히 덮도록 크기 조정 */
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    
+    z-index: 1; /* 오버레이와 텍스트보다 아래에 위치 */
+    object-fit: cover; /* 비디오 콘텐츠가 영역을 덮도록 설정 */
+}
+
 /* ================== Hero Banner ================== */
 .hero-banner {
-    background-image: url('../images/placeholder-video-bg.jpg');
+    /* 기존 background-image: url('../images/placeholder-video-bg.jpg'); 삭제 */
     background-size: cover;
     background-position: center;
-    background-color: var(--color-dark-card); 
+    background-color: var(--color-dark-bg); /* 비디오 로딩 전/후 배경색 */
     height: 75vh;
     display: flex;
     justify-content: center;
@@ -278,6 +296,8 @@ ul {
     position: relative;
     overflow: hidden;
 }
+
+/* 오버레이의 z-index를 조정하여 비디오 위에 오도록 설정 */
 .hero-banner::after {
     content: '';
     position: absolute;
@@ -286,12 +306,13 @@ ul {
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
-    z-index: 1;
+    z-index: 2; /* 비디오(z-index: 1) 위에 오도록 설정 */
 }
 
+/* 텍스트 콘텐츠의 z-index를 조정하여 오버레이 위에 오도록 설정 */
 .banner-content {
     color: var(--color-text-light);
-    z-index: 2;
+    z-index: 3; 
     max-width: 800px;
     padding: 20px;
 }
@@ -363,7 +384,16 @@ ul {
     background-color: var(--color-dark-card);
     border: 1px solid var(--color-border);
     transition: transform 0.3s ease;
-    cursor: pointer; 
+    cursor: pointer;
+    
+    /* 👇 캐러셀 이미지 중앙 정렬 및 크기 조절 적용 👇 */
+    background-position: center; /* 이미지를 항상 중앙에 맞춤 */
+    background-size: cover;      /* 영역을 완전히 덮도록 비율 유지하며 확대/축소 */
+    background-repeat: no-repeat; /* 이미지가 반복되지 않도록 설정 */
+    
+    /* 오버레이 위치 지정을 위한 기준점 설정 */
+    position: relative; 
+    overflow: hidden; 
 }
 
 .work-item:hover {
@@ -372,12 +402,25 @@ ul {
 }
 
 .work-overlay {
-    background-color: rgba(255, 255, 255, 0.1); 
-    color: var(--color-accent);
+    /* 👇 오버레이 위치를 왼쪽 하단으로 이동 및 시인성 개선 👇 */
+    background-color: rgba(0, 0, 0, 0.7); /* 배경: 검정색 반투명 (시인성 확보) */
+    position: absolute;
+    bottom: 0; /* 하단에 붙임 */
+    left: 0; /* 왼쪽에 붙임 */
+    width: 100%; /* 너비는 부모 요소 전체 */
+    padding: 15px; /* 내부 여백 추가 */
+    text-align: left; /* 텍스트를 왼쪽 정렬 */
+}
+
+.work-overlay h4 {
+    color: var(--color-accent); /* 흰색 유지 */
+    font-size: 18px;
+    margin-bottom: 5px;
 }
 
 .work-overlay p {
-    color: #aaaaaa;
+    color: #aaaaaa; /* 밝은 회색 유지 */
+    font-size: 14px;
 }
 
 .carousel-btn {
@@ -439,6 +482,17 @@ ul {
 .product-item:hover {
     box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
 }
+
+/* 👇 제품 이미지 크기 및 정렬 조정 추가 👇 */
+.product-item img {
+    max-width: 100%; /* 부모 요소(product-item)의 너비를 넘지 않도록 설정 */
+    height: 200px; /* 이미지 높이를 고정하여 정렬 문제 해결 */
+    object-fit: contain; /* 이미지 비율을 유지하면서 주어진 크기 내에 맞춤 */
+    margin: 0 auto 15px; /* 이미지 아래 여백 추가 및 중앙 정렬 */
+    display: block; /* margin: auto가 작동하도록 block 요소로 설정 */
+}
+/* 👆 제품 이미지 크기 및 정렬 조정 추가 👆 */
+
 .product-item h4 {
     color: var(--color-accent);
     margin-bottom: 10px;
@@ -485,28 +539,50 @@ ul {
     font-size: 24px;
 }
 
-.team-grid {
+/* ----------------- 팀원 캐러셀 관련 스타일 추가 ----------------- */
+.team-carousel-container {
+    max-width: 900px; /* 4개 항목 기준 너비 */
+    margin: 0 auto 60px; 
+}
+.team-carousel {
     display: flex;
-    justify-content: center;
-    gap: 40px;
-    margin-bottom: 60px;
+    transition: transform 0.5s ease-in-out;
+}
+.team-item-group {
+    min-width: 100%; 
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); 
+    gap: 20px; 
+    justify-content: center; 
 }
 .member-item {
     text-align: center;
+    padding: 10px;
+    background-color: var(--color-dark-card);
+    border: 1px solid var(--color-border);
+    transition: transform 0.3s ease;
+    cursor: pointer;
+}
+.member-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 20px rgba(255, 255, 255, 0.1);
 }
 .member-photo {
     width: 120px;
     height: 120px;
-    background-color: var(--color-dark-card);
+    background-color: var(--color-dark-bg);
     border-radius: 50%;
     border: 3px solid var(--color-accent);
     margin: 0 auto 10px;
     background-size: cover;
     background-position: center;
 }
-.member-photo.ceo { background-image: url('placeholder-ceo.jpg'); }
-.member-photo.editor { background-image: url('placeholder-editor.jpg'); }
-.member-photo.artist { background-image: url('placeholder-artist.jpg'); }
+/* 팀 캐러셀 버튼 위치 조정 */
+.team-carousel-container .carousel-btn {
+    top: 60%;
+}
+/* ----------------------------------------------------------------- */
+
 
 .contact-area {
     background-color: var(--color-dark-card);
@@ -561,8 +637,8 @@ ul {
     left: 50%;
     transform: translate(-50%, -50%); /* 중앙 정렬 */
     
-    max-height: 90vh; /* 최대 높이 설정 */
-    overflow-y: auto; /* 내용이 넘칠 때만 모달 내부 스크롤 발생 */
+    max-height: 90%; /* 최대 높이 설정 */
+    overflow-y:hidden; /* 내용이 넘칠 때만 모달 내부 스크롤 발생 */
 
     padding: 40px;
     border: 1px solid var(--color-accent);

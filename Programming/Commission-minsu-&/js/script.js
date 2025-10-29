@@ -39,13 +39,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // ================== Works Carousel Logic ==================
-    const carousel = document.querySelector('.work-carousel');
-    const prevBtn = document.querySelector('.carousel-btn.prev');
-    const nextBtn = document.querySelector('.carousel-btn.next');
-    const dotsContainer = document.querySelector('.carousel-dots');
+    const carousel = document.querySelector('.work-carousel:not(.team-carousel)'); // 작품 캐러셀 선택
+    const prevBtn = document.querySelector('.carousel-btn.prev:not(.team-prev)');
+    const nextBtn = document.querySelector('.carousel-btn.next:not(.team-next)');
+    const dotsContainer = document.querySelector('.carousel-dots:not(.team-dots)');
     
     if (carousel) {
-        const groups = document.querySelectorAll('.carousel-item-group');
+        const groups = carousel.querySelectorAll('.carousel-item-group');
         let currentSlide = 0;
         const totalSlides = groups.length;
 
@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dotsContainer.appendChild(dot);
         }
 
-        const dots = document.querySelectorAll('.carousel-dots .dot');
+        const dots = dotsContainer.querySelectorAll('.dot');
 
         function updateDots() {
             dots.forEach((dot, index) => {
@@ -83,6 +83,54 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // ================== Team Carousel Logic (추가) ==================
+    const teamCarousel = document.querySelector('.team-carousel');
+    const teamPrevBtn = document.querySelector('.carousel-btn.team-prev');
+    const teamNextBtn = document.querySelector('.carousel-btn.team-next');
+    const teamDotsContainer = document.querySelector('.carousel-dots.team-dots');
+
+    if (teamCarousel) {
+        const teamGroups = teamCarousel.querySelectorAll('.team-item-group');
+        let teamCurrentSlide = 0;
+        const teamTotalSlides = teamGroups.length;
+
+        // 닷 생성
+        for (let i = 0; i < teamTotalSlides; i++) {
+            const dot = document.createElement('span');
+            dot.classList.add('dot');
+            if (i === 0) dot.classList.add('active');
+            dot.addEventListener('click', () => {
+                goToTeamSlide(i);
+            });
+            teamDotsContainer.appendChild(dot);
+        }
+
+        const teamDots = teamDotsContainer.querySelectorAll('.dot');
+
+        function updateTeamDots() {
+            teamDots.forEach((dot, index) => {
+                dot.classList.toggle('active', index === teamCurrentSlide);
+            });
+        }
+
+        function goToTeamSlide(index) {
+            teamCurrentSlide = (index + teamTotalSlides) % teamTotalSlides;
+            const offset = -teamCurrentSlide * 100;
+            teamCarousel.style.transform = `translateX(${offset}%)`;
+            updateTeamDots();
+        }
+
+        teamPrevBtn.addEventListener('click', () => {
+            goToTeamSlide(teamCurrentSlide - 1);
+        });
+
+        teamNextBtn.addEventListener('click', () => {
+            goToTeamSlide(teamCurrentSlide + 1);
+        });
+    }
+    // ================================================================
+
+
     // ================== Work Detail Modal Logic ==================
     const workItems = document.querySelectorAll('.work-item');
     const modal = document.getElementById('work-detail-modal');
@@ -90,16 +138,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalTitle = document.getElementById('modal-work-title');
     const modalGenre = document.getElementById('modal-work-genre');
     const modalImage = document.getElementById('modal-work-image');
+    const modalDescription = document.getElementById('modal-work-description'); 
+    
+    // ⭐ 모달 내부의 CTA 버튼 요소를 가져옵니다.
+    const ctaButton = modal.querySelector('.cta-button'); 
 
     workItems.forEach(item => {
         item.addEventListener('click', () => {
             const title = item.getAttribute('data-title');
             const genre = item.getAttribute('data-genre');
-            const workClass = Array.from(item.classList).find(cls => cls !== 'work-item' && !cls.includes('work-item'));
+            const description = item.getAttribute('data-description'); 
 
+            const backgroundImageStyle = item.style.backgroundImage;
+            
             modalTitle.textContent = title;
             modalGenre.textContent = genre;
-            modalImage.style.backgroundImage = `url('../images/placeholder-${workClass}.jpg')`; 
+            modalImage.style.backgroundImage = backgroundImageStyle; 
+            modalDescription.textContent = description || "상세 설명이 준비 중입니다."; 
             
             modal.style.display = "block";
         });
@@ -114,4 +169,14 @@ document.addEventListener('DOMContentLoaded', () => {
             modal.style.display = "none";
         }
     });
+
+    // ⭐ 핵심 수정: CTA 버튼 클릭 시 alert 메시지 출력
+    if (ctaButton) {
+        ctaButton.addEventListener('click', (event) => {
+            event.preventDefault(); // 버튼의 기본 동작 방지 (필요하다면)
+            
+            // alert 메시지 출력
+            alert("해당 작품은 현재 연재중이지 않습니다.");
+        });
+    }
 });
