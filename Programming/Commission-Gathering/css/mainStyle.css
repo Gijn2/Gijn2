@@ -50,6 +50,11 @@ a {
     color: var(--color-primary-accent);
     text-decoration: none;
     letter-spacing: 1px;
+    transition: color 0.3s;
+}
+
+.logo a:hover {
+    color: #FFF; 
 }
 
 .main-nav {
@@ -93,9 +98,12 @@ a {
     padding: 0;
 }
 
+/* 스크롤 스파이 활성화 스타일 */
 .dropdown-toggle.active {
     color: var(--color-primary-accent) !important; 
     font-weight: 700 !important;
+    border-bottom: 2px solid var(--color-primary-accent); /* 밑줄 추가 */
+    padding-bottom: 3px;
     background-color: transparent !important;
 }
 
@@ -166,7 +174,6 @@ a {
     letter-spacing: 2px;
 }
 
-/* 로고 플래시 애니메이션 */
 .loader-logo.flash-glow { 
     animation: logo-flash 0.3s ease-out forwards; 
 } 
@@ -198,7 +205,6 @@ a {
     transition: width 3.5s linear;
 }
 
-/* 데이터 조각 스타일 */
 #data-fragments {
     position: fixed; 
     top: 0; 
@@ -222,7 +228,6 @@ a {
     100% { text-shadow: 0 0 4px rgba(255, 87, 34, 0.4); }
 }
 
-/* 메인 콘텐츠 컨테이너 */
 #main-content {
     opacity: 0;
     transition: opacity 0.5s ease-in; 
@@ -264,16 +269,36 @@ a {
 }
 
 /* -------------------------------------- */
+/* 스크롤 컨테이너 및 섹션 (복원) */
+/* -------------------------------------- */
+#scroll-container {
+    height: 100vh;
+    overflow-y: scroll;
+    padding-top: var(--header-height); 
+}
+
+.main-body > main > section {
+    min-height: 100vh; 
+    padding-top: 0; 
+    display: flex; 
+    flex-direction: column;
+    justify-content: center;
+    position: relative; 
+    border-top: none; 
+}
+
+
+/* -------------------------------------- */
 /* 메인 콘텐츠 (index.html) - Hero Section */
 /* -------------------------------------- */
-.minimal-container { /* 공통이지만, 주로 index/section에 사용 */
+.minimal-container { 
     max-width: 1400px;
     margin: 0 auto;
 }
 
 .hero-section {
     min-height: 100vh; 
-    padding-top: var(--header-height); 
+    padding-top: 0; /* padding-top은 scroll-container가 담당 */
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -282,6 +307,15 @@ a {
     background-color: transparent;
     position: relative;
     z-index: 10;
+}
+
+/* 요구사항 2: 추가된 영웅 텍스트 래퍼 스타일 */
+.hero-text-wrapper {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
 }
 
 .hero-title {
@@ -325,7 +359,7 @@ a {
     transform: translateY(-2px);
 }
 
-/* Scroll Message 애니메이션 */
+/* 요구사항 1: SCROLL 메시지 스타일 (흰색 선 제거 및 중앙 정렬 유지) */
 @keyframes bounce-v {
     0%, 100% {
         transform: translateY(0);
@@ -336,25 +370,136 @@ a {
 }
 
 #scroll-message {
-    display: block;
-    color: var(--color-primary-accent);
-    font-size: 1.2em;
-    animation: bounce-v 1.5s infinite ease-in-out;
+    display: block; /* 줄이 없어졌으므로 flexbox 불필요 */
     position: absolute; 
     bottom: 50px;
-    width: 100px;
+    
+    left: 50%; 
+    transform: translateX(-50%); /* 중앙 정렬 */
+    
     text-align: center;
+    color: var(--color-primary-accent);
+    font-size: 1.2em;
+    font-weight: 700;
+    animation: bounce-v 1.5s infinite ease-in-out; /* 애니메이션 유지 */
+    width: auto; /* width 제거 또는 auto로 설정하여 텍스트 길이에 맞춤 */
 }
 
+/* 요구사항 1: 흰색 줄을 만드는 ::before, ::after 요소 제거 */
+#scroll-message::before,
+#scroll-message::after {
+    content: none;
+    display: none;
+}
+
+
 /* -------------------------------------- */
-/* 콘텐츠 그리드 섹션 - Index 전용 */
+/* 요구사항 3: 세계관 정보 섹션 배경 이미지 스타일 및 버튼 위치 조정 (5px로 수정) */
 /* -------------------------------------- */
 .content-section {
     background-color: #0A0A0A;
     padding: 100px 0;
 }
 
-.section-heading { /* 공통이지만, 주로 index/section에 사용 */
+.world-info-section {
+    padding: 0; 
+}
+
+.world-info-container {
+    min-height: 90vh; 
+    height: 100%; 
+    display: flex;
+    flex-direction: column; 
+    justify-content: center; 
+    align-items: center; 
+    
+    background-image: url('../../images/main/worldImg/terraIMG.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-radius: 15px;
+    box-shadow: inset 0 0 0 2000px rgba(0, 0, 0, 0.7); 
+    transition: box-shadow 0.5s;
+    width: 90%; 
+    margin: 0 auto;
+    position: relative;
+    z-index: 10;
+    padding-bottom: 0; 
+}
+
+.world-info-container:hover {
+    box-shadow: inset 0 0 0 2000px rgba(0, 0, 0, 0.4);
+}
+
+/* 요구사항: 버튼에 5px 상단 마진을 주어 중앙에서 아래로 이동 (10px -> 5px) */
+.world-info-container .world-cta-button {
+    margin-top: 5px; /* 10px에서 5px로 수정됨 */
+}
+
+
+/* -------------------------------------- */
+/* 요구사항 4: 이벤트 캐러셀 스타일 (크기 확대) */
+/* -------------------------------------- */
+.event-section {
+    padding-bottom: 50px; 
+}
+
+.event-carousel-wrapper {
+    overflow: hidden; 
+    margin: 40px auto;
+    max-width: 90%; 
+    border-radius: 12px;
+    position: relative; 
+}
+
+.event-slide-list {
+    display: flex;
+    width: 300%; 
+    transition: transform 0.5s ease-in-out; 
+    
+}
+
+.event-slide-item {
+    flex-shrink: 0;
+    width: calc(100% / 3); 
+    height: 350px; /* 크기 확대 유지 */
+    margin-right: 0; 
+    overflow: hidden;
+    transition: transform 0.3s;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+    border-radius: 12px;
+}
+
+.event-slide-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; 
+    display: block;
+}
+
+/* 캐러셀 Dot 내비게이션 스타일 */
+.carousel-dots {
+    text-align: center;
+    padding: 20px 0 0;
+}
+.dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin: 0 5px;
+    background-color: #555;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+.dot.active {
+    background-color: var(--color-primary-accent);
+}
+
+/* -------------------------------------- */
+/* 콘텐츠 그리드 섹션 - Index 전용 */
+/* -------------------------------------- */
+.section-heading { 
     text-align: center;
     font-size: 2.5em;
     font-weight: 700;
@@ -362,7 +507,6 @@ a {
     margin-bottom: 40px;
 }
 
-/* ARCHIVE CATEGORIES - 가로 스크롤 가능한 그리드 */
 .carousel-container {
     position: relative; 
     max-width: 100%;
@@ -388,7 +532,7 @@ a {
 /* 콘텐츠 카드 */
 .content-card {
     flex-shrink: 0; 
-    width: 150px; 
+    width: 180px; 
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -438,45 +582,6 @@ a {
     margin-top: 40px;
 }
 
-/* 캐러셀 컨트롤 (Index 전용) */
-.carousel-control {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    background: rgba(10, 10, 10, 0.7);
-    color: var(--color-primary-accent);
-    border: 1px solid var(--color-primary-accent);
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    font-size: 1.2em;
-    cursor: pointer;
-    z-index: 10;
-    transition: background-color 0.3s, opacity 0.3s;
-    outline: none;
-}
-
-.carousel-control.prev {
-    left: 1%;
-}
-
-.carousel-control.next {
-    right: 1%;
-}
-
-.carousel-control:hover:not(:disabled) {
-    background-color: var(--color-primary-accent);
-    color: #0A0A0A;
-}
-
-.carousel-control:disabled,
-.carousel-control.disabled {
-    opacity: 0.3;
-    cursor: default;
-    border-color: #555;
-    color: var(--color-text-grey);
-    background-color: #1A1A1A;
-}
 
 /* -------------------------------------- */
 /* 기타 공통 스타일 (Footer, Side Nav) */
