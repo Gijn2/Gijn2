@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGNIS ARCHIVE: 불의 영역 기록 보관소</title>
-    <link rel="stylesheet" href="../../css/style.css"> 
+    <title>LOST ARCHIVE: 잃어버린 세계 기록 보관소</title>
+    <link rel="stylesheet" href="../../css/MainStyle.css"> 
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;700;900&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -33,7 +33,7 @@
         </div>
 
         <header class="minimal-header sticky-header">
-            <div class="logo"><a href="../main/index.html">LOST ARCHIVE</a></div>
+            <div class="logo"><a href="../pages/main/index.html">LOST ARCHIVE</a></div>
             <nav class="main-nav">
                  <div class="dropdown highlight">
                     <a class="dropdown-toggle active">
@@ -41,6 +41,10 @@
                     </a>
                     <div class="dropdown-menu">
                         <a href="../pages/ignis/lore.html" class="dropdown-item">불의 영역: 순환의 고원</a>
+                        <a href="../pages/ignis/lore.html" class="dropdown-item">물의 영역: ■ ■■■ [■■■■ ■■]</a>
+                        <a href="../pages/ignis/lore.html" class="dropdown-item">땅의 영역: ■■■ ■■ - ■■ ■■</a>
+                        <a href="../pages/ignis/lore.html" class="dropdown-item">금속의 영역: ■■ ■■■■■■ ■■</a>
+                        <a href="../pages/ignis/lore.html" class="dropdown-item">생명의 영역: ■■■■■■ : ■■■</a>
                     </div>
                 </div>
                 <div class="dropdown highlight">
@@ -50,104 +54,125 @@
                     <div class="dropdown-menu">
                         <a href="#" class="dropdown-item" onclick="return handleCategoryClick(event);">공지 사항</a>
                         <a href="#" class="dropdown-item" onclick="return handleCategoryClick(event);">업데이트 정보</a>
-                        <a href="#" class="dropdown-item" onclick="return handleCategoryClick(event);">진행 중인 이벤트</a>
                     </div>
                 </div>
-                <a href="#" class="nav-link highlight" onclick="return handleCategoryClick(event);">개발자 노트</a>
-                <a href="#" class="nav-link highlight" onclick="return handleCategoryClick(event);">커뮤니티</a>
-                <a href="#" class="nav-link highlight" onclick="return handleCategoryClick(event);">쿠폰 입력</a>
-                <a href="#" class="nav-link highlight" onclick="return handleCategoryClick(event);">서비스문의</a>
-                <a href="#" class="nav-link" onclick="return handleCategoryClick(event);"><b>회사 정보</b></a>
+                <div class="dropdown">
+                    <a href="#" class="dropdown-toggle" onclick="return handleCategoryClick(event);">
+                        개발자 노트 ▼
+                    </a>
+                    <div class="dropdown-menu">
+                        <a href="#" class="dropdown-item" onclick="return handleCategoryClick(event);">게임 비하인드</a>
+                        <a href="#" class="dropdown-item" onclick="return handleCategoryClick(event);">향후 로드맵</a>
+                    </div>
+                </div>
+                <div class="dropdown">
+                    <a href="#" class="dropdown-toggle" onclick="return handleCategoryClick(event);">
+                        커뮤니티 ▼
+                    </a>
+                    <div class="dropdown-menu">
+                        <a href="#" class="dropdown-item" onclick="return handleCategoryClick(event);">공식 커뮤니티</a>
+                        <a href="#" class="dropdown-item" onclick="return handleCategoryClick(event);">팬아트 갤러리</a>
+                    </div>
+                </div>
             </nav>
         </header>
 
-        <div class="scroll-snap-wrapper">
-
-            <section class="hero-section snap-section">
-                <main class="minimal-container">
+        <section class="main-body">
+            <main class="minimal-container">
+                
+                <section class="hero-section">
                     <h1 class="hero-title">
-                        판게아 대륙: 망각의 기록 보관소
-                        <span class="sub-line">LOST ARCHIVE: PANGEA CONTINENT - IGNIS</span>
+                        LOST ARCHIVE
+                        <span class="sub-line">불멸의 도시, 순환의 고원</span>
                     </h1>
-                    <p class="hero-description">활화산 산맥의 거대한 고원에 존재하는 <span style="color:#FF5722; font-weight:700;">불의 영역</span>의 심화된 기록을 열람할 수 있습니다. 현재는 세계관 내 이그니스 영역의 기록만 접근 가능합니다.</p>
-                    <a href="../Ignis/lore.html" class="cta-button">불의 영역 기록 열람</a>
-                    <div style="margin-top: 60px;"></div> 
-                </main>
-            </section>
-            <div>
-                <a id="scroll-message"><b> Scroll ▼</b></a> 
-                <hr style="border-top: 1px solid #222; margin: 40px 0;">
-            </div>
-            <section class="content-section snap-section">
-                <main class="minimal-container">
-                    <section class="content-grid-section">
+                    <p class="hero-description">
+                        폐허가 된 미래 세계의 중심, 이그니스 아카이브에 오신 것을 환영합니다.
+                        미공개 기록과 생존자들의 증언을 확인하세요.
+                    </p>
+                    <a href="../pages/ignis/lore.html" class="cta-button">
+                        불의 영역: 기록 보기
+                    </a>
+                    <span id="scroll-message">▼ SCROLL</span>
+                </section>
+                
+                <section class="content-section">
+                    <div class="minimal-container">
                         <h2 class="section-heading">ARCHIVE CATEGORIES</h2>
                         
-                        <div class="carousel-container">
-                            <button class="scroll-button prev" id="prev-btn">◀</button>
-                            
-                            <div class="minimal-grid" id="category-carousel">
-                                
-                                <a href="../Ignis/lore.html" class="content-card">
-                                    <div class="card-icon" style="color:#FF5722;">🔥</div>
-                                    <h3>I. 불의 영역의 기록</h3>
-                                    <p>판게아 대륙 '불의 영역'의 지형, 도시, 통치 구조 상세 기록.</p>
+                        <div class="carousel-container"> 
+                            <div class="minimal-grid">
+                                <a href="../pages/ignis/lore.html" class="content-card">
+                                    <div class="card-icon">🔥</div>
+                                    <h3>세계관 기록</h3>
+                                    <p>불의 영역, 순환의 고원</p>
                                 </a>
-                                
                                 <a href="#" class="content-card disabled-card" onclick="return handleCategoryClick(event);">
-                                    <div class="card-icon" style="color:#999;">📅</div>
-                                    <h3>II. 최근 이벤트</h3>
-                                    <p>현재 진행 중이거나 종료된 주요 게임 내/외 이벤트 기록 보관.</p>
+                                    <div class="card-icon">📢</div>
+                                    <h3>공지 및 업데이트</h3>
+                                    <p>최신 소식 확인</p>
                                 </a>
-                                
                                 <a href="#" class="content-card disabled-card" onclick="return handleCategoryClick(event);">
-                                    <div class="card-icon" style="color:#6699FF;">📰</div>
-                                    <h3>III. 로드맵 (Roadmap)</h3>
-                                    <p>향후 업데이트 방향성, 신규 콘텐츠 및 개발 계획 공개.</p>
-                                    
+                                    <div class="card-icon">⚙️</div>
+                                    <h3>개발자 노트</h3>
+                                    <p>비하인드 및 로드맵</p>
                                 </a>
-                                
                                 <a href="#" class="content-card disabled-card" onclick="return handleCategoryClick(event);">
-                                    <div class="card-icon" style="color:#00CC99;">🛠️</div>
-                                    <h3>IV. 커뮤니티</h3>
-                                    <p>데이터 접근 제한: 통치기업 노바코퍼리카의 재정 및 기술 기록.</p>
+                                    <div class="card-icon">💬</div>
+                                    <h3>커뮤니티</h3>
+                                    <p>팬아트 및 활동</p>
+                                </a>
+                                <a href="#" class="content-card disabled-card" onclick="return handleCategoryClick(event);">
+                                    <div class="card-icon">🎬</div>
+                                    <h3>미디어</h3>
+                                    <p>트레일러, 이미지</p>
                                 </a>
                             </div>
-                            
-                            <button class="scroll-button next" id="next-btn">▶</button>
+                            <button class="carousel-control prev" id="category-prev-btn">◀</button>
+                            <button class="carousel-control next" id="category-next-btn">▶</button>
                         </div>
-                        
-                    </section>
-                </main>
+                    </div>
+                </section>
                 
-                <footer class="minimal-footer">
-                    <p>© 2025 LOST Archive. Security Level: PUBLIC.</p>
-                </footer>
-            </section>
 
-        </div>
-        
-        <div id="side-fixed-nav">
-            <a href="https://store.steampowered.com/" target="_blank" title="Steam">
-                <img src="../../images/main/Steam_icon_logo.svg.png" alt="Steam">
-            </a>
-            <a href="https://store.epicgames.com/" target="_blank" title="Epic Games">
-                <img src="../../images/main/Epic_Games_logo.svg.png" alt="Epic Games">
-            </a>
-            <a href="https://www.instagram.com/" target="_blank" title="Instagram">
-                <img src="../../images/main/Instagram_icon.png" alt="Instagram">
-            </a>
-            <a href="https://twitter.com/" target="_blank" title="X (Twitter)">
-                <img src="../../images/main/twitter_x_new_logo.png" alt="X">
-            </a>
-            <a href="https://youtube.com/" target="_blank" title="X (Twitter)">
-                <img src="../../images/main/youtube_logo.png" alt="X">
-            </a>
-            <a href="https://section.cafe.naver.com/" target="_blank" title="X (Twitter)">
-                <img src="../../images/main/naver_cafe.png" alt="X">
-            </a>
-        </div>
+                <section class="content-section">
+                    <div class="minimal-container">
+                        <div class="minimal-grid-footer">
+                            <a href="#" class="cta-button disabled-card" onclick="return handleCategoryClick(event);">
+                                전체 기록 보기 (준비 중)
+                            </a>
+                        </div>
+                    </div>
+                </section>
+            </main>
+            
+            <footer class="minimal-footer">
+                <p>© 2025 LOST Archive. Security Level: PUBLIC.</p>
+            </footer>
+        </section>
+
     </div>
-    <script src="../../js/script.js"></script>
+    
+    <div id="side-fixed-nav">
+        <a href="https://store.steampowered.com/" target="_blank" title="Steam">
+            <img src="../../images/main/Steam_icon_logo.svg.png" alt="Steam">
+        </a>
+        <a href="https://store.epicgames.com/" target="_blank" title="Epic Games">
+            <img src="../../images/main/Epic_Games_logo.svg.png" alt="Epic Games">
+        </a>
+        <a href="https://www.instagram.com/" target="_blank" title="Instagram">
+            <img src="../../images/main/Instagram_icon.png" alt="Instagram">
+        </a>
+        <a href="https://twitter.com/" target="_blank" title="X (Twitter)">
+            <img src="../../images/main/twitter_x_new_logo.png" alt="X">
+        </a>
+        <a href="https://youtube.com/" target="_blank" title="Youtube">
+            <img src="../../images/main/youtube_logo.png" alt="Youtube">
+        </a>
+        <a href="https://section.cafe.naver.com/" target="_blank" title="Naver Cafe">
+            <img src="../../images/main/naver_cafe.png" alt="Naver Cafe">
+        </a>
+    </div>
+
+    <script src="../../js/MainScript.js"></script>
 </body>
 </html>
