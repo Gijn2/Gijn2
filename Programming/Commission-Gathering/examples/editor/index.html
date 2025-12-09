@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Redactor</title>
+    <meta charset="utf-8">
+
+    <!-- css -->
+    <link rel="stylesheet" href="/redactor-4-2-2/redactor.min.css" />
+</head>
+<body>
+    <!-- element -->
+    <textarea id="entry">
+        <h1>Introduction to HTML</h1>
+        <p>Hypertext Markup Language (HTML) is the standard markup language for <strong>creating <u>web</u> pages</strong> and web applications.</p>
+        <p>Web browsers get HTML files from a website or your computer and show them as web pages with text, pictures, and videos.</p>
+    </textarea>
+    
+    <!-- js -->
+    <script src="/redactor-4-2-2/redactor.min.js"></script>
+    <script src="/redactor-4-2-2/plugins/fontsize/fontsize.js"></script>
+
+    <!-- call -->
+    <script>
+    Redactor('#entry',{
+        addbar: false,
+        plugins: ['fontsize'],
+        fontsize: {
+            items: ['16px', '20px', '24px', '36px']
+        }
+    });
+    </script>
+</body>
+</html>
