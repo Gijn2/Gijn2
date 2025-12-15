@@ -6,14 +6,7 @@ public class test {
 
 	public static void main(String[] args) {
 
-
-
-
-
-
-
 		// 2/27일자 메모
-
 
 		/* 카페 시험 답
 		1,5 -> 한글 사용가능 - 아스키코드 와 유니코드 비교, 결론 - 자바는 유니코드라 영어 제외한 문자도 가능
@@ -24,19 +17,9 @@ public class test {
 
 		- 썜추천 - 깃블로그 or 다른 블로그들을 사용해봐라... */
 
-
-
-
-
-
-
-
-
-
 		byte aa = 64;
 		byte bb = 64;
 		int result = aa+bb;
-
 
 		// 3 몰루.., 2
 		// 3번 문제 4번 -> 마지막 byte 키워드 대신 int로 수정해야댐
