@@ -1,4 +1,4 @@
-package a_datatype;
+package a_Basic;
 
 import java.util.Scanner;
 
@@ -80,7 +80,7 @@ import java.util.Scanner;
  				
  */
 
-public class Ex01_데이터타입 {
+public class A_datatype {
 	//class 생성할 때, 박스 체크를 안 했을 경우, main을 입력하고 ctrl+스페이스바 - 엔터(메인 메소드 생성)
 	public static void main(String[] args) { 
 		

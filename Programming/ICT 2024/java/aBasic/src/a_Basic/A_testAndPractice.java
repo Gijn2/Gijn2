@@ -1,8 +1,8 @@
-package a_datatype;
+package a_Basic;
 
 import java.util.Scanner;
 
-public class test {
+public class A_testAndPractice {
 
 	public static void main(String[] args) {
 
@@ -128,7 +128,7 @@ public class test {
 		
 		//*************************************************
 		
-		/**
+		
 		
 		System.out.println("숫자1을 입력하세요");
 		Scanner input1 = new Scanner(System.in);
@@ -163,7 +163,7 @@ public class test {
 				
 		}System.out.println(result1);
 		
-		*/
+		
 		
 		
 		

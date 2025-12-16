@@ -1,8 +1,8 @@
-package b_operator;
+package a_Basic;
 
 import java.util.Scanner;		// 스캐너 사용할 때, 이거 꼭 선언해주기
 
-public class Ex01_증감 {
+public class B_operator {
 	public static void main(String[] args) {
 
 		// Chapter 1.증감연산자
