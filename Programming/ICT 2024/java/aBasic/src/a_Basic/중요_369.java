@@ -1,7 +1,4 @@
-package c_control;
-
-import java.util.Scanner;
-import java.util.StringTokenizer;
+package a_Basic;
 
 public class 중요_369 {
 	public static void main(String[] args) {

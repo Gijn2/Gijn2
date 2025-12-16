@@ -6,9 +6,7 @@ public class Ex00_flow {
 	}
 														// 16
 														// 21
-	public static void main(String[] args) {
-		// 달디달고 달디달고 달디단 밤양갱 밤양갱이야~
-		
+	public static void main(String[] args) {		
 		 
 			 System.out.println("메인 시작"); 				// 순서 1
 			 
@@ -20,13 +18,7 @@ public class Ex00_flow {
 			 method();									// 5라인으로 점핑
 			 System.out.println("2");
 			 
-			 
 			 System.out.println("끝");
-		
-		
-		
-		
-		
 
 	}
 

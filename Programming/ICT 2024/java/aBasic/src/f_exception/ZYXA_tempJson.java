@@ -1,4 +1,4 @@
-package 연습문제;
+package f_exception;
 
 import java.io.*;
 import java.net.*;
@@ -7,7 +7,7 @@ import java.nio.charset.StandardCharsets;
 import org.json.simple.*;
 import org.json.simple.parser.JSONParser;
 
-public class tempJson {
+public class ZYXA_tempJson {
 	private static final int port = 50000;
 		
 		public static void main(String[] args) {

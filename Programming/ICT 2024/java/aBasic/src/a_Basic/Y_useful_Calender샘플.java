@@ -1,8 +1,8 @@
-package y_useful;
+package a_Basic;
 
 import java.util.Calendar;
 
-public class Calender샘플 {
+public class Y_useful_Calender샘플 {
 public static void main(String[] args) {
 	
 	/* 날짜관련 클래스 소속:java.util 패키지안에 있다

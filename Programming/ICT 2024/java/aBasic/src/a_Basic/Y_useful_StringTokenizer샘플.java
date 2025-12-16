@@ -1,17 +1,17 @@
-package y_useful;
+package a_Basic;
 
 import java.util.Scanner;
 import java.util.StringTokenizer;
 
-public class StringTokenizer샘플 {
+public class Y_useful_StringTokenizer샘플 {
 
 	public static void main(String[] args) {
 		
 		System.out.println("문장 입력");
-		Scanner input = new Scanner(System.in);
+		Scanner inputing = new Scanner(System.in);
 		//문장 입력
 		
-		String sent = input.nextLine();
+		String sent = inputing.nextLine();
 		//.next는 입력문자 중 " " 앞에서 끊음, .nextLine은 String 안의 모든 문자 들음
 		StringTokenizer st = new StringTokenizer(sent);
 		//'sent'라는 변수를 토크나이저에 설정
