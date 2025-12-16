@@ -1,4 +1,4 @@
-package a_Basic;
+package b_conclusion;
 
 import java.util.Scanner;
 

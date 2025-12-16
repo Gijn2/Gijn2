@@ -1,4 +1,4 @@
-package a_Basic;
+package b_conclusion;
 
 import java.util.Scanner;		// 스캐너 사용할 때, 이거 꼭 선언해주기
 

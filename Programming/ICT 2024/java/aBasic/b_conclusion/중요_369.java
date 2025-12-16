@@ -1,4 +1,4 @@
-package a_Basic;
+package b_conclusion;
 
 public class 중요_369 {
 	public static void main(String[] args) {
