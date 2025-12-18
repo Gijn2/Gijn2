@@ -1,7 +1,6 @@
 package z_test;
 import java.awt.Frame;
 
-
 // is-a 방식
 
 /**
