@@ -359,40 +359,6 @@ a {
     transform: translateY(-2px);
 }
 
-/* 요구사항 1: SCROLL 메시지 스타일 (흰색 선 제거 및 중앙 정렬 유지) */
-@keyframes bounce-v {
-    0%, 100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(-8px);
-    }
-}
-
-#scroll-message {
-    display: block; /* 줄이 없어졌으므로 flexbox 불필요 */
-    position: absolute; 
-    bottom: 50px;
-    
-    left: 50%; 
-    transform: translateX(-50%); /* 중앙 정렬 */
-    
-    text-align: center;
-    color: var(--color-primary-accent);
-    font-size: 1.2em;
-    font-weight: 700;
-    animation: bounce-v 1.5s infinite ease-in-out; /* 애니메이션 유지 */
-    width: auto; /* width 제거 또는 auto로 설정하여 텍스트 길이에 맞춤 */
-}
-
-/* 요구사항 1: 흰색 줄을 만드는 ::before, ::after 요소 제거 */
-#scroll-message::before,
-#scroll-message::after {
-    content: none;
-    display: none;
-}
-
-
 /* -------------------------------------- */
 /* 요구사항 3: 세계관 정보 섹션 배경 이미지 스타일 및 버튼 위치 조정 (5px로 수정) */
 /* -------------------------------------- */
