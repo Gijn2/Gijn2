@@ -6,6 +6,7 @@
 - 😄 Pronouns: ...
 - ⚡ Fun fact: ...
 
+https://github.com/Gijn2/Gijn2/blob/main/Programming/Commission-minsu-%26/pages/index.html
 <!---
 Gijn2/Gijn2 is a ✨ special ✨ repository because its `README.md` (this file) appears on your GitHub profile.
 You can click the Preview link to take a look at your changes.
