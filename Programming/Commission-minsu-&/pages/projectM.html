@@ -3,77 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LOST ARCHIVE: 통합 기록 보관소</title>
-    <link rel="stylesheet" href="../css/extra.css">    
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;700;900&display=swap" rel="stylesheet">
+    <title>MANG-SANG: THE LOST ARCHIVE</title>
+    <link rel="stylesheet" href="projectM.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
 </head>
-<body>
-    <div id="loading-screen">
-        <div id="data-fragments"></div>
-        <div class="loader-content">
-            <div class="loader-logo" id="loader-logo">Restoring Archive</div>
-            <div class="loader-text"><span id="loading-status-text">Initializing...</span></div>
-            <div class="progress-container"><div id="progress-bar"></div></div>
+<body class="game-launcher">
+    <div class="video-bg">
+        <div class="overlay"></div>
         </div>
+
+    <div class="system-logs">
+        <div class="log-entry">Checking assets... OK</div>
+        <div class="log-entry">Verifying account... OK</div>
+        <div class="log-entry">Welcome, ARCHIVER_01</div>
     </div>
 
-    <div id="main-content" style="display: none;">
-        <header class="minimal-header">
-            <div class="logo"><a href="#">LOST ARCHIVE</a></div>
-            <nav class="main-nav">
-                <div class="dropdown"><a href="#" class="dropdown-toggle">메인</a></div>
-                <div class="dropdown highlight">
-                    <a href="#" class="dropdown-toggle">세계관 ▼</a>
-                    <div class="dropdown-menu">
-                        <a href="#world-section" class="dropdown-item">테라 대륙 지도</a>
-                        <a href="#lore-section" class="dropdown-item">불의 영역: 이그니스</a>
-                    </div>
-                </div>
-            </nav>
-        </header>
-
-        <div class="video-background-container">
-            <video autoplay loop muted playsinline class="hero-video">
-                <source src="your-video-path.mp4" type="video/mp4">
-            </video>
-        </div>
-
-        <main id="world-section" class="world-main">
-            <h1 class="world-heading">TERRA ARCHIVE</h1>
-            <div class="map-interaction-area">
-                <div class="map-container" id="map-container">
-                    <img src="../images/imsi/worldImg/terraMap.png" alt="테라 지도" id="terra-map-image" usemap="#terra-map">
-                    <div class="map-overlay" id="map-overlay"></div>
-                    <map name="terra-map" id="terra-map">
-                        <area shape="poly" coords="477,285,635,388,517,545,457,348" alt="이그니스" data-region="ignis" href="javascript:void(0)">
-                    </map>
-                </div>
-                <div id="region-info-panel">
-                    <button id="info-close-btn">&times;</button>
-                    <div class="info-content">
-                        <div class="info-text" id="info-text-content"></div>
-                    </div>
-                </div>
+    <div id="main-content">
+        <nav class="game-nav">
+            <div class="brand">MANG-SANG</div>
+            <div class="nav-links">
+                <a href="#world">WORLD</a>
+                <a href="#characters">CHARACTERS</a>
+                <a href="index.html" class="home-link">BACK TO STUDIO</a>
             </div>
-        </main>
+        </nav>
 
-        <section id="lore-section" class="ignis-container">
-            <div class="lore-main">
-                <aside class="toc-area">
-                    <h2 class="toc-title">CONTENTS</h2>
-                    <ul id="toc-list"></ul>
-                </aside>
-                <article class="lore-article" id="lore-article-body">
-                    </article>
+        <section class="hero-section">
+            <div class="title-group">
+                <h1 class="main-title">MANG-SANG</h1>
+                <p class="sub-title">CROSS-PLATFORM OPEN WORLD RPG</p>
+            </div>
+            
+            <div class="download-group">
+                <button class="dl-btn pc">WINDOWS PC</button>
+                <div class="mobile-btns">
+                    <button class="dl-btn store">APP STORE</button>
+                    <button class="dl-btn store">GOOGLE PLAY</button>
+                </div>
             </div>
         </section>
 
-        <footer class="minimal-footer">
-            <p>© 2025 LOST Archive. Security Level: PUBLIC.</p>
-        </footer>
+        <section id="world" class="map-section">
+            <div class="section-header">
+                <h2>TACTICAL MAP: TERRA</h2>
+            </div>
+            <div class="map-container">
+                <img src="../images/imsi/worldImg/terraMap.png" alt="Terra Map" id="game-map">
+                <div class="quest-marker" style="top: 40%; left: 45%;" onclick="openLore('IGNIS')">
+                    <span class="marker-icon">!</span>
+                    <span class="marker-text">IGNIS SECTOR</span>
+                </div>
+            </div>
+        </section>
     </div>
 
-    <script src="../js/extra.js"></script>
-
+    <script src="projectM.js"></script>
 </body>
 </html>
