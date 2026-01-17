@@ -6,7 +6,7 @@ import math
 pygame.init()
 WIDTH, HEIGHT = 900, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Roguelike Shooting: Advanced Enemies")
+pygame.display.set_caption("Legendary Bosses: Final Edition")
 clock = pygame.time.Clock()
 
 # 색상 및 폰트
@@ -15,222 +15,321 @@ font_s = pygame.font.SysFont("malgungothic", 16)
 font_m = pygame.font.SysFont("malgungothic", 24)
 font_l = pygame.font.SysFont("malgungothic", 40)
 
-# 2. 게임 상태
+# 2. 게임 상태 관리
 stats = {"damage": 1, "speed": 5, "gold": 100, "max_hp": 100, "pierce": False, "special_ammo": 3}
 player_hp = 100
 score, game_state = 0, 'PLAYING'
-shop_active_timer, shoot_cooldown = 0, 0
+shoot_cooldown = 0
 special_effect_timer = 0
-shop_options = []
+shake_timer = 0
+zero_ticket = False 
+STAGE_DURATION = 1800 # 30초 (60fps * 30)
+stage_timer = STAGE_DURATION
+boss_alert_timer = 0
+current_stage = 1
+invincible_timer = 0
 
-# [수정] 상점 옵션 및 가격 개별 책정
+# [수정] 아이템 가격 6배 증가 (보스 소환 제외)
 UPGRADE_POOL = [
-    {"name": "공격력 강화", "desc": "데미지 +1.5", "effect": "dmg", "price": 50},
-    {"name": "기동성 강화", "desc": "이동속도 +2", "effect": "speed", "price": 30},
-    {"name": "긴급 수리", "desc": "체력 50 회복", "effect": "heal", "price": 40},
-    {"name": "레일건", "desc": "탄환 관통 부여", "effect": "pierce", "price": 80},
-    {"name": "장갑 강화", "desc": "최대 체력 +40", "effect": "maxhp", "price": 60},
-    {"name": "특수기 보급", "desc": "W 횟수 +2회", "effect": "ammo", "price": 45},
-    {"name": "보물 상자", "desc": "즉시 120골드 획득", "effect": "gold", "price": 20},
+    {"name": "공격력 강화", "desc": "데미지 +1.5", "effect": "dmg", "price": 1200},
+    {"name": "기동성 강화", "desc": "이동속도 +2", "effect": "speed", "price": 720},
+    {"name": "긴급 수리", "desc": "체력 50 회복", "effect": "heal", "price": 960},
+    {"name": "레일건", "desc": "탄환 관통 부여", "effect": "pierce", "price": 1920},
+    {"name": "장갑 강화", "desc": "최대 체력 +40", "effect": "maxhp", "price": 1440},
+    {"name": "특수기 보급", "desc": "W 횟수 +2회", "effect": "ammo", "price": 1080},
+    {"name": "고대 무전기", "desc": "크러셔 소환권", "effect": "call_crusher", "price": 4000},
 ]
 
-# 3. 클래스 정의
 class Projectile:
     def __init__(self, x, y, vel, color, dmg):
         self.pos, self.vel, self.color, self.dmg = pygame.Vector2(x, y), vel, color, dmg
-        self.hit_enemies = []
     def update(self): self.pos += self.vel
     def draw(self, surf): pygame.draw.circle(surf, self.color, (int(self.pos.x), int(self.pos.y)), 5)
+
+# --- 보스 클래스 ---
+
+class BossZero:
+    def __init__(self):
+        self.type = "ZERO"; self.pos = pygame.Vector2(WIDTH//2-25, 60)
+        self.hp = 62.5; self.max_hp = 62.5; self.timer = 0; self.visible = True
+    def update(self, e_projs, p_pos):
+        self.timer += 1
+        self.visible = False if (self.timer // 30) % 2 == 0 else True
+        if self.timer % 80 == 0:
+            self.pos.x = p_pos.x - 25
+            for i in range(5): e_projs.append(Projectile(self.pos.x+25, self.pos.y+50+i*20, pygame.Vector2(0, 8), CYAN, 15))
+    def draw(self, surf):
+        if self.visible: pygame.draw.rect(surf, CYAN, (*self.pos, 50, 50), 3)
+
+class BossCrusher:
+    def __init__(self):
+        self.type = "CRUSHER"; self.hp = 300; self.max_hp = 300; self.timer = 0
+        self.mode = "READY"; self.rect = pygame.Rect(0, -600, WIDTH, 150)
+        self.warning_timer = 45 # 0.75초 경고
+        self.target_mode = "TOP"
+
+    def update(self, e_projs, p_pos):
+        self.timer += 1
+        if self.mode == "READY":
+            self.warning_timer -= 1
+            if self.warning_timer <= 0:
+                self.mode = "ATTACK"
+                self.warning_timer = 45
+        else:
+            # [수정] 아래 방향(TOP) 공격 시 이동 거리(진폭)를 절반(600)으로 축소
+            if self.target_mode == "TOP":
+                attack_range =600 # 기존 1200에서 50% 감소
+                offset = math.sin(self.timer/8) * attack_range
+                self.rect = pygame.Rect(0, -350 + offset, WIDTH, 150) # 시작 오프셋도 조정
+            else:
+                attack_range = 1200 # 좌우 공격은 기존 거리 유지
+                offset = math.sin(self.timer/8) * attack_range
+                if self.target_mode == "LEFT": self.rect = pygame.Rect(-500 + offset, 0, 150, HEIGHT)
+                elif self.target_mode == "RIGHT": self.rect = pygame.Rect(WIDTH + 500 - offset, 0, 150, HEIGHT)
+            
+            if self.timer % 140 == 0: 
+                self.mode = "READY"
+                self.target_mode = random.choice(["TOP", "LEFT", "RIGHT"])
+
+    def draw(self, surf):
+        # 공격 전 방향 지시선(Warning)
+        if self.mode == "READY":
+            if self.target_mode == "TOP": pygame.draw.rect(surf, (150, 0, 0), (0, 0, WIDTH, 150), 2)
+            elif self.target_mode == "LEFT": pygame.draw.rect(surf, (150, 0, 0), (0, 0, 150, HEIGHT), 2)
+            elif self.target_mode == "RIGHT": pygame.draw.rect(surf, (150, 0, 0), (WIDTH-150, 0, 150, HEIGHT), 2)
+        
+        pygame.draw.rect(surf, GRAY, self.rect)
+        if self.mode == "ATTACK": pygame.draw.rect(surf, RED, self.rect, 4)
+
+class BossSwarm:
+    def __init__(self):
+        self.type = "SWARM"; self.hp = 125; self.max_hp = 125; self.timer = 0
+        self.centers = [pygame.Vector2(random.randint(100,800), random.randint(50,200)) for _ in range(8)]
+    def update(self, e_projs, p_pos):
+        self.timer += 1
+        for i, c in enumerate(self.centers):
+            c.x += math.sin(self.timer/25 + i)*3
+            if self.timer % 100 == 0: e_projs.append(Projectile(c.x, c.y, (p_pos-c).normalize()*4, PURPLE, 6))
+    def draw(self, surf):
+        for c in self.centers: pygame.draw.circle(surf, PURPLE, (int(c.x), int(c.y)), 15)
+
+# --- 일반 적 클래스 (패턴 완벽 복구) ---
 
 class Enemy:
     def __init__(self, etype="normal", offset=0):
         self.etype = etype
-        self.pos = pygame.Vector2(random.randint(50, WIDTH-50), random.randint(-150, -50))
-        self.hp = 2 + (score // 5000)
-        self.shoot_delay = random.randint(60, 120)
-        self.spawn_time = pygame.time.get_ticks()
-        self.offset = offset # SinWave 등을 위한 오프셋
-        
-        # 타입별 설정
-        if etype == "bouncer":
-            self.vx = random.choice([-3, 3]); self.vy = 2
-        elif etype == "sniper":
-            self.vx = 2; self.vy = 0; self.pos.y = random.randint(50, 150)
-        else:
-            self.vx = 0; self.vy = 1.5
+        self.pos = pygame.Vector2(random.randint(50, WIDTH-50), -50)
+        base_hp = (2 + (score // 5000)) * 0.25 # 25% 체력
+        self.hp = base_hp * 8 if etype == "elite" else base_hp
+        self.shoot_delay = random.randint(80, 160)
+        self.offset = offset
+        # 타입별 이동 속도 복구
+        if etype == "bouncer": self.vx, self.vy = random.choice([-3, 3]), 2
+        elif etype == "sniper": self.vx, self.vy = 2, 0; self.pos.y = random.randint(50, 150)
+        elif etype == "sin": self.vx, self.vy = 0, 1.8
+        else: self.vx, self.vy = 0, 1.5
 
     def update(self, e_projs, p_pos):
-        if self.etype == "normal":
+        if self.etype == "sin":
             self.pos.y += self.vy
-        elif self.etype == "bouncer":
-            self.pos += pygame.Vector2(self.vx, self.vy)
-            if self.pos.x <= 0 or self.pos.x >= WIDTH - 30: self.vx *= -1
-        elif self.etype == "sin":
-            self.pos.y += 2
             self.pos.x += math.sin((pygame.time.get_ticks() + self.offset) / 200) * 5
-        elif self.etype == "sniper":
+        else:
+            self.pos.y += self.vy
             self.pos.x += self.vx
-            if self.pos.x <= 0 or self.pos.x >= WIDTH - 30: self.vx *= -1
+            if self.pos.x <= 0 or self.pos.x >= WIDTH-30: self.vx *= -1
 
-        # 조준 사격 (공통)
         self.shoot_delay -= 1
         if self.shoot_delay <= 0:
-            direction = (p_pos + pygame.Vector2(20, 20)) - (self.pos + pygame.Vector2(15, 15))
-            if direction.length() > 0:
-                e_projs.append(Projectile(self.pos.x + 15, self.pos.y + 15, direction.normalize() * 4, GOLD, 5))
-            self.shoot_delay = random.randint(120, 200)
+            dir = (p_pos - self.pos).normalize() * 4 if (p_pos-self.pos).length() > 0 else pygame.Vector2(0,1)
+            e_projs.append(Projectile(self.pos.x+15, self.pos.y+15, dir, GOLD, 5))
+            self.shoot_delay = 180
 
-class Boss:
-    def __init__(self):
-        self.pos, self.hp = pygame.Vector2(WIDTH//2 - 50, -120), 100 + (score//5)
-        self.max_hp, self.timer = self.hp, 0
-    def update(self, e_projs):
-        if self.pos.y < 60: self.pos.y += 1.5
-        self.timer += 1
-        if self.timer > 40:
-            for a in range(0, 360, 24):
-                e_projs.append(Projectile(self.pos.x+50, self.pos.y+50, pygame.Vector2(0,1).rotate(a)*5, PURPLE, 10))
-            self.timer = 0
     def draw(self, surf):
-        pygame.draw.rect(surf, PURPLE, (*self.pos, 100, 100))
-        pygame.draw.rect(surf, RED, (self.pos.x, self.pos.y-15, 100, 8))
-        pygame.draw.rect(surf, GREEN, (self.pos.x, self.pos.y-15, (self.hp/self.max_hp)*100, 8))
+        color = RED if self.etype == "normal" else GOLD if self.etype == "bouncer" else CYAN if self.etype == "sniper" else PURPLE
+        pygame.draw.rect(surf, color, (*self.pos, 30, 30))
+        # [희귀 몬스터 마킹] 엘리트 전용 효과
+        if self.etype == "elite":
+            pygame.draw.circle(surf, PURPLE, (int(self.pos.x+15), int(self.pos.y+15)), 35, 2)
+            surf.blit(font_m.render("!", True, PURPLE), (self.pos.x+10, self.pos.y-35))
 
-# 4. 함수
-def apply_upgrade(item):
-    global player_hp
-    if item['effect'] == "dmg": stats["damage"] += 1.5
-    elif item['effect'] == "speed": stats["speed"] += 2
-    elif item['effect'] == "heal": player_hp = min(stats["max_hp"], player_hp + 50)
-    elif item['effect'] == "pierce": stats["pierce"] = True
-    elif item['effect'] == "maxhp": stats["max_hp"] += 40; player_hp += 40
-    elif item['effect'] == "ammo": stats["special_ammo"] += 2
-    elif item['effect'] == "gold": stats["gold"] += 120
+# --- 핵심 기능 함수 ---
 
-# 5. 게임 엔진
+def get_shop_items():
+    return [{"data": item, "sold": False} for item in random.sample(UPGRADE_POOL, 4)]
+
+def apply_upgrade(item_data):
+    global player_hp, boss
+    eff = item_data['effect']
+    if eff == "dmg": stats["damage"] += 1.5
+    elif eff == "speed": stats["speed"] += 2
+    elif eff == "heal": player_hp = min(stats["max_hp"], player_hp + 50)
+    elif eff == "pierce": stats["pierce"] = True
+    elif eff == "maxhp": stats["max_hp"] += 40; player_hp += 40
+    elif eff == "ammo": stats["special_ammo"] += 2
+    elif eff == "call_crusher": boss = BossCrusher()
+
+# --- 메인 루프 ---
+
 player_pos = pygame.Vector2(WIDTH//2, HEIGHT-80)
-enemies = [Enemy() for _ in range(5)]
-p_projs, e_projs, boss = [], [], None
+enemies, p_projs, e_projs, boss = [], [], [], None
+shop_options = []
 
 running = True
 while running:
+    # 화면 흔들림 제어
+    render_offset = pygame.Vector2(0, 0)
+    if shake_timer > 0:
+        render_offset = pygame.Vector2(random.randint(-7, 7), random.randint(-7, 7))
+        shake_timer -= 1
+
     mouse_pos = pygame.mouse.get_pos()
     for event in pygame.event.get():
         if event.type == pygame.QUIT: running = False
         
         if event.type == pygame.KEYDOWN:
             if game_state == 'PLAYING':
-                if shop_active_timer > 0 and event.key == pygame.K_s:
-                    game_state = 'SHOP'
-                    shop_options = random.sample(UPGRADE_POOL, 4)
+                # [버그 수정] W 1회 차감 로직
                 if event.key == pygame.K_w and stats["special_ammo"] > 0:
-                    stats["special_ammo"] -= 1; e_projs.clear(); special_effect_timer = 5
-            
-            elif game_state == 'SHOP':
-                idx = {pygame.K_1:0, pygame.K_2:1, pygame.K_3:2, pygame.K_4:3}.get(event.key, -1)
-                if idx != -1 and idx < len(shop_options):
-                    item = shop_options[idx]
-                    if stats["gold"] >= item["price"]:
-                        stats["gold"] -= item["price"]; apply_upgrade(item); game_state, shop_active_timer = 'PLAYING', 0
+                    stats["special_ammo"] -= 1
+                    e_projs.clear()
+                    special_effect_timer = 5
+            elif game_state == 'SHOP' and event.key == pygame.K_s:
+                game_state = 'PLAYING'; stage_timer = STAGE_DURATION; current_stage += 1
 
         if event.type == pygame.MOUSEBUTTONDOWN and game_state == 'SHOP':
-            for i in range(4):
-                if pygame.Rect(30 + i * 215, 150, 200, 320).collidepoint(mouse_pos):
-                    item = shop_options[i]
-                    if stats["gold"] >= item["price"]:
-                        stats["gold"] -= item["price"]; apply_upgrade(item); game_state, shop_active_timer = 'PLAYING', 0
+            for opt in shop_options:
+                idx = shop_options.index(opt)
+                rect = pygame.Rect(30 + idx * 215, 150, 200, 320)
+                if rect.collidepoint(mouse_pos) and not opt["sold"] and stats["gold"] >= opt["data"]["price"]:
+                    stats["gold"] -= opt["data"]["price"]
+                    apply_upgrade(opt["data"])
+                    opt["sold"] = True
 
     if game_state == 'PLAYING':
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT]: player_pos.x -= stats["speed"]
         if keys[pygame.K_RIGHT]: player_pos.x += stats["speed"]
-        if keys[pygame.K_UP]: player_pos.y -= stats["speed"]
-        if keys[pygame.K_DOWN]: player_pos.y += stats["speed"]
-        player_pos.x %= WIDTH
-        player_pos.y = max(0, min(HEIGHT-40, player_pos.y))
+        player_pos.x = max(0, min(WIDTH-40, player_pos.x))
 
         if keys[pygame.K_q] and shoot_cooldown <= 0:
             p_projs.append(Projectile(player_pos.x+20, player_pos.y, pygame.Vector2(0,-10), GREEN, stats["damage"]))
-            shoot_cooldown = 8
+            shoot_cooldown = 10
         shoot_cooldown = max(0, shoot_cooldown - 1)
-        shop_active_timer = max(0, shop_active_timer - 1)
-        if special_effect_timer > 0: special_effect_timer -= 1
+        if invincible_timer > 0: invincible_timer -= 1
 
-        # 보스 스폰 및 일반 몬스터 스폰 제어
-        if score >= 1500 and score % 1500 < 100 and boss is None and shop_active_timer <= 0:
-            boss = Boss()
+        # 스테이지 타이머 및 보스 스폰 로직
+        if boss is None:
+            stage_timer -= 1
+            if stage_timer == 120: boss_alert_timer = 120 # 2초 전 알림 시작
+            if stage_timer <= 0:
+                if zero_ticket: boss = BossZero(); zero_ticket = False
+                else: boss = BossSwarm()
+                enemies.clear()
+            
+            # [수정] 엘리트(희귀) 몬스터 확률 대폭 하향 (1.5%)
+            if len(enemies) < 6:
+                etype = random.choices(["normal", "bouncer", "sin", "sniper", "elite"], weights=[50, 15, 15, 18.5, 1.5])[0]
+                enemies.append(Enemy(etype, random.randint(0, 1000)))
 
-        # [수정] 보스가 없을 때만 일반 몬스터 스폰
-        if boss is None and len(enemies) < 6:
-            etype = random.choices(["normal", "bouncer", "sin", "sniper"], weights=[40, 30, 20, 10])[0]
-            if etype == "sin": # 사인파는 3마리씩 줄지어 나옴
-                spawn_x = random.randint(100, WIDTH-100)
-                for i in range(3):
-                    e = Enemy("sin", i * 500); e.pos.x = spawn_x; enemies.append(e)
-            else:
-                enemies.append(Enemy(etype))
+        if boss:
+            boss.update(e_projs, player_pos)
+            # 보스 충돌 데미지
+            boss_rect = getattr(boss, 'rect', pygame.Rect(boss.pos.x, boss.pos.y, 50, 50) if hasattr(boss, 'pos') else None)
+            if boss_rect and boss_rect.colliderect(pygame.Rect(player_pos.x, player_pos.y, 40, 40)) and invincible_timer <= 0:
+                player_hp -= 20; shake_timer = 20; invincible_timer = 60
+            
+            if boss.hp <= 0:
+                stats["gold"] += 1500; boss = None; game_state = 'SHOP'; shop_options = get_shop_items()
 
-        if boss: boss.update(e_projs)
-        if boss and boss.hp <= 0: boss = None; score += 1000; stats["gold"] += 200; shop_active_timer = 300
-
+        # 플레이어 충돌 판정
+        p_rect = pygame.Rect(player_pos.x, player_pos.y, 40, 40)
         for e in enemies[:]:
             e.update(e_projs, player_pos)
-            if e.pos.distance_to(player_pos) < 35: player_hp -= 10; enemies.remove(e)
-            elif e.pos.y > HEIGHT + 50: enemies.remove(e)
+            if p_rect.colliderect(pygame.Rect(e.pos.x, e.pos.y, 30, 30)) and invincible_timer <= 0:
+                player_hp -= 15; shake_timer = 15; invincible_timer = 40; enemies.remove(e)
+            elif e.pos.y > HEIGHT: enemies.remove(e)
 
+        # 투사체 로직
         for p in p_projs[:]:
             p.update()
-            if boss and p.pos.distance_to(boss.pos + pygame.Vector2(50,50)) < 55:
-                boss.hp -= p.dmg
-                if not stats["pierce"]: p_projs.remove(p)
+            if boss:
+                hit = False
+                if boss.type == "CRUSHER" and boss.rect.collidepoint(p.pos): hit = True
+                elif boss.type == "SWARM":
+                    for c in boss.centers:
+                        if p.pos.distance_to(c) < 25: hit = True; break
+                elif boss.type == "ZERO" and p.pos.distance_to(boss.pos + pygame.Vector2(25,25)) < 40: hit = True
+                if hit: boss.hp -= p.dmg; (p_projs.remove(p) if not stats["pierce"] else None)
+
             for e in enemies[:]:
                 if p.pos.distance_to(e.pos + pygame.Vector2(15,15)) < 25:
-                    if e not in p.hit_enemies:
-                        e.hp -= p.dmg
-                        if stats["pierce"]: p.hit_enemies.append(e)
-                        else: (p_projs.remove(p) if p in p_projs else None)
-                        if e.hp <= 0: (enemies.remove(e) if e in enemies else None); score += 100; stats["gold"] += 15
+                    e.hp -= p.dmg; (p_projs.remove(p) if not stats["pierce"] else None)
+                    if e.hp <= 0:
+                        if e.etype == "elite": zero_ticket = True
+                        enemies.remove(e); stats["gold"] += 35; score += 100
             if p.pos.y < -10: (p_projs.remove(p) if p in p_projs else None)
 
         for p in e_projs[:]:
             p.update()
-            if p.pos.distance_to(player_pos + pygame.Vector2(20,20)) < 22: player_hp -= p.dmg; e_projs.remove(p)
-            elif p.pos.y > HEIGHT or p.pos.x < -50 or p.pos.x > WIDTH + 50: e_projs.remove(p)
+            if p.pos.distance_to(player_pos + pygame.Vector2(20,20)) < 22 and invincible_timer <= 0:
+                player_hp -= p.dmg; e_projs.remove(p); shake_timer = 10; invincible_timer = 30
+            elif p.pos.y > HEIGHT: e_projs.remove(p)
 
         if player_hp <= 0: running = False
 
     # --- 그리기 ---
     screen.fill(BLACK)
+    temp_surf = pygame.Surface((WIDTH, HEIGHT))
+    temp_surf.fill(BLACK)
+
     if game_state == 'PLAYING':
-        for e in enemies:
-            color = RED if e.etype == "normal" else CYAN if e.etype == "bouncer" else PURPLE if e.etype == "sin" else WHITE
-            pygame.draw.rect(screen, color, (*e.pos, 30, 30))
-        if boss: boss.draw(screen)
-        for p in p_projs: p.draw(screen)
-        for p in e_projs: p.draw(screen)
-        pygame.draw.rect(screen, WHITE, (*player_pos, 40, 40), 2) # 플레이어
+        for e in enemies: e.draw(temp_surf)
+        if boss:
+            boss.draw(temp_surf)
+            # 보스 체력바
+            pygame.draw.rect(temp_surf, RED, (WIDTH//2-150, 20, 300, 15))
+            pygame.draw.rect(temp_surf, GREEN, (WIDTH//2-150, 20, max(0, (boss.hp/boss.max_hp)*300), 15))
+            temp_surf.blit(font_s.render(f"BOSS: {boss.type}", True, WHITE), (WIDTH//2-40, 40))
         
-        pygame.draw.rect(screen, GRAY, (10, 10, 200, 20))
-        pygame.draw.rect(screen, GREEN, (10, 10, max(0, (player_hp/stats["max_hp"])*200), 20))
-        screen.blit(font_s.render(f"GOLD: {stats['gold']}  SCORE: {score}  W: {stats['special_ammo']}", True, WHITE), (10, 35))
-        if shop_active_timer > 0:
-            msg = font_m.render(f"보급 상점 이용 가능! [S] ({shop_active_timer//60}s)", True, GOLD)
-            screen.blit(msg, (WIDTH//2 - 130, HEIGHT//2))
-        if special_effect_timer > 0: screen.fill(WHITE)
+        for p in p_projs: p.draw(temp_surf)
+        for p in e_projs: p.draw(temp_surf)
+        if invincible_timer % 4 == 0: pygame.draw.rect(temp_surf, WHITE, (*player_pos, 40, 40), 2)
+        
+        # [복구] 스테이지 진행 타이머 게이지
+        if boss is None:
+            pygame.draw.rect(temp_surf, GRAY, (WIDTH//2-100, 20, 200, 8))
+            pygame.draw.rect(temp_surf, CYAN, (WIDTH//2-100, 20, (stage_timer/STAGE_DURATION)*200, 8))
+            if boss_alert_timer > 0:
+                alert_txt = font_l.render("-!!! WARNING !!!-", True, RED)
+                temp_surf.blit(alert_txt, (WIDTH//2-250, HEIGHT//2-50))
+                boss_alert_timer -= 1
 
     elif game_state == 'SHOP':
+        temp_surf.blit(font_l.render(f"STAGE {current_stage} COMPLETE", True, GOLD), (WIDTH//2-180, 50))
         for i, opt in enumerate(shop_options):
             card_rect = pygame.Rect(30 + i * 215, 150, 200, 320)
-            color = (60, 60, 90) if card_rect.collidepoint(mouse_pos) else (30, 30, 50)
-            pygame.draw.rect(screen, color, card_rect, border_radius=10)
-            pygame.draw.rect(screen, GOLD, card_rect, 2, border_radius=10)
-            screen.blit(font_l.render(f"{i+1}", True, GRAY), (card_rect.x + 85, card_rect.y + 20))
-            screen.blit(font_m.render(opt['name'], True, WHITE), (card_rect.x + 20, card_rect.y + 100))
-            screen.blit(font_s.render(opt['desc'], True, CYAN), (card_rect.x + 15, card_rect.y + 160))
-            # [수정] 가격 표시 및 색상 피드백
-            p_color = GOLD if stats["gold"] >= opt["price"] else RED
-            screen.blit(font_m.render(f"{opt['price']} G", True, p_color), (card_rect.x + 60, card_rect.y + 260))
+            c = (40, 40, 40) if opt["sold"] else (30, 30, 50)
+            pygame.draw.rect(temp_surf, c, card_rect, border_radius=10)
+            if not opt["sold"]:
+                temp_surf.blit(font_m.render(opt['data']['name'], True, WHITE), (card_rect.x + 20, card_rect.y + 80))
+                price_color = GOLD if stats["gold"] >= opt["data"]["price"] else RED
+                temp_surf.blit(font_m.render(f"{opt['data']['price']} G", True, price_color), (card_rect.x + 60, card_rect.y + 260))
+            else:
+                temp_surf.blit(font_m.render("SOLD OUT", True, GRAY), (card_rect.x + 50, card_rect.y + 150))
+        temp_surf.blit(font_m.render(f"GOLD: {stats['gold']}G  |  Press [S] for Next Stage", True, WHITE), (WIDTH//2-200, HEIGHT-50))
+
+    screen.blit(temp_surf, render_offset)
+    
+    # 상단 고정 UI
+    pygame.draw.rect(screen, GREEN, (10, 10, max(0, (player_hp/stats['max_hp'])*200), 20))
+    screen.blit(font_s.render(f"HP: {int(player_hp)}  GOLD: {stats['gold']}  W: {stats['special_ammo']}", True, WHITE), (10, 35))
+    if zero_ticket: screen.blit(font_s.render("★ ZERO TICKET ACTIVE ★", True, CYAN), (10, 55))
+
+    if special_effect_timer > 0:
+        screen.fill(WHITE)
+        special_effect_timer -= 1
 
     pygame.display.flip()
     clock.tick(60)
+
 pygame.quit()
