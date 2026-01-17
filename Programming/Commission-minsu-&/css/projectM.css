@@ -1,0 +1,43 @@
+:root {
+    --color-primary-accent: #FF5722; /* 아카이브 전용 오렌지색 */
+    --color-dark-bg: #0A0A0A;
+}
+
+body {
+    background: var(--color-dark-bg);
+    color: white;
+    font-family: 'Noto Sans KR', sans-serif;
+    margin: 0;
+}
+
+/* 로딩 스크린 스타일 */
+#loading-screen {
+    position: fixed; inset: 0; background: #000; z-index: 9999;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    transition: opacity 0.5s ease;
+}
+
+.progress-container {
+    width: 250px; height: 4px; background: #333; margin: 20px 0;
+}
+
+#progress-bar {
+    width: 0%; height: 100%; background: var(--color-primary-accent);
+}
+
+/* 헤더 디자인 */
+.minimal-header {
+    padding: 20px 5%; display: flex; justify-content: space-between;
+    border-bottom: 1px solid #222;
+}
+
+.back-link {
+    color: var(--color-primary-accent);
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.archive-title {
+    font-size: 3rem; font-weight: 900; letter-spacing: 5px;
+    margin: 50px 0; text-align: center;
+}
