@@ -179,4 +179,5 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("해당 작품은 현재 연재중이지 않습니다.");
         });
     }
+    
 });
