@@ -219,85 +219,83 @@
 #sub-sidebar.active { right: 20px; }
 
 :root {
-    --main-silver: #e0e0e2;    /* 밝은 은색 */
-    --pure-white: #ffffff;
-    --noble-black: #1a1a1a;    /* 글씨용 짙은 차콜 */
-    --soft-gold: #c5a059;      /* 테두리/구분선 */
-    --accent-orange: #ff8c00;  /* 랑이 포인트 */
-    --bg-light: #f8f9fa;       /* 전체 배경 */
-    --text-muted: #555555;     /* 보조 설명용 */
+    --gold: #d4af37;
+    --dark-gold: #996515;
+    --noble-black: #1a1a1a;
+    --deep-grey: #2c2c2c;
 }
 
-body.game-body {
-    margin: 0; padding: 0;
-    background-color: var(--bg-light);
-    background-image: radial-gradient(var(--main-silver) 1px, transparent 1px);
-    background-size: 25px 25px;
-    color: var(--noble-black); /* 기본 글씨 검정색 */
-    font-family: 'Noto Serif KR', serif;
-    overflow: hidden;
-}
+body.game-body { margin: 0; background: #fff; overflow: hidden; font-family: 'Noto Serif KR', serif; }
 
-/* 1. 헤더 가독성 수정 */
+/* 헤더 및 기와 문양 */
 .game-header {
-    position: fixed; top: 0; width: 100%; height: 80px;
-    background: rgba(255, 255, 255, 0.95);
-    border-bottom: 3px solid var(--soft-gold);
-    display: flex; align-items: center; z-index: 1000;
+    position: fixed; top: 0; width: 100%; height: 70px;
+    background: rgba(255, 255, 255, 0.9); z-index: 1000; border-bottom: 2px solid var(--noble-black);
+}
+.header-container { width: 95%; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; height: 100%; }
+.logo-text { font-family: 'Orbitron'; font-weight: 900; color: #000; font-size: 1.3rem; }
+.nav-item.exit { background: #000; color: #fff; padding: 8px 15px; text-decoration: none; font-family: 'Orbitron'; font-size: 0.8rem; }
+
+.kiwa-pattern {
+    position: absolute; bottom: -12px; left: 0; width: 100%; height: 12px;
+    background: var(--deep-grey);
+    clip-path: polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%);
 }
 
-.header-container { width: 95%; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
-
-.logo-text { color: var(--noble-black); font-family: 'Orbitron'; font-weight: 900; font-size: 1.4rem; }
-.status-tag { color: var(--soft-gold); border: 1px solid var(--soft-gold); font-size: 0.7rem; padding: 2px 5px; margin-top: 5px; width: fit-content; }
-
-.nav-item { color: var(--noble-black); text-decoration: none; font-family: 'Orbitron'; font-weight: 700; transition: 0.3s; }
-.nav-item:hover, .nav-item.active { color: var(--accent-orange); }
-.nav-item.exit { background: var(--noble-black); color: white; padding: 8px 15px; border-radius: 2px; }
-
-/* 2. 사이드바 가독성 수정 */
-#main-sidebar {
-    position: fixed; top: 0; left: -400px; width: 380px; height: 100vh;
-    background: var(--pure-white); /* 바탕을 흰색으로 */
-    border-right: 2px solid var(--soft-gold);
-    padding: 100px 40px; box-sizing: border-box;
-    transition: 0.5s ease; z-index: 2000;
-    box-shadow: 10px 0 30px rgba(0,0,0,0.05);
-}
-
-#main-sidebar.active { left: 0; }
-
-#sidebar-title { 
-    color: var(--noble-black); /* 제목을 검정색으로 */
-    font-size: 1.8rem; font-weight: 900; margin: 0; 
-}
-
-#sidebar-desc { 
-    color: var(--text-muted); /* 설명글을 짙은 회색으로 */
-    line-height: 1.8; font-size: 1.05rem; 
-}
-
-.divider { width: 40px; height: 3px; background: var(--soft-gold); margin: 25px 0; }
-
-.tab-btn { color: #999; border: none; background: none; font-family: 'Orbitron'; cursor: pointer; padding: 10px; }
-.tab-btn.active { color: var(--noble-black); border-bottom: 2px solid var(--noble-black); }
-
-.close-sidebar { color: var(--noble-black); background: none; border: none; cursor: pointer; position: absolute; top: 30px; right: 30px; font-family: 'Orbitron'; }
-
-/* 3. 지도 및 노드 */
+/* 지도 및 마커 */
 .world-map-section { width: 100%; height: 100vh; display: flex; justify-content: center; align-items: center; }
-.map-container { border: 1px solid var(--main-silver); position: relative; }
-.temp-map-placeholder { width: 900px; height: 550px; background: #fff; }
+.map-container { position: relative; width: 1100px; }
+.map-base-img { width: 100%; height: auto; }
 
-.map-node { 
-    position: absolute; width: 18px; height: 18px; 
-    background: var(--noble-black); border: 2px solid #fff; 
-    border-radius: 50% 50% 50% 0; transform: rotate(-45deg); cursor: pointer; 
+.map-node {
+    position: absolute; width: 28px; height: 28px;
+    background: radial-gradient(circle at 30% 30%, var(--gold), var(--dark-gold));
+    border: 2px solid #fff; border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg); cursor: pointer; z-index: 20;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: 0.3s;
 }
-.adult-zone { background: var(--soft-gold); }
+.map-node:hover { transform: rotate(-45deg) scale(1.2); }
 
-/* 4. 모달 */
-.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 3000; }
-.age-gate-content { background: #fff; padding: 40px; border: 5px double var(--soft-gold); text-align: center; color: var(--noble-black); }
-#age-input { border: 1px solid var(--main-silver); padding: 10px; margin: 20px 0; width: 80%; }
-.age-gate-content button { background: var(--noble-black); color: #fff; border: none; padding: 10px 30px; cursor: pointer; }
+/* 발톱 이미지 연출 */
+.claw-image {
+    position: absolute; top: 50%; left: 50%; width: 70px; height: 70px;
+    transform: translate(-50%, -50%) rotate(45deg) scale(0);
+    opacity: 0; pointer-events: none; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.map-node:hover .claw-image { opacity: 1; transform: translate(-50%, -50%) rotate(45deg) scale(1); }
+
+#main-sidebar {
+    position: fixed; 
+    top: 0; 
+    /* 1. 시작 위치: 오른쪽 화면 밖으로 완전히 밀어냄 */
+    right: -500px; 
+    /* 2. 절대 left 속성이 섞여 있으면 안 됩니다 */
+    left: auto; 
+
+    width: 450px; 
+    height: 100vh;
+    background: rgba(255, 255, 255, 0.2); 
+    backdrop-filter: blur(20px);
+    z-index: 2000; 
+    /* 3. 부드러운 이동 효과 */
+    transition: right 0.6s cubic-bezier(0.22, 1, 0.36, 1); 
+    padding: 100px 30px; 
+    box-sizing: border-box;
+}
+
+/* 4. 활성화되었을 때 위치: 오른쪽 끝에 딱 붙음 */
+#main-sidebar.active { 
+    right: 0; 
+}
+/* 인증박스 및 캐러셀 */
+.auth-box { border: 2px solid #000; padding: 20px; background: rgba(255,255,255,0.6); }
+.date-selector { display: flex; gap: 5px; margin: 15px 0; }
+.date-selector input { width: 33%; padding: 8px; border: 1px solid #000; }
+.auth-btn { width: 100%; background: #000; color: #fff !important; padding: 10px; cursor: pointer; border: none; }
+.video-container { margin: 20px 0; border: 2px solid #000; }
+.swiper { width: 100%; height: 200px; margin-top: 20px; }
+.swiper-slide img { width: 100%; height: 100%; object-fit: cover; }
+
+/* 시간/안개 효과 */
+#time-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+#mist-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.3; pointer-events: none; z-index: 6; background: linear-gradient(rgba(255,255,255,0.1), rgba(200,200,200,0.2)); }

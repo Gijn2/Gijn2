@@ -3,109 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>REIGN OF RANG-I: THE NOBLE TIGER</title>
+    <title>REIGN OF RANG-I: THE GOLDEN TIGER</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Serif+KR:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/projectR.css">
 </head>
 <body class="game-body">
 
-    <div id="age-gate" class="modal-overlay">
-        <div class="age-gate-content">
-            <div class="tiger-pattern"></div>
-            <h2>입장 확인</h2>
-            <p>이곳은 랑이의 은밀한 기록이 담긴 공간이니라.<br>그대의 나이를 증명해 보거라.</p>
-            <input type="number" id="age-input" placeholder="나이 입력">
-            <div class="warning-text">
-                * 거짓 정보를 입력하여 발생하는 모든 법적 책임은 본인에게 있으며,<br>랑이는 어떠한 책임도 지지 않습니다.
+    <div id="time-overlay"></div>
+    <div id="mist-overlay"></div>
+    <div id="sidebar-overlay"></div>
+
+    <audio id="snd-click" src="../sounds/jing.mp3" preload="auto"></audio>
+    <audio id="snd-hover" src="../sounds/wind_bell.mp3" preload="auto"></audio>
+
+    <header class="game-header">
+        <div class="header-container">
+            <div class="combined-logo">
+                <img src="../images/Rang_Logo.png" alt="Rang-i Logo" class="rangi-logo">
+                <span class="logo-text">REIGN OF RANG-I</span>
             </div>
-            <button onclick="checkAge()">증명하기</button>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="../main/" class="nav-item exit">TERMINATE</a></li>
+                </ul>
+            </nav>
         </div>
-    </div>
+        <div class="kiwa-pattern"></div>
+    </header>
 
-    <div id="main-content">
-        <header class="game-header">
-            <div class="header-container">
-                <div class="combined-logo">
-                    <img src="../images/Rang_Logo.png" alt="Rang-i Logo" class="rangi-logo">
-                    <div class="logo-divider"></div>
-                    <div class="logo-text-group">
-                        <span class="logo-text">REIGN OF RANG-I</span>
-                        <span class="status-tag">ADULT_ONLY_PREMIUM</span>
-                    </div>
-                </div>
-                <nav class="main-nav">
-                    <ul>
-                        <li><a href="#world" class="nav-item active">WORLD</a></li>
-                        <li><a href="#culture" class="nav-item">CULTURE</a></li>
-                        <li><a href="#private" class="nav-item">PRIVATE</a></li>
-                        <li><a href="../main/" class="nav-item exit">TERMINATE</a></li>
-                    </ul>
-                </nav>
+    <main class="world-map-section">
+        <div class="map-container">
+            <img src="../images/projectR/RangWorld.png" alt="Rang World Map" class="map-base-img">
+            
+            <div class="map-node node-gold" style="top: 65%; left: 5%;" data-id="port" data-name="랑 항구 (Port Rang-i)" data-info="은빛 파도가 치는 동백섬 초입입니다.">
+                <img src="../images/projectR/Claw.png" alt="Claw" class="claw-image">
             </div>
-        </header>
-
-        <main class="world-map-section">
-            <div class="map-wrapper">
-                <div class="map-container">
-                    <div class="temp-map-placeholder">
-                        <div class="blueprint-label">RANG-I_PALACE_LAYOUT_V1.5</div>
-                    </div>
-                    
-                    <div class="map-node color-port" style="top: 75%; left: 45%;" 
-                         data-id="port" 
-                         data-name="랑 항구 &#10;// Port Rang-i" 
-                         data-info="은빛 안개가 자욱한 입구. 랑이의 취향이 담긴 고급 스피크이지 바들이 숨겨져 있습니다." 
-                         data-chars="항구지기, 은빛 상인"></div>
-                    
-                    <div class="map-node color-land" style="top: 35%; left: 40%;" 
-                         data-id="land" 
-                         data-name="랑 랜드 &#10;// Land Rang-i" 
-                         data-info="백호의 영토. 누아르 씨어터에서는 랑이의 신비로운 서사가 성인용 미디어 아트로 펼쳐집니다." 
-                         data-chars="메인 디렉터, 백호 큐레이터"></div>
-                    
-                    <div class="map-node color-cruise" style="top: 15%; left: 80%;" 
-                         data-id="cruise" 
-                         data-name="랑 크루즈 &#10;// The Sovereign" 
-                         data-info="공해 위 랑이의 성역. 법적 제약 없는 카지노와 고품격 성인 공연이 매일 밤 열립니다." 
-                         data-chars="크루즈 캡틴, 갈라쇼 마스터"></div>
-
-                    <div class="map-node color-promenade adult-zone" style="top: 60%; left: 55%;" 
-                         data-id="promenade" 
-                         data-name="랑 프롬나드 &#10;// Promenade" 
-                         data-info="성인 전용 산책로. 랑이의 컬렉션과 관능적인 예술 갤러리 '무아'가 위치해 있습니다." 
-                         data-chars="부티크 샵마스터, 미디어 아티스트"></div>
-
-                    <div class="map-node color-promenade adult-zone" style="top: 25%; left: 25%;" 
-                         data-id="archive" 
-                         data-name="랑 아카이브 &#10;// Archive" 
-                         data-info="랑이의 금기된 지식. 랑이의 은밀한 취향을 엿볼 수 있는 고문서 구역이 존재합니다." 
-                         data-chars="비밀 사서, 역사학자"></div>
-
-                    <div class="map-node color-promenade adult-zone" style="top: 45%; left: 65%;" 
-                         data-id="station" 
-                         data-name="랑 스테이션 &#10;// Central Station" 
-                         data-info="왕국의 심장부. VIP 라운지는 오직 랑이의 귀빈만을 위해 엄격히 통제됩니다." 
-                         data-chars="역장, 호위대장"></div>
-                </div>
+            
+            <div class="map-node node-gold adult-zone" style="top: 45%; left: 14%;" data-id="land" data-name="랑 랜드 (Land Rang-i)" data-info="화려한 성인 전용 어트랙션이 가득한 테마파크 구역입니다.">
+                <img src="../images/projectR/Claw.png" alt="Claw" class="claw-image">
             </div>
 
-            <aside id="main-sidebar">
-                <button class="close-sidebar">CLOSE [×]</button>
-                <div class="sidebar-tabs">
-                    <button class="tab-btn active" data-tab="info">FACILITY</button>
-                    <button class="tab-btn" data-tab="chars">PEOPLE</button>
+            <div class="map-node node-gold adult-zone" style="top: 65%; left: 10%;" data-id="promenade" data-name="랑 프롬나드 (Promenade)" data-info="해변을 따라 조성된 은밀한 갤러리 산책로입니다.">
+                <img src="../images/projectR/Claw.png" alt="Claw" class="claw-image">
+            </div>
+
+            <div class="map-node node-gold adult-zone" style="top: 53%; left: 50%;" data-id="station" data-name="랑 스테이션 (Central Station)" data-info="중앙 광장에 위치한 VIP 전용 스테이션입니다.">
+                <img src="../images/projectR/Claw.png" alt="Claw" class="claw-image">
+            </div>
+        </div>
+
+        <aside id="main-sidebar">
+            <button class="close-sidebar">CLOSE [×]</button>
+            <div class="sidebar-inner">
+                <h2 id="sidebar-title">ZONE_INFO</h2>
+                <div class="divider"></div>
+                
+                <div id="default-info">
+                    <p id="sidebar-desc">지도의 노드를 클릭하여 탐험하십시오.</p>
                 </div>
-                <div class="sidebar-content">
-                    <div id="tab-info" class="tab-pane active">
-                        <h3 id="sidebar-title">READY_FOR_RANG</h3>
-                        <div class="divider"></div>
-                        <p id="sidebar-desc">지도의 핀을 클릭하여 왕국을 탐험하십시오.</p>
+
+                <div id="adult-auth-section" style="display: none;">
+                    <div class="auth-box">
+                        <h3>ADULT VERIFICATION</h3>
+                        <p class="auth-warning">실제 생년월일을 입력해 주십시오.</p>
+                        <div class="date-selector">
+                            <input type="number" id="auth-year" placeholder="YYYY">
+                            <input type="number" id="auth-month" placeholder="MM">
+                            <input type="number" id="auth-day" placeholder="DD">
+                        </div>
+                        <p class="responsibility-text">* 허위 정보 입력 시 발생하는 책임은 본인에게 있습니다.</p>
+                        <button onclick="verifyAgeStrict()" class="auth-btn">인증 및 해제</button>
                     </div>
                 </div>
-            </aside>
-        </main>
-    </div>
 
+                <div id="secret-content" style="display: none;">
+                    <div class="video-container">
+                        <iframe id="youtube-vid" width="100%" height="220" src="" frameborder="0" allowfullscreen></iframe>
+                    </div>
+                    <p id="sidebar-secret-text"></p>
+                    <div class="swiper">
+                        <div class="swiper-wrapper" id="carousel-wrapper"></div>
+                        <div class="swiper-pagination"></div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
     <script src="../js/projectR.js"></script>
 </body>
 </html>
