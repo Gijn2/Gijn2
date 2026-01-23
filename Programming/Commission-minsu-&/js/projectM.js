@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 li.innerText = c;
                 li.onclick = () => {
                     document.getElementById('sub-title').innerText = c;
-                    document.getElementById('sub-desc').innerText = `${c}는 이 지역의 핵심 인물입니다. 자세한 프로필은 암호화 해제 중입니다.`;
+                    document.getElementById('sub-desc').innerText = `자세한 프로필은 암호화 해제 중입니다.`;
                     
                     // 탭 전환 및 헤더 강조 변경
                     switchTab('chars');
@@ -144,4 +144,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelector('.close-sidebar').onclick = allClose;
     
+
 });

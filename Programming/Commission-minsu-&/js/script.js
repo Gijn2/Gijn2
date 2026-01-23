@@ -128,7 +128,6 @@ document.addEventListener('DOMContentLoaded', () => {
             goToTeamSlide(teamCurrentSlide + 1);
         });
     }
-    // ================================================================
 
 
     // ================== Work Detail Modal Logic ==================
@@ -179,5 +178,28 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("해당 작품은 현재 연재중이지 않습니다.");
         });
     }
-    
 });
+
+    // 프로젝트 페이지로 이동하는 통합 함수 @param {string} projectName - 이동할 프로젝트 식별자
+    function navigateToProject(projectName) {
+        let targetPath = '';
+
+        // 프로젝트별 경로 설정
+        switch (projectName) {
+            case 'projectM':
+                targetPath = '../project/projectM.html';
+                break;
+            case 'projectR':
+                targetPath = '../project/projectR.html';
+                break;
+            default:
+                console.error("Unknown project:", projectName);
+                return;
+        }
+
+        // 디버깅을 위해 콘솔에 출력 (도메인에서 경로 오류 시 확인 용도)
+        console.log(`Navigating to ${projectName} via path: ${targetPath}`);
+        
+        // 페이지 이동
+        window.location.href = targetPath;
+    }
