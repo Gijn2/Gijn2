@@ -3,95 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>REIGN OF RANG-I: THE GOLDEN TIGER</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Serif+KR:wght@400;700;900&display=swap" rel="stylesheet">
+    <title>Project R | Rang Universal City</title>
     <link rel="stylesheet" href="../css/projectR.css">
 </head>
-<body class="game-body">
+<body class="city-body">
+    <canvas id="connection-canvas"></canvas>
 
-    <div id="time-overlay"></div>
-    <div id="mist-overlay"></div>
-    <div id="sidebar-overlay"></div>
-
-    <audio id="snd-click" src="../sounds/jing.mp3" preload="auto"></audio>
-    <audio id="snd-hover" src="../sounds/wind_bell.mp3" preload="auto"></audio>
-
-    <header class="game-header">
-        <div class="header-container">
-            <div class="combined-logo">
-                <img src="../images/Rang_Logo.png" alt="Rang-i Logo" class="rangi-logo">
-                <span class="logo-text">REIGN OF RANG-I</span>
-            </div>
-            <nav class="main-nav">
-                <ul>
-                    <li><a href="../main/" class="nav-item exit">TERMINATE</a></li>
-                </ul>
-            </nav>
-        </div>
-        <div class="kiwa-pattern"></div>
-    </header>
-
-    <main class="world-map-section">
-        <div class="map-container">
-            <img src="../images/projectR/RangWorld.png" alt="Rang World Map" class="map-base-img">
-            
-            <div class="map-node node-gold" style="top: 65%; left: 5%;" data-id="port" data-name="랑 항구 (Port Rang-i)" data-info="은빛 파도가 치는 동백섬 초입입니다.">
-                <img src="../images/projectR/Claw.png" alt="Claw" class="claw-image">
-            </div>
-            
-            <div class="map-node node-gold adult-zone" style="top: 45%; left: 14%;" data-id="land" data-name="랑 랜드 (Land Rang-i)" data-info="화려한 성인 전용 어트랙션이 가득한 테마파크 구역입니다.">
-                <img src="../images/projectR/Claw.png" alt="Claw" class="claw-image">
-            </div>
-
-            <div class="map-node node-gold adult-zone" style="top: 65%; left: 10%;" data-id="promenade" data-name="랑 프롬나드 (Promenade)" data-info="해변을 따라 조성된 은밀한 갤러리 산책로입니다.">
-                <img src="../images/projectR/Claw.png" alt="Claw" class="claw-image">
-            </div>
-
-            <div class="map-node node-gold adult-zone" style="top: 53%; left: 50%;" data-id="station" data-name="랑 스테이션 (Central Station)" data-info="중앙 광장에 위치한 VIP 전용 스테이션입니다.">
-                <img src="../images/projectR/Claw.png" alt="Claw" class="claw-image">
+    <nav class="city-nav">
+        <div class="city-logo">RANG<span>UNIVERSAL CITY</span></div>
+        <div class="user-interface">
+            <div class="multiverse-status">
+                <span class="pulse-icon"></span>
+                <span class="status-text">RANG SYSTEM : ACTIVE</span>
             </div>
         </div>
+    </nav>
 
-        <aside id="main-sidebar">
-            <button class="close-sidebar">CLOSE [×]</button>
-            <div class="sidebar-inner">
-                <h2 id="sidebar-title">ZONE_INFO</h2>
-                <div class="divider"></div>
-                
-                <div id="default-info">
-                    <p id="sidebar-desc">지도의 노드를 클릭하여 탐험하십시오.</p>
-                </div>
+    <main>
+        <section class="city-hero">
+            <div class="hero-content">
+                <p class="subtitle">A NEW PARADIGM OF CONNECTION</p>
+                <h1 class="main-title">PROJECT R</h1>
+                <div class="hero-line"></div>
+                <p class="description">당신과 세계, 그리고 상상이 하나로 연결되는 거대 도시</p>
+            </div>
+        </section>
 
-                <div id="adult-auth-section" style="display: none;">
-                    <div class="auth-box">
-                        <h3>ADULT VERIFICATION</h3>
-                        <p class="auth-warning">실제 생년월일을 입력해 주십시오.</p>
-                        <div class="date-selector">
-                            <input type="number" id="auth-year" placeholder="YYYY">
-                            <input type="number" id="auth-month" placeholder="MM">
-                            <input type="number" id="auth-day" placeholder="DD">
-                        </div>
-                        <p class="responsibility-text">* 허위 정보 입력 시 발생하는 책임은 본인에게 있습니다.</p>
-                        <button onclick="verifyAgeStrict()" class="auth-btn">인증 및 해제</button>
+        <section class="system-showcase">
+            <div class="visual-card-wrapper">
+                <div class="visual-card glass-effect">
+                    <div class="card-info">
+                        <span class="tag">System 01</span>
+                        <h2>Digital Guide 'RANG'</h2>
+                        <p>개인 디바이스와 연결되어 도시의 모든 순간을 예술적으로 큐레이팅합니다. "너랑 나랑" 대화하는 지능형 인터페이스.</p>
+                    </div>
+                    <div class="card-animation-area">
+                        <div class="wave-circle"></div>
                     </div>
                 </div>
 
-                <div id="secret-content" style="display: none;">
-                    <div class="video-container">
-                        <iframe id="youtube-vid" width="100%" height="220" src="" frameborder="0" allowfullscreen></iframe>
+                <div class="visual-card adult-exclusive">
+                    <div class="card-info">
+                        <span class="tag alert">Secret Archive</span>
+                        <h2>The Dark Aesthetics</h2>
+                        <p>'빌어먹을 세계를 바꾸고 싶다' IP의 고품격 재해석. 성인 전용 라운지와 아트 갤러리가 운영되는 별도 건물입니다.</p>
                     </div>
-                    <p id="sidebar-secret-text"></p>
-                    <div class="swiper">
-                        <div class="swiper-wrapper" id="carousel-wrapper"></div>
-                        <div class="swiper-pagination"></div>
+                    <div class="card-overlay-red"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="archive-detail">
+            <h3 class="section-title">EXCLUSIVE FACILITIES</h3>
+            <div class="archive-grid">
+                <div class="facility-item">
+                    <div class="facility-img" style="background: rgba(212,175,55,0.1);"></div>
+                    <div class="facility-text">
+                        <h4>Atelier 'B.M.S'</h4>
+                        <p class="category">Premium Adult Lounge & Dining</p>
+                        <p>'빌어먹을 세계를 바꾸고 싶다'의 퇴폐적이면서도 우아한 미학을 담은 미식 공간입니다. 성인 인증 후 멀티버스 패스로만 입장이 가능합니다.</p>
+                    </div>
+                </div>
+
+                <div class="facility-item reverse">
+                    <div class="facility-img" style="background: rgba(255,255,255,0.05);"></div>
+                    <div class="facility-text">
+                        <h4>Noir Stage</h4>
+                        <p class="category">IP Based Live Performance</p>
+                        <p>19금 테마를 예술적인 현대 무용과 미디어 아트로 승화시킨 라이브 공연장입니다. 제한된 인원에게만 허용되는 특별한 가치를 선사합니다.</p>
+                    </div>
+                </div>
+
+                <div class="facility-item">
+                    <div class="facility-img" style="background: rgba(139,0,0,0.2);"></div>
+                    <div class="facility-text">
+                        <h4>S.S. RANG Cruise</h4>
+                        <p class="category">Deep Sea Entertainment</p>
+                        <p>공해 위에서 펼쳐지는 자유. 크루즈 내 카지노와 전용 버라이어티 쇼를 통해 법적 제약을 벗어난 최상의 유희를 즐기십시오.</p>
                     </div>
                 </div>
             </div>
-        </aside>
+        </section>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <div class="fragment-tracker">
+        <div class="tracker-label">STORY FRAGMENTS</div>
+        <div class="dots-container">
+            <div class="dot active"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+        </div>
+        <div class="collection-percent">25%</div>
+    </div>
+
     <script src="../js/projectR.js"></script>
 </body>
 </html>
