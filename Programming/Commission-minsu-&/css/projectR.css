@@ -219,154 +219,176 @@
 #sub-sidebar.active { right: 20px; }
 /* ----------------------------- */
 
-/* projectR.css */
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Pretendard:wght@200;400;600&display=swap');
 
 :root {
     --gold: #D4AF37;
     --navy: #050A14;
     --dark-red: #4D0000;
+    --park-green: #00FFCC;
     --glass: rgba(255, 255, 255, 0.03);
-    --border: rgba(212, 175, 55, 0.3);
 }
 
-body, html {
-    margin: 0;
-    padding: 0;
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
     background-color: var(--navy);
     color: #fff;
     font-family: 'Pretendard', sans-serif;
+    scroll-behavior: smooth;
     overflow-x: hidden;
 }
 
-#connection-canvas {
-    position: fixed;
-    top: 0; left: 0;
-    z-index: -1;
-}
+#connection-canvas { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
 
-/* 네비게이션 */
+/* 헤더 레이아웃 수정 */
 .city-nav {
-    display: flex;
-    justify-content: space-between;
+    display: flex; 
+    justify-content: space-between; 
     align-items: center;
-    padding: 20px 60px;
-    position: fixed;
-    width: 100%;
-    z-index: 1000;
-    backdrop-filter: blur(15px);
-    box-sizing: border-box;
+    padding: 20px 40px; 
+    position: fixed; 
+    width: 100%; 
+    z-index: 1100;
+    backdrop-filter: blur(15px); 
+    background: rgba(5, 10, 20, 0.6);
 }
 
-.city-logo {
-    font-family: 'Cinzel', serif;
-    font-size: 1.8rem;
-    color: var(--gold);
-    letter-spacing: 4px;
-}
-
-.city-logo span {
-    display: block;
-    font-size: 0.6rem;
-    color: #fff;
-    opacity: 0.7;
-}
-
-.multiverse-status {
-    background: var(--glass);
-    border: 1px solid var(--border);
-    padding: 8px 20px;
-    border-radius: 40px;
+.nav-left-group {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 30px; /* 로고와 버튼 사이 간격 */
 }
 
-.pulse-icon {
-    width: 8px; height: 8px;
-    background: #00FFCC;
-    border-radius: 50%;
-    box-shadow: 0 0 10px #00FFCC;
-    animation: pulse 2s infinite;
+.city-logo { font-family: 'Cinzel'; color: var(--gold); letter-spacing: 4px; font-size: 1.5rem; line-height: 1; }
+.city-logo span { display: block; font-size: 0.5rem; color: #fff; opacity: 0.7; }
+
+.terminate-btn { 
+    border: 1px solid rgba(255,255,255,0.4); 
+    color: #fff; 
+    padding: 6px 15px; 
+    text-decoration: none; 
+    font-family: 'Cinzel'; 
+    font-size: 0.7rem; 
+    transition: 0.3s;
+    letter-spacing: 1px;
+}
+.terminate-btn:hover { border-color: #fff; background: rgba(255,255,255,0.1); }
+
+/* 가이드 대화창 */
+.rang-guide-bubble {
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(255, 255, 255, 0.08); padding: 8px 25px; border-radius: 40px;
+    border: 1px solid rgba(212, 175, 55, 0.3); min-width: 350px;
 }
 
-@keyframes pulse {
-    0% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.5); opacity: 0.5; }
-    100% { transform: scale(1); opacity: 1; }
-}
+.status-text { font-size: 0.85rem; }
+.pulse-icon { width: 8px; height: 8px; background: #00FFCC; border-radius: 50%; box-shadow: 0 0 10px #00FFCC; }
 
-/* 히어로 */
-.city-hero {
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-}
+/* 미니맵 */
+.mini-map { position: fixed; left: 30px; top: 50%; transform: translateY(-50%); z-index: 1000; display: flex; flex-direction: column; gap: 20px; }
+.map-item { width: 12px; height: 12px; border: 2px solid var(--gold); border-radius: 50%; cursor: pointer; position: relative; }
+.map-item.active { background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+.map-item::after { content: attr(data-name); position: absolute; left: 25px; top: -5px; font-size: 0.7rem; font-family: 'Cinzel'; opacity: 0; transition: 0.3s; color: var(--gold); }
+.map-item:hover::after { opacity: 1; }
 
-.main-title {
-    font-family: 'Cinzel', serif;
-    font-size: clamp(3rem, 10vw, 6rem);
-    background: linear-gradient(to right, #fff, var(--gold), #fff);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    letter-spacing: 15px;
-    margin: 20px 0;
-}
+/* 섹션 스타일 */
+.city-hero { height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center; }
+.main-title { font-family: 'Cinzel'; font-size: 5rem; letter-spacing: 15px; color: var(--gold); margin: 20px 0; }
+.hero-line { width: 100px; height: 1px; background: var(--gold); margin: 20px auto; }
 
-/* 시스템 카드 */
-.system-showcase { padding: 100px 5%; }
-.visual-card-wrapper {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: 40px;
-    max-width: 1400px;
-    margin: 0 auto;
-}
+.sector-container { min-height: 100vh; padding: 150px 10%; position: relative; }
+.sector-tag { position: absolute; top: 100px; left: 50px; font-family: 'Cinzel'; color: var(--gold); letter-spacing: 5px; opacity: 0.4; }
 
-.visual-card {
-    height: 450px;
-    border-radius: 5px;
-    padding: 40px;
-    position: relative;
-    overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.1);
-    transition: 0.5s;
+.archive-grid { display: flex; flex-direction: column; gap: 80px; max-width: 1200px; margin: 0 auto; }
+.visual-card { padding: 50px; background: var(--glass); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); }
+.adult-exclusive { border-color: var(--dark-red); background: linear-gradient(135deg, #050A14, #2b0000); }
+
+.facility-item { display: flex; align-items: center; gap: 50px; }
+.facility-item.reverse { flex-direction: row-reverse; }
+.facility-text h4 { font-family: 'Cinzel'; font-size: 1.8rem; color: var(--gold); margin-bottom: 10px; }
+.category { font-size: 0.8rem; color: #aaa; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; }
+
+.facility-img-placeholder {
+    width: 450px; height: 280px; background: rgba(255,255,255,0.02);
+    border: 1px dashed rgba(212, 175, 55, 0.3); display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,0.2); font-family: 'Cinzel';
+}
+.park-border { border-color: var(--park-green); color: var(--park-green); opacity: 0.5; }
+
+/* 오버레이 & 진행바 */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 2000; display: none; align-items: center; justify-content: center; opacity: 0; transition: 0.5s; }
+.verif-content { padding: 40px; border: 1px solid var(--gold); background: #000; text-align: center; }
+#age-input { background: #111; border: 1px solid var(--gold); color: #fff; padding: 12px; width: 100%; margin: 20px 0; color-scheme: dark; }
+.gold-btn { background: var(--gold); border: none; padding: 10px 30px; cursor: pointer; font-weight: bold; }
+.close-verif-btn { background: transparent; border: 1px solid #444; color: #666; padding: 10px 30px; cursor: pointer; margin-left: 10px; }
+.fragment-container { position: fixed; bottom: 30px; right: 30px; z-index: 900; }
+.progress-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+
+/* 부스 투어 전용 레이아웃 */
+.booth-tour-container {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    gap: 150px; /* 부스 간 간격 */
+    margin-top: 100px;
 }
 
-.glass-effect { background: var(--glass); backdrop-filter: blur(20px); }
-.adult-exclusive { background: linear-gradient(135deg, #050A14 0%, #2b0000 100%); border-color: var(--dark-red); }
-
-.visual-card:hover { transform: translateY(-10px); border-color: var(--gold); }
-
-/* 부대시설 리스트 */
-.archive-detail { padding: 100px 10%; background: rgba(0,0,0,0.3); }
-.section-title { font-family: 'Cinzel'; text-align: center; font-size: 2.5rem; color: var(--gold); margin-bottom: 80px; }
-
-.facility-item { display: flex; align-items: center; gap: 60px; margin-bottom: 100px; }
-.facility-item.reverse { flex-direction: row-reverse; }
-.facility-img { flex: 1; height: 350px; border: 1px solid var(--border); border-radius: 2px; }
-.facility-text { flex: 1; }
-.facility-text h4 { font-size: 2.2rem; margin-bottom: 10px; color: var(--gold); font-family: 'Cinzel'; }
-.category { color: #ff4b2b; letter-spacing: 2px; font-weight: 600; margin-bottom: 20px; }
-
-/* 트래커 */
-.fragment-tracker {
-    position: fixed;
-    bottom: 30px; right: 50px;
-    background: var(--glass);
-    border: 1px solid var(--border);
-    padding: 15px 25px;
-    border-radius: 5px;
+.booth-section {
     display: flex;
     align-items: center;
-    gap: 20px;
-    backdrop-filter: blur(10px);
+    gap: 60px;
+    min-height: 70vh;
 }
 
-.dot { width: 8px; height: 8px; border: 1px solid var(--gold); border-radius: 50%; }
-.dot.active { background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+.booth-section.reverse {
+    flex-direction: row-reverse;
+}
+
+.booth-media {
+    flex: 1.2;
+    position: relative;
+    height: 400px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--gold);
+    overflow: hidden;
+}
+
+.media-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Cinzel';
+    color: var(--gold);
+    background: linear-gradient(45deg, #050a14, #1a1a1a);
+}
+
+.booth-number {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: var(--gold);
+    color: #000;
+    padding: 5px 15px;
+    font-family: 'Cinzel';
+    font-weight: bold;
+}
+
+.booth-info {
+    flex: 0.8;
+}
+
+.booth-info h3 {
+    font-family: 'Cinzel', serif;
+    font-size: 2.5rem;
+    color: var(--gold);
+    margin-bottom: 20px;
+}
+
+.booth-desc {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: #ccc;
+    margin-bottom: 30px;
+}
