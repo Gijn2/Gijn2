@@ -29,7 +29,7 @@ boss_alert_timer = 0
 current_stage = 1
 invincible_timer = 0
 
-# [수정] 아이템 가격 6배 증가 (보스 소환 제외)
+# [기능 유지] 아이템 가격 6배 증가 적용된 리스트
 UPGRADE_POOL = [
     {"name": "공격력 강화", "desc": "데미지 +1.5", "effect": "dmg", "price": 1200},
     {"name": "기동성 강화", "desc": "이동속도 +2", "effect": "speed", "price": 720},
@@ -76,13 +76,13 @@ class BossCrusher:
                 self.mode = "ATTACK"
                 self.warning_timer = 45
         else:
-            # [수정] 아래 방향(TOP) 공격 시 이동 거리(진폭)를 절반(600)으로 축소
+            # [기능 유지] 하단 공격 범위 50% 축소 로직
             if self.target_mode == "TOP":
-                attack_range =600 # 기존 1200에서 50% 감소
+                attack_range = 600 
                 offset = math.sin(self.timer/8) * attack_range
-                self.rect = pygame.Rect(0, -350 + offset, WIDTH, 150) # 시작 오프셋도 조정
+                self.rect = pygame.Rect(0, -350 + offset, WIDTH, 150)
             else:
-                attack_range = 1200 # 좌우 공격은 기존 거리 유지
+                attack_range = 1200
                 offset = math.sin(self.timer/8) * attack_range
                 if self.target_mode == "LEFT": self.rect = pygame.Rect(-500 + offset, 0, 150, HEIGHT)
                 elif self.target_mode == "RIGHT": self.rect = pygame.Rect(WIDTH + 500 - offset, 0, 150, HEIGHT)
@@ -92,7 +92,6 @@ class BossCrusher:
                 self.target_mode = random.choice(["TOP", "LEFT", "RIGHT"])
 
     def draw(self, surf):
-        # 공격 전 방향 지시선(Warning)
         if self.mode == "READY":
             if self.target_mode == "TOP": pygame.draw.rect(surf, (150, 0, 0), (0, 0, WIDTH, 150), 2)
             elif self.target_mode == "LEFT": pygame.draw.rect(surf, (150, 0, 0), (0, 0, 150, HEIGHT), 2)
@@ -113,17 +112,17 @@ class BossSwarm:
     def draw(self, surf):
         for c in self.centers: pygame.draw.circle(surf, PURPLE, (int(c.x), int(c.y)), 15)
 
-# --- 일반 적 클래스 (패턴 완벽 복구) ---
+# --- 일반 적 클래스 (패턴 완벽 유지) ---
 
 class Enemy:
     def __init__(self, etype="normal", offset=0):
         self.etype = etype
         self.pos = pygame.Vector2(random.randint(50, WIDTH-50), -50)
-        base_hp = (2 + (score // 5000)) * 0.25 # 25% 체력
+        # [기능 유지] 25% 하향된 체력 밸런스
+        base_hp = (2 + (score // 5000)) * 0.25 
         self.hp = base_hp * 8 if etype == "elite" else base_hp
         self.shoot_delay = random.randint(80, 160)
         self.offset = offset
-        # 타입별 이동 속도 복구
         if etype == "bouncer": self.vx, self.vy = random.choice([-3, 3]), 2
         elif etype == "sniper": self.vx, self.vy = 2, 0; self.pos.y = random.randint(50, 150)
         elif etype == "sin": self.vx, self.vy = 0, 1.8
@@ -147,7 +146,6 @@ class Enemy:
     def draw(self, surf):
         color = RED if self.etype == "normal" else GOLD if self.etype == "bouncer" else CYAN if self.etype == "sniper" else PURPLE
         pygame.draw.rect(surf, color, (*self.pos, 30, 30))
-        # [희귀 몬스터 마킹] 엘리트 전용 효과
         if self.etype == "elite":
             pygame.draw.circle(surf, PURPLE, (int(self.pos.x+15), int(self.pos.y+15)), 35, 2)
             surf.blit(font_m.render("!", True, PURPLE), (self.pos.x+10, self.pos.y-35))
@@ -176,7 +174,6 @@ shop_options = []
 
 running = True
 while running:
-    # 화면 흔들림 제어
     render_offset = pygame.Vector2(0, 0)
     if shake_timer > 0:
         render_offset = pygame.Vector2(random.randint(-7, 7), random.randint(-7, 7))
@@ -188,7 +185,7 @@ while running:
         
         if event.type == pygame.KEYDOWN:
             if game_state == 'PLAYING':
-                # [버그 수정] W 1회 차감 로직
+                # [기능 유지] W 사용 시 탄환 제거 및 스택 1회 차감
                 if event.key == pygame.K_w and stats["special_ammo"] > 0:
                     stats["special_ammo"] -= 1
                     e_projs.clear()
@@ -207,9 +204,17 @@ while running:
 
     if game_state == 'PLAYING':
         keys = pygame.key.get_pressed()
+        # [신규 추가] 상하좌우 이동 적용
         if keys[pygame.K_LEFT]: player_pos.x -= stats["speed"]
         if keys[pygame.K_RIGHT]: player_pos.x += stats["speed"]
-        player_pos.x = max(0, min(WIDTH-40, player_pos.x))
+        if keys[pygame.K_UP]: player_pos.y -= stats["speed"]
+        if keys[pygame.K_DOWN]: player_pos.y += stats["speed"]
+
+        # [신규 추가] 좌우 워프 기능
+        if player_pos.x < -30: player_pos.x = WIDTH
+        elif player_pos.x > WIDTH: player_pos.x = -30
+        # 상하 이동은 화면 안으로 제한
+        player_pos.y = max(0, min(HEIGHT-40, player_pos.y))
 
         if keys[pygame.K_q] and shoot_cooldown <= 0:
             p_projs.append(Projectile(player_pos.x+20, player_pos.y, pygame.Vector2(0,-10), GREEN, stats["damage"]))
@@ -217,23 +222,21 @@ while running:
         shoot_cooldown = max(0, shoot_cooldown - 1)
         if invincible_timer > 0: invincible_timer -= 1
 
-        # 스테이지 타이머 및 보스 스폰 로직
         if boss is None:
             stage_timer -= 1
-            if stage_timer == 120: boss_alert_timer = 120 # 2초 전 알림 시작
+            if stage_timer == 120: boss_alert_timer = 120
             if stage_timer <= 0:
                 if zero_ticket: boss = BossZero(); zero_ticket = False
                 else: boss = BossSwarm()
                 enemies.clear()
             
-            # [수정] 엘리트(희귀) 몬스터 확률 대폭 하향 (1.5%)
+            # [기능 유지] 엘리트 몹 1.5% 확률 적용
             if len(enemies) < 6:
                 etype = random.choices(["normal", "bouncer", "sin", "sniper", "elite"], weights=[50, 15, 15, 18.5, 1.5])[0]
                 enemies.append(Enemy(etype, random.randint(0, 1000)))
 
         if boss:
             boss.update(e_projs, player_pos)
-            # 보스 충돌 데미지
             boss_rect = getattr(boss, 'rect', pygame.Rect(boss.pos.x, boss.pos.y, 50, 50) if hasattr(boss, 'pos') else None)
             if boss_rect and boss_rect.colliderect(pygame.Rect(player_pos.x, player_pos.y, 40, 40)) and invincible_timer <= 0:
                 player_hp -= 20; shake_timer = 20; invincible_timer = 60
@@ -241,7 +244,6 @@ while running:
             if boss.hp <= 0:
                 stats["gold"] += 1500; boss = None; game_state = 'SHOP'; shop_options = get_shop_items()
 
-        # 플레이어 충돌 판정
         p_rect = pygame.Rect(player_pos.x, player_pos.y, 40, 40)
         for e in enemies[:]:
             e.update(e_projs, player_pos)
@@ -249,9 +251,11 @@ while running:
                 player_hp -= 15; shake_timer = 15; invincible_timer = 40; enemies.remove(e)
             elif e.pos.y > HEIGHT: enemies.remove(e)
 
-        # 투사체 로직
+        # [수정] 투사체 로직 (충돌 에러 방지 및 관통 유지)
         for p in p_projs[:]:
             p.update()
+            hit_this_frame = False
+            
             if boss:
                 hit = False
                 if boss.type == "CRUSHER" and boss.rect.collidepoint(p.pos): hit = True
@@ -259,15 +263,23 @@ while running:
                     for c in boss.centers:
                         if p.pos.distance_to(c) < 25: hit = True; break
                 elif boss.type == "ZERO" and p.pos.distance_to(boss.pos + pygame.Vector2(25,25)) < 40: hit = True
-                if hit: boss.hp -= p.dmg; (p_projs.remove(p) if not stats["pierce"] else None)
+                
+                if hit:
+                    boss.hp -= p.dmg
+                    hit_this_frame = True
 
             for e in enemies[:]:
                 if p.pos.distance_to(e.pos + pygame.Vector2(15,15)) < 25:
-                    e.hp -= p.dmg; (p_projs.remove(p) if not stats["pierce"] else None)
+                    e.hp -= p.dmg
+                    hit_this_frame = True
                     if e.hp <= 0:
                         if e.etype == "elite": zero_ticket = True
                         enemies.remove(e); stats["gold"] += 35; score += 100
-            if p.pos.y < -10: (p_projs.remove(p) if p in p_projs else None)
+
+            if hit_this_frame and not stats["pierce"]:
+                if p in p_projs: p_projs.remove(p)
+            elif p.pos.y < -10 or p.pos.y > HEIGHT + 10:
+                if p in p_projs: p_projs.remove(p)
 
         for p in e_projs[:]:
             p.update()
@@ -286,7 +298,6 @@ while running:
         for e in enemies: e.draw(temp_surf)
         if boss:
             boss.draw(temp_surf)
-            # 보스 체력바
             pygame.draw.rect(temp_surf, RED, (WIDTH//2-150, 20, 300, 15))
             pygame.draw.rect(temp_surf, GREEN, (WIDTH//2-150, 20, max(0, (boss.hp/boss.max_hp)*300), 15))
             temp_surf.blit(font_s.render(f"BOSS: {boss.type}", True, WHITE), (WIDTH//2-40, 40))
@@ -295,7 +306,6 @@ while running:
         for p in e_projs: p.draw(temp_surf)
         if invincible_timer % 4 == 0: pygame.draw.rect(temp_surf, WHITE, (*player_pos, 40, 40), 2)
         
-        # [복구] 스테이지 진행 타이머 게이지
         if boss is None:
             pygame.draw.rect(temp_surf, GRAY, (WIDTH//2-100, 20, 200, 8))
             pygame.draw.rect(temp_surf, CYAN, (WIDTH//2-100, 20, (stage_timer/STAGE_DURATION)*200, 8))
@@ -319,8 +329,6 @@ while running:
         temp_surf.blit(font_m.render(f"GOLD: {stats['gold']}G  |  Press [S] for Next Stage", True, WHITE), (WIDTH//2-200, HEIGHT-50))
 
     screen.blit(temp_surf, render_offset)
-    
-    # 상단 고정 UI
     pygame.draw.rect(screen, GREEN, (10, 10, max(0, (player_hp/stats['max_hp'])*200), 20))
     screen.blit(font_s.render(f"HP: {int(player_hp)}  GOLD: {stats['gold']}  W: {stats['special_ammo']}", True, WHITE), (10, 35))
     if zero_ticket: screen.blit(font_s.render("★ ZERO TICKET ACTIVE ★", True, CYAN), (10, 55))
