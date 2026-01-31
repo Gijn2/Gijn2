@@ -6,7 +6,7 @@ import os
 
 
 # --- 0. 경로 설정 ---
-IMGS_PATH = os.path.join(BASE_PATH, "imgs")
+IMGS_PATH = os.path.join(os.path.dirname(__file__), "imgs")
 
 # --- 1. 초기화 및 화면 설정 ---
 pygame.init()
@@ -17,7 +17,7 @@ clock = pygame.time.Clock()
 
 # --- 2. 에셋 로드 (화면 설정 후 로드해야 함) ---
 # 배경 영상 로드
-cap = cv2.VideoCapture(os.path.join(IMGS_PATH, "background.mp4"))
+# cap = cv2.VideoCapture(os.path.join(IMGS_PATH, "background.mp4"))
 
 # 플레이어 및 적 이미지 로드
 player_img = pygame.image.load(os.path.join(IMGS_PATH, "player.png")).convert_alpha()
@@ -315,19 +315,8 @@ while running:
 
     # --- 7. 최종 렌더링 부 ---
     # 배경 영상 처리
-    ret, frame = cap.read()
-    if not ret:
-        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-        ret, frame = cap.read()
-    
-    if ret:
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame = cv2.transpose(frame)
-        frame = pygame.surfarray.make_surface(frame)
-        frame = pygame.transform.scale(frame, (WIDTH, HEIGHT))
-        screen.blit(frame, (0, 0))
-    else:
-        screen.fill(BLACK)
+
+    screen.fill(BLACK)
 
     # 투명도 지원 서피스 (모든 오브젝트는 여기에 그림)
     temp_surf = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
