@@ -1,7 +1,6 @@
 import pygame
 import random
 import math
-import cv2
 import os
 
 
