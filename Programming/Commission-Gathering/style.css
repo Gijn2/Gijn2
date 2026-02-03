@@ -1,0 +1,92 @@
+/* 기본 설정 및 유틸리티 */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.glass-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(59, 130, 246, 0.5);
+}
+
+/* 라이브 배너 배경 */
+.live-banner {
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+    box-shadow: 0 10px 30px -10px rgba(59, 130, 246, 0.5);
+}
+
+/* 운세 카드 */
+.fortune-card {
+    padding: 20px;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    cursor: pointer;
+}
+
+.fortune-card:hover {
+    transform: translateY(-5px);
+}
+
+.fortune-gold { background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%); }
+.fortune-red { background: linear-gradient(135deg, #b91c1c 0%, #ef4444 100%); }
+.fortune-blue { background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%); }
+
+/* 투표 버튼 디자인 */
+.poll-btn {
+    width: 100%;
+    padding: 16px 20px;
+    border-radius: 16px;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.btn-up {
+    background: rgba(59, 130, 246, 0.1);
+    color: #60a5fa;
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+.btn-up:hover {
+    background: rgba(59, 130, 246, 0.2);
+}
+
+.btn-down {
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+.btn-down:hover {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+/* 하단 네비게이션 아이템 */
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 10px;
+    color: #9ca3af;
+    transition: color 0.2s;
+}
+
+.nav-item.active {
+    color: #3b82f6;
+}
+
+.nav-item span:first-child {
+    margin-bottom: 2px;
+}
