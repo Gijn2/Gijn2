@@ -7,65 +7,71 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-gray-900 text-white font-sans flex items-center justify-center min-h-screen">
+<body class="bg-gray-900 text-white font-sans flex items-center justify-center min-h-screen px-6">
 
-    <main class="w-full max-w-md px-6">
+    <main class="w-full max-w-md">
         <div class="text-center mb-10">
             <h1 class="text-4xl font-black tracking-tighter text-blue-500 mb-2 cursor-pointer" onclick="location.href='index.html'">WEPOLL</h1>
             <p class="text-gray-400 text-sm">개미들의 민심이 모이는 곳</p>
         </div>
 
-        <div class="flex bg-gray-800 rounded-xl p-1 mb-8">
-            <button onclick="switchTab('login')" id="login-tab" class="w-1/2 py-2 text-sm font-bold rounded-lg bg-blue-600">로그인</button>
-            <button onclick="switchTab('signup')" id="signup-tab" class="w-1/2 py-2 text-sm font-bold rounded-lg text-gray-400">회원가입</button>
-        </div>
+        <nav class="flex bg-gray-800 rounded-xl p-1 mb-8" role="tablist">
+            <button id="login-tab" class="w-1/2 py-2 text-sm font-bold rounded-lg bg-blue-600 transition-all" role="tab" aria-selected="true">로그인</button>
+            <button id="signup-tab" class="w-1/2 py-2 text-sm font-bold rounded-lg text-gray-400 transition-all" role="tab" aria-selected="false">회원가입</button>
+        </nav>
 
         <form id="login-form" class="space-y-4">
             <div>
-                <label class="block text-xs font-semibold text-gray-500 mb-2 ml-1">이메일 주소</label>
-                <input type="email" placeholder="example@email.com" class="auth-input">
+                <label for="login-email" class="block text-xs font-semibold text-gray-500 mb-2 ml-1">이메일 주소</label>
+                <input id="login-email" type="email" placeholder="example@email.com" class="auth-input" required>
             </div>
             <div>
-                <label class="block text-xs font-semibold text-gray-500 mb-2 ml-1">비밀번호</label>
-                <input type="password" placeholder="••••••••" class="auth-input">
+                <label for="login-pw" class="block text-xs font-semibold text-gray-500 mb-2 ml-1">비밀번호</label>
+                <input id="login-pw" type="password" placeholder="••••••••" class="auth-input" required>
             </div>
-            <button type="submit" class="w-full py-4 bg-blue-600 rounded-2xl font-bold hover:bg-blue-700 transition mt-4">로그인하기</button>
+            <button type="submit" class="w-full py-4 bg-blue-600 rounded-2xl font-bold hover:bg-blue-700 active:scale-[0.98] transition mt-4">로그인하기</button>
         </form>
 
         <form id="signup-form" class="space-y-4 hidden">
             <div>
-                <label class="block text-xs font-semibold text-gray-500 mb-2 ml-1">닉네임</label>
-                <input type="text" placeholder="멋진투자자" class="auth-input">
+                <label for="sign-nick" class="block text-xs font-semibold text-gray-500 mb-2 ml-1">닉네임</label>
+                <input id="sign-nick" type="text" placeholder="멋진투자자" class="auth-input" required>
             </div>
             <div>
-                <label class="block text-xs font-semibold text-gray-500 mb-2 ml-1">이메일 주소</label>
-                <input type="email" placeholder="example@email.com" class="auth-input">
+                <label for="sign-email" class="block text-xs font-semibold text-gray-500 mb-2 ml-1">이메일 주소</label>
+                <input id="sign-email" type="email" placeholder="example@email.com" class="auth-input" required>
             </div>
             <div>
-                <label class="block text-xs font-semibold text-gray-500 mb-2 ml-1">비밀번호</label>
-                <input type="password" placeholder="8자리 이상 입력" class="auth-input">
+                <label for="sign-pw" class="block text-xs font-semibold text-gray-500 mb-2 ml-1">비밀번호</label>
+                <input id="sign-pw" type="password" placeholder="8자리 이상 입력" class="auth-input" required minlength="8">
             </div>
-            <button type="submit" class="w-full py-4 bg-blue-600 rounded-2xl font-bold hover:bg-blue-700 transition mt-4">가입 완료</button>
+            <button type="submit" class="w-full py-4 bg-blue-600 rounded-2xl font-bold hover:bg-blue-700 active:scale-[0.98] transition mt-4">가입 완료</button>
         </form>
     </main>
 
     <script>
-        function switchTab(type) {
-            const loginForm = document.getElementById('login-form');
-            const signupForm = document.getElementById('signup-form');
-            const loginTab = document.getElementById('login-tab');
-            const signupTab = document.getElementById('signup-tab');
+        const loginTab = document.getElementById('login-tab');
+        const signupTab = document.getElementById('signup-tab');
+        const loginForm = document.getElementById('login-form');
+        const signupForm = document.getElementById('signup-form');
 
-            if (type === 'login') {
-                loginForm.classList.remove('hidden'); signupForm.classList.add('hidden');
-                loginTab.classList.add('bg-blue-600'); loginTab.classList.remove('text-gray-400');
-                signupTab.classList.remove('bg-blue-600'); signupTab.classList.add('text-gray-400');
-            } else {
-                loginForm.classList.add('hidden'); signupForm.classList.remove('hidden');
-                signupTab.classList.add('bg-blue-600'); signupTab.classList.remove('text-gray-400');
-                loginTab.classList.remove('bg-blue-600'); loginTab.classList.add('text-gray-400');
-            }
+        function switchTab(target) {
+            const isLogin = target === 'login';
+            
+            loginForm.classList.toggle('hidden', !isLogin);
+            signupForm.classList.toggle('hidden', isLogin);
+            
+            loginTab.classList.toggle('bg-blue-600', isLogin);
+            loginTab.classList.toggle('text-gray-400', !isLogin);
+            loginTab.setAttribute('aria-selected', isLogin);
+            
+            signupTab.classList.toggle('bg-blue-600', !isLogin);
+            signupTab.classList.toggle('text-gray-400', isLogin);
+            signupTab.setAttribute('aria-selected', !isLogin);
         }
+
+        loginTab.addEventListener('click', () => switchTab('login'));
+        signupTab.addEventListener('click', () => switchTab('signup'));
     </script>
 </body>
 </html>
