@@ -17,7 +17,7 @@ clock = pygame.time.Clock()
 # --- 2. 에셋 로드 (화면 설정 후 로드해야 함) --
 
 # 플레이어 및 적 이미지 로드
-bg_img = pygame.image.load(os.path.join(IMGS_PATH, "background.png")).convert()
+bg_img     = pygame.image.load(os.path.join(IMGS_PATH, "background.png")).convert()
 player_img = pygame.image.load(os.path.join(IMGS_PATH, "player.png")).convert_alpha()
 player_img = pygame.transform.scale(player_img, (60, 60))
 
@@ -180,13 +180,54 @@ class Enemy:
             e_projs.append(Projectile(self.pos.x+15, self.pos.y+15, dir, GOLD, 5))
             self.shoot_delay = 180
 
+class Enemy:
+    def __init__(self, etype="normal", offset=0):
+        # ... (생략)
+        self.atk_timer = 0
+
+    def update(self, e_projs, p_pos):
+        # ... (이동 로직 생략)
+        self.shoot_delay -= 1
+        if self.shoot_delay <= 0:
+            # 투사체 생성 로직
+            e_projs.append(Projectile(self.pos.x+15, self.pos.y+15, dir, GOLD, 5))
+            
+            self.shoot_delay = 180
+            self.atk_timer = 15 # 공격 효과 지속 시간 (약 0.25초)
+
     def draw(self, surf):
-        img = enemy1_img  # 기본
-        if self.etype == "bouncer": img = enemy2_img
+        # 1. 몬스터 종류별 기본 이미지 매칭
+        if self.etype == "normal": img = enemy1_img
+        elif self.etype == "bouncer": img = enemy2_img
         elif self.etype == "sin": img = enemy3_img
         elif self.etype == "sniper": img = enemy4_img
-        
-        surf.blit(img, self.pos)
+        elif self.etype == "elite": img = enemy1_img # 엘리트는 1번을 베이스로 사용
+        else: img = enemy1_img
+
+        # 2. 공격 상태에 따른 이미지 변화
+        if self.atk_timer > 0:
+            # [공격 중] 이미지를 1.3배 키우고 붉은색 필터 적용
+            atk_img = pygame.transform.scale(img, (int(img.get_width()*1.3), int(img.get_height()*1.3)))
+            
+            # 공격용 별도 이미지가 있다면 아래 주석을 해제하고 사용하세요
+            # if self.etype == "normal": atk_img = enemy1_atk_img 
+            
+            # 색상 변조 (붉은색 강조)
+            atk_img.fill((255, 150, 150), special_flags=pygame.BLEND_RGB_MULT)
+            
+            # 중앙 정렬하여 그리기
+            offset_x = (atk_img.get_width() - img.get_width()) // 2
+            offset_y = (atk_img.get_height() - img.get_height()) // 2
+            surf.blit(atk_img, (self.pos.x - offset_x, self.pos.y - offset_y))
+            
+            self.atk_timer -= 1
+        else:
+            # [평상시] 기본 이미지 출력
+            surf.blit(img, self.pos)
+
+        # 엘리트 전용 추가 이펙트 (보라색 원)
+        if self.etype == "elite":
+            pygame.draw.circle(surf, PURPLE, (int(self.pos.x+15), int(self.pos.y+15)), 35, 2)
         
         # 엘리트 전용 시각 효과
         if self.etype == "elite":
