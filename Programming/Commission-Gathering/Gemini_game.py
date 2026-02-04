@@ -14,16 +14,26 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Legendary Bosses: Final Edition (Visual Enhanced)")
 clock = pygame.time.Clock()
 
-# --- 2. 에셋 로드 (화면 설정 후 로드해야 함) ---
-# 배경 영상 로드
-# cap = cv2.VideoCapture(os.path.join(IMGS_PATH, "background.mp4"))
+# --- 2. 에셋 로드 (화면 설정 후 로드해야 함) --
 
 # 플레이어 및 적 이미지 로드
+bg_img = pygame.image.load(os.path.join(IMGS_PATH, "background.png")).convert()
 player_img = pygame.image.load(os.path.join(IMGS_PATH, "player.png")).convert_alpha()
-player_img = pygame.transform.scale(player_img, (40, 40))
+player_img = pygame.transform.scale(player_img, (60, 60))
 
-enemy_img = pygame.image.load(os.path.join(IMGS_PATH, "enemy.png")).convert_alpha()
-enemy_img = pygame.transform.scale(enemy_img, (30, 30))
+enemy1_img = pygame.image.load(os.path.join(IMGS_PATH, "enemy_1.png")).convert_alpha()
+enemy1_img = pygame.transform.scale(enemy1_img, (50, 50))
+enemy2_img = pygame.image.load(os.path.join(IMGS_PATH, "enemy_2.png")).convert_alpha()
+enemy2_img = pygame.transform.scale(enemy2_img, (50, 50))
+enemy3_img = pygame.image.load(os.path.join(IMGS_PATH, "enemy_3.png")).convert_alpha()
+enemy3_img = pygame.transform.scale(enemy3_img, (50, 50))
+enemy4_img = pygame.image.load(os.path.join(IMGS_PATH, "enemy_4.png")).convert_alpha()
+enemy4_img = pygame.transform.scale(enemy4_img, (50, 50))
+
+boss_swarm_img = pygame.image.load(os.path.join(IMGS_PATH, "boss_swarm.png")).convert_alpha()
+boss_swarm_img = pygame.transform.scale(boss_swarm_img, (100, 100))
+boss_zero_img = pygame.image.load(os.path.join(IMGS_PATH, "boss_zero.png")).convert_alpha()
+boss_zero_img = pygame.transform.scale(boss_zero_img, (50, 50))
 
 # [추가] 보스용 이미지 (파일이 없다면 기본 도형으로 대체되도록 예외처리 가능)
 # 현재는 기존 도형 렌더링 유지하며 이미지 출력 로직만 준비
@@ -78,7 +88,9 @@ class BossZero:
             self.pos.x = p_pos.x - 25
             for i in range(5): e_projs.append(Projectile(self.pos.x+25, self.pos.y+50+i*20, pygame.Vector2(0, 8), CYAN, 15))
     def draw(self, surf):
-        if self.visible: pygame.draw.rect(surf, CYAN, (*self.pos, 50, 50), 3)
+        if self.visible:
+            # 사각형 대신 로드한 boss_zero_img 사용
+            surf.blit(boss_zero_img, self.pos)
 
 class BossCrusher:
     def __init__(self):
@@ -128,16 +140,25 @@ class BossSwarm:
             c.x += math.sin(self.timer/25 + i)*3
             if self.timer % 100 == 0: e_projs.append(Projectile(c.x, c.y, (p_pos-c).normalize()*4, PURPLE, 6))
     def draw(self, surf):
-        for c in self.centers: pygame.draw.circle(surf, PURPLE, (int(c.x), int(c.y)), 15)
+            for c in self.centers:
+                # 원 대신 boss_swarm_img 사용 (중심점 계산을 위해 이미지 크기의 절반인 50을 뺌)
+                surf.blit(boss_swarm_img, (c.x - 50, c.y - 50))
 
 class Enemy:
     def __init__(self, etype="normal", offset=0):
         self.etype = etype
         self.pos = pygame.Vector2(random.randint(50, WIDTH-50), -50)
-        base_hp = (2 + (score // 5000)) * 0.25 
-        self.hp = base_hp * 8 if etype == "elite" else base_hp
-        self.shoot_delay = random.randint(80, 160)
         self.offset = offset
+        self.shoot_delay = random.randint(80, 160)
+        
+        # 모든 적이 반드시 hp 속성을 가지도록 초기화
+        base_hp = (2 + (score // 5000)) * 0.25 
+        if etype == "elite":
+            self.hp = base_hp * 8
+        else:
+            self.hp = base_hp
+            
+        # 속도 설정
         if etype == "bouncer": self.vx, self.vy = random.choice([-3, 3]), 2
         elif etype == "sniper": self.vx, self.vy = 2, 0; self.pos.y = random.randint(50, 150)
         elif etype == "sin": self.vx, self.vy = 0, 1.8
@@ -154,18 +175,25 @@ class Enemy:
 
         self.shoot_delay -= 1
         if self.shoot_delay <= 0:
-            dir = (p_pos - self.pos).normalize() * 4 if (p_pos-self.pos).length() > 0 else pygame.Vector2(0,1)
+            dist = (p_pos - self.pos).length()
+            dir = (p_pos - self.pos).normalize() * 4 if dist > 0 else pygame.Vector2(0,1)
             e_projs.append(Projectile(self.pos.x+15, self.pos.y+15, dir, GOLD, 5))
             self.shoot_delay = 180
 
     def draw(self, surf):
-        # [수정] 정의되지 않은 color 변수 사용 대신 이미지 blit
-        surf.blit(enemy_img, self.pos)
+        img = enemy1_img  # 기본
+        if self.etype == "bouncer": img = enemy2_img
+        elif self.etype == "sin": img = enemy3_img
+        elif self.etype == "sniper": img = enemy4_img
         
-        # 엘리트 적 전용 시각 효과
+        surf.blit(img, self.pos)
+        
+        # 엘리트 전용 시각 효과
         if self.etype == "elite":
-            pygame.draw.circle(surf, PURPLE, (int(self.pos.x+15), int(self.pos.y+15)), 35, 2)
+            pygame.draw.circle(surf, PURPLE, (int(self.pos.x+25), int(self.pos.y+25)), 35, 2)
             surf.blit(font_m.render("!", True, PURPLE), (self.pos.x+10, self.pos.y-35))
+
+    
 
 # --- 5. 유틸리티 함수 ---
 
@@ -314,15 +342,19 @@ while running:
 
     # --- 7. 최종 렌더링 부 ---
     # 배경 영상 처리
-
     screen.fill(BLACK)
+    screen.blit(bg_img, (0, 0))
 
     # 투명도 지원 서피스 (모든 오브젝트는 여기에 그림)
     temp_surf = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     temp_surf.fill((0, 0, 0, 0))
 
     if game_state == 'PLAYING':
-        for e in enemies: e.draw(temp_surf)
+
+        for e in enemies:
+            # Enemy 클래스의 draw 내부에서 처리하거나 여기서 직접 처리
+            e.draw(temp_surf) 
+            
         if boss:
             boss.draw(temp_surf)
             # 보스 체력바
