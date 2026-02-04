@@ -1,0 +1,129 @@
+/* 기본 설정 및 유틸리티 */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+/* 스크롤 시 카드가 잘리지 않도록 컨테이너 설정 */
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    scroll-snap-type: x mandatory; /* 카드 정렬 보정 */
+}
+
+.fortune-card {
+    scroll-snap-align: start; /* 스크롤 시 카드 시작점에 맞춤 */
+}
+
+.glass-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(59, 130, 246, 0.5);
+}
+
+/* 라이브 배너 */
+.live-banner {
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+    box-shadow: 0 10px 30px -10px rgba(59, 130, 246, 0.5);
+}
+
+/* 운세 카드 스타일 유지 및 보정 */
+.fortune-card {
+    padding: 16px 10px;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    cursor: pointer;
+}
+
+.fortune-card:hover {
+    transform: translateY(-5px);
+}
+
+.fortune-gold { background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%); }
+.fortune-red { background: linear-gradient(135deg, #b91c1c 0%, #ef4444 100%); }
+.fortune-blue { background: linear-gradient(135deg, #0f172a 0%, #334155 100%); border: 1px solid rgba(255,255,255,0.1); }
+
+/* 투표 버튼 디자인 */
+.poll-btn {
+    width: 100%;
+    padding: 16px 20px;
+    border-radius: 16px;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.btn-up {
+    background: rgba(59, 130, 246, 0.1);
+    color: #60a5fa;
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+.btn-up:hover {
+    background: rgba(59, 130, 246, 0.2);
+}
+
+.btn-down {
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+.btn-down:hover {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+/* 공통 레이아웃 */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* 글래스모피즘 카드 */
+.glass-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* 라이브 배너 */
+.live-banner {
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+}
+
+/* 운세 카드 (Compact) */
+.fortune-card {
+    padding: 20px 20px;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+.fortune-card:hover { transform: translateY(-3px); }
+.fortune-gold { background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%); }
+.fortune-red { background: linear-gradient(135deg, #b91c1c 0%, #ef4444 100%); }
+.fortune-blue { background: #1f2937; border: 1px solid rgba(255,255,255,0.1); }
+
+/* 투표 버튼 */
+.poll-btn {
+    width: 100%; padding: 16px 20px; border-radius: 16px; font-weight: 700;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.btn-up { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); }
+.btn-down { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
+
+/* 인증 입력창 */
+.auth-input {
+    width: 100%; background: #1f2937; border: 1px solid #374151;
+    padding: 16px; border-radius: 16px; outline: none; transition: 0.2s;
+}
+.auth-input:focus { border-color: #3b82f6; }
