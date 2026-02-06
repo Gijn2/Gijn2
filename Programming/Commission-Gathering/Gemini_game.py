@@ -16,6 +16,8 @@ clock = pygame.time.Clock()
 
 # --- 2. 에셋 로드 (화면 설정 후 로드해야 함) --
 
+# [추가] 보스용 이미지 (파일이 없다면 기본 도형으로 대체되도록 예외처리 가능)
+# 현재는 기존 도형 렌더링 유지하며 이미지 출력 로직만 준비
 # 플레이어 및 적 이미지 로드
 bg_img     = pygame.image.load(os.path.join(IMGS_PATH, "background.png")).convert()
 player_img = pygame.image.load(os.path.join(IMGS_PATH, "player.png")).convert_alpha()
@@ -35,8 +37,15 @@ boss_swarm_img = pygame.transform.scale(boss_swarm_img, (100, 100))
 boss_zero_img = pygame.image.load(os.path.join(IMGS_PATH, "boss_zero.png")).convert_alpha()
 boss_zero_img = pygame.transform.scale(boss_zero_img, (50, 50))
 
-# [추가] 보스용 이미지 (파일이 없다면 기본 도형으로 대체되도록 예외처리 가능)
-# 현재는 기존 도형 렌더링 유지하며 이미지 출력 로직만 준비
+try:
+    # 사운드 파일이 imgs 폴더 안에 있다고 가정합니다.
+    snd_hit = pygame.mixer.Sound(os.path.join(IMGS_PATH, "hit.wav"))
+    snd_expl = pygame.mixer.Sound(os.path.join(IMGS_PATH, "explosion.wav"))
+except:
+    # 파일이 없을 경우 에러 방지를 위해 None으로 설정
+    snd_hit = None
+    snd_expl = None
+
 
 # 색상 및 폰트
 WHITE, RED, GOLD, BLACK, GREEN, CYAN, PURPLE, GRAY = (255, 255, 255), (255, 50, 50), (255, 215, 0), (10, 10, 15), (50, 255, 50), (0, 255, 255), (200, 50, 255), (50, 50, 50)
@@ -57,7 +66,19 @@ stage_timer = STAGE_DURATION
 boss_alert_timer = 0
 current_stage = 1
 invincible_timer = 0
+particles = []    # 파티클 객체들을 담을 리스트
+high_score = 0    # 최고 점수를 담을 변수
 
+# 여기서 기존 최고 기록을 불러옵니다.
+if os.path.exists("highscore.txt"):
+    with open("highscore.txt", "r") as f:
+        try:
+            high_score = int(f.read())
+        except:
+            high_score = 0
+else:
+    high_score = 0
+    
 # 상점 아이템 리스트
 UPGRADE_POOL = [
     {"name": "공격력 강화", "desc": "데미지 +1.5", "effect": "dmg", "price": 1200},
@@ -70,6 +91,24 @@ UPGRADE_POOL = [
 ]
 
 # --- 4. 클래스 정의 ---
+class Particle:
+    def __init__(self, x, y, color):
+        self.pos = [x, y]
+        self.vel = [random.uniform(-3, 3), random.uniform(-3, 3)]
+        self.life = 255  # 투명도 및 수명
+        self.color = color
+
+    def update(self):
+        self.pos[0] += self.vel[0]
+        self.pos[1] += self.vel[1]
+        self.life -= 8  # 매 프레임 수명 감소
+
+    def draw(self, surf):
+        if self.life > 0:
+            # 수명에 따라 투명도가 변하는 작은 원 그리기
+            p_surf = pygame.Surface((6, 6), pygame.SRCALPHA)
+            pygame.draw.circle(p_surf, (*self.color, self.life), (3, 3), 3)
+            surf.blit(p_surf, (self.pos[0]-3, self.pos[1]-3))
 
 class Projectile:
     def __init__(self, x, y, vel, color, dmg):
@@ -196,6 +235,17 @@ class Enemy:
     
 
 # --- 5. 유틸리티 함수 ---
+def save_highscore(score):
+    try:
+        with open("highscore.txt", "w") as f:
+            f.write(str(score))
+    except: pass
+
+def load_highscore():
+    if os.path.exists("highscore.txt"):
+        with open("highscore.txt", "r") as f:
+            return int(f.read())
+    return 0
 
 def get_shop_items():
     return [{"data": item, "sold": False} for item in random.sample(UPGRADE_POOL, 4)]
@@ -251,6 +301,12 @@ while running:
                     stats["gold"] -= opt["data"]["price"]
                     apply_upgrade(opt["data"])
                     opt["sold"] = True
+
+    # [A] 파티클 로직 업데이트 (기존 투사체 업데이트 근처)
+    for p in particles[:]:
+        p.update()
+        if p.life <= 0:
+            particles.remove(p)
 
     if game_state == 'PLAYING':
         # 이동 로직
@@ -318,6 +374,21 @@ while running:
                     boss.hp -= p.dmg
                     hit_this_frame = True
 
+                    if snd_hit: snd_hit.play() # 사운드 재생
+                    for _ in range(5): # 파티클 생성
+                        particles.append(Particle(p.pos.x, p.pos.y, (255, 200, 50)))
+                    
+                    if e.hp <= 0:
+                        if e.etype == "elite": zero_ticket = True
+                        enemies.remove(e); stats["gold"] += 35; score += 100
+                        # [추가] 적 파괴 시 더 큰 폭발 파티클
+                        for _ in range(10): 
+                            particles.append(Particle(e.pos.x+15, e.pos.y+15, (255, 50, 50)))
+                        
+                        if score > high_score:
+                            save_highscore(score)
+                            running = False
+
             for e in enemies[:]:
                 if p.pos.distance_to(e.pos + pygame.Vector2(15,15)) < 25:
                     e.hp -= p.dmg
@@ -337,8 +408,13 @@ while running:
             if p.pos.distance_to(player_pos + pygame.Vector2(20,20)) < 22 and invincible_timer <= 0:
                 player_hp -= p.dmg; e_projs.remove(p); shake_timer = 10; invincible_timer = 30
             elif p.pos.y > HEIGHT: e_projs.remove(p)
-
-        if player_hp <= 0: running = False
+            
+    # 플레이어 체력 체크 및 게임 오버 처리
+        if player_hp <= 0:
+            if score > high_score:
+                with open("highscore.txt", "w") as f:
+                    f.write(str(score))
+            running = False
 
     # --- 7. 최종 렌더링 부 ---
     # 배경 영상 처리
@@ -350,6 +426,9 @@ while running:
     temp_surf.fill((0, 0, 0, 0))
 
     if game_state == 'PLAYING':
+        # 파티클 먼저 그리기 (바닥 효과)
+        for p in particles:
+            p.draw(temp_surf)
 
         for e in enemies:
             # Enemy 클래스의 draw 내부에서 처리하거나 여기서 직접 처리
@@ -397,7 +476,8 @@ while running:
     
     # UI (고정 위치)
     pygame.draw.rect(screen, GREEN, (10, 10, max(0, (player_hp/stats['max_hp'])*200), 20))
-    screen.blit(font_s.render(f"HP: {int(player_hp)}  GOLD: {stats['gold']}  W: {stats['special_ammo']}", True, WHITE), (10, 35))
+    score_txt = font_s.render(f"SCORE: {score} | HI-SCORE: {high_score}", True, WHITE)
+    screen.blit(score_txt, (10, 60))
     if zero_ticket: screen.blit(font_s.render("★ ZERO TICKET ACTIVE ★", True, CYAN), (10, 55))
 
     # W 특수기 효과 (화면 반전)
