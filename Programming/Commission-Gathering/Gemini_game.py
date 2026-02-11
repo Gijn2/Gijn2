@@ -3,7 +3,6 @@ import random
 import math
 import os
 
-
 # --- 0. 경로 설정 ---
 IMGS_PATH = os.path.join(os.path.dirname(__file__), "imgs")
 
@@ -22,7 +21,6 @@ clock = pygame.time.Clock()
 bg_img     = pygame.image.load(os.path.join(IMGS_PATH, "background.png")).convert()
 player_img = pygame.image.load(os.path.join(IMGS_PATH, "player.png")).convert_alpha()
 player_img = pygame.transform.scale(player_img, (60, 60))
-
 enemy1_img = pygame.image.load(os.path.join(IMGS_PATH, "enemy_1.png")).convert_alpha()
 enemy1_img = pygame.transform.scale(enemy1_img, (50, 50))
 enemy2_img = pygame.image.load(os.path.join(IMGS_PATH, "enemy_2.png")).convert_alpha()
@@ -218,19 +216,6 @@ class Enemy:
             dir = (p_pos - self.pos).normalize() * 4 if dist > 0 else pygame.Vector2(0,1)
             e_projs.append(Projectile(self.pos.x+15, self.pos.y+15, dir, GOLD, 5))
             self.shoot_delay = 180
-
-    def draw(self, surf):
-        img = enemy1_img  # 기본
-        if self.etype == "bouncer": img = enemy2_img
-        elif self.etype == "sin": img = enemy3_img
-        elif self.etype == "sniper": img = enemy4_img
-        
-        surf.blit(img, self.pos)
-        
-        # 엘리트 전용 시각 효과
-        if self.etype == "elite":
-            pygame.draw.circle(surf, PURPLE, (int(self.pos.x+25), int(self.pos.y+25)), 35, 2)
-            surf.blit(font_m.render("!", True, PURPLE), (self.pos.x+10, self.pos.y-35))
 
     
 
