@@ -21,14 +21,13 @@ clock = pygame.time.Clock()
 bg_img     = pygame.image.load(os.path.join(IMGS_PATH, "background.png")).convert()
 player_img = pygame.image.load(os.path.join(IMGS_PATH, "player.png")).convert_alpha()
 player_img = pygame.transform.scale(player_img, (60, 60))
-enemy1_img = pygame.image.load(os.path.join(IMGS_PATH, "enemy_1.png")).convert_alpha()
-enemy1_img = pygame.transform.scale(enemy1_img, (50, 50))
-enemy2_img = pygame.image.load(os.path.join(IMGS_PATH, "enemy_2.png")).convert_alpha()
-enemy2_img = pygame.transform.scale(enemy2_img, (50, 50))
-enemy3_img = pygame.image.load(os.path.join(IMGS_PATH, "enemy_3.png")).convert_alpha()
-enemy3_img = pygame.transform.scale(enemy3_img, (50, 50))
-enemy4_img = pygame.image.load(os.path.join(IMGS_PATH, "enemy_4.png")).convert_alpha()
-enemy4_img = pygame.transform.scale(enemy4_img, (50, 50))
+
+ENEMY_IMGS = {}
+for i in range(1, 5):
+    ENEMY_IMGS[f"type_{i}"] = {
+        "STAND": pygame.transform.scale(pygame.image.load(os.path.join(IMGS_PATH, f"normalEnemy_{i}_stand.png")).convert_alpha(), (50, 50)),
+        "ATTACK": pygame.transform.scale(pygame.image.load(os.path.join(IMGS_PATH, f"normalEnemy_{i}_attack.png")).convert_alpha(), (50, 50))
+    }
 
 boss_swarm_img = pygame.image.load(os.path.join(IMGS_PATH, "boss_swarm.png")).convert_alpha()
 boss_swarm_img = pygame.transform.scale(boss_swarm_img, (100, 100))
@@ -66,6 +65,18 @@ current_stage = 1
 invincible_timer = 0
 particles = []    # 파티클 객체들을 담을 리스트
 high_score = 0    # 최고 점수를 담을 변수
+
+shop_tab = "ITEM" # "ITEM", "BANK", "INVEST"
+# 산업 구역별 지분 (기본 100%) [cite: 9, 10]
+stocks = {"A": 100, "B": 100, "C": 100}
+bank_balance = 0 # 은행 예치금
+shop_tab = "ITEM"
+
+# 지분에 따른 할인율 계산 함수 (C구역: 정밀 합금 기업이 물가 담당)
+def get_discount_ratio():
+    # 지분이 100%보다 높으면 할인, 낮으면 할증 (최소 0.5배 ~ 최대 2배)
+    ratio = 2.0 - (stocks["C"] / 100.0)
+    return max(0.5, min(2.0, ratio))
 
 # 여기서 기존 최고 기록을 불러옵니다.
 if os.path.exists("highscore.txt"):
@@ -122,8 +133,9 @@ class BossZero:
         self.timer += 1
         self.visible = False if (self.timer // 30) % 2 == 0 else True
         if self.timer % 80 == 0:
-            self.pos.x = p_pos.x - 25
-            for i in range(5): e_projs.append(Projectile(self.pos.x+25, self.pos.y+50+i*20, pygame.Vector2(0, 8), CYAN, 15))
+            # 보스가 화면 좌우 끝을 벗어나지 않도록 제한 (Testability)
+            target_x = p_pos.x - 25
+            self.pos.x = max(0, min(WIDTH - 50, target_x))
     def draw(self, surf):
         if self.visible:
             # 사각형 대신 로드한 boss_zero_img 사용
@@ -131,42 +143,32 @@ class BossZero:
 
 class BossCrusher:
     def __init__(self):
-        self.type = "CRUSHER"; self.hp = 300; self.max_hp = 300; self.timer = 0
-        self.mode = "READY"; self.rect = pygame.Rect(0, -600, WIDTH, 150)
-        self.warning_timer = 45 
-        self.target_mode = "TOP"
+        self.type = "CHERNOBOG"
+        self.hp = 500; self.max_hp = 500
+        # 보스의 실제 충돌 박스 (KISS: Rect를 속성으로 관리)
+        self.rect = pygame.Rect(0, -100, WIDTH, 150)
+        self.pos = pygame.Vector2(0, -100)
+        self.mode = "MOVE"
+        self.timer = 0
+        self.beam_alpha = 0
 
-    def update(self, e_projs, p_pos):
+    def update(self, e_projs, p_pos, player_obj=None): # player_obj를 인자로 받음
         self.timer += 1
-        if self.mode == "READY":
-            self.warning_timer -= 1
-            if self.warning_timer <= 0:
-                self.mode = "ATTACK"
-                self.warning_timer = 45
-        else:
-            if self.target_mode == "TOP":
-                attack_range = 600 
-                offset = math.sin(self.timer/8) * attack_range
-                self.rect = pygame.Rect(0, -350 + offset, WIDTH, 150)
-            else:
-                attack_range = 1200
-                offset = math.sin(self.timer/8) * attack_range
-                if self.target_mode == "LEFT": self.rect = pygame.Rect(-500 + offset, 0, 150, HEIGHT)
-                elif self.target_mode == "RIGHT": self.rect = pygame.Rect(WIDTH + 500 - offset, 0, 150, HEIGHT)
-            
-            if self.timer % 140 == 0: 
-                self.mode = "READY"
-                self.target_mode = random.choice(["TOP", "LEFT", "RIGHT"])
+        # 이동 시 rect도 함께 업데이트
+        self.pos.x += math.sin(self.timer/20) * 5
+        self.rect.topleft = self.pos
 
-    def draw(self, surf):
-        if self.mode == "READY":
-            if self.target_mode == "TOP": pygame.draw.rect(surf, (150, 0, 0), (0, 0, WIDTH, 150), 2)
-            elif self.target_mode == "LEFT": pygame.draw.rect(surf, (150, 0, 0), (0, 0, 150, HEIGHT), 2)
-            elif self.target_mode == "RIGHT": pygame.draw.rect(surf, (150, 0, 0), (WIDTH-150, 0, 150, HEIGHT), 2)
-        
-        pygame.draw.rect(surf, GRAY, self.rect)
-        if self.mode == "ATTACK": pygame.draw.rect(surf, RED, self.rect, 4)
+        if self.mode == "MOVE":
+            if self.timer % 120 == 0: 
+                self.mode = random.choice(["BEAM_READY", "HOMING"])
+                self.timer = 0 # 타이머 리셋으로 다음 패턴 시간 확보
 
+        elif self.mode == "BEAM_FIRE":
+            if abs(p_pos.x - (self.pos.x + WIDTH//2)) < 60:
+                # global을 선언해야 외부의 player_hp 변수를 수정할 수 있습니다.
+                global player_hp 
+                player_hp -= 2
+                
 class BossSwarm:
     def __init__(self):
         self.type = "SWARM"; self.hp = 125; self.max_hp = 125; self.timer = 0
@@ -175,7 +177,12 @@ class BossSwarm:
         self.timer += 1
         for i, c in enumerate(self.centers):
             c.x += math.sin(self.timer/25 + i)*3
-            if self.timer % 100 == 0: e_projs.append(Projectile(c.x, c.y, (p_pos-c).normalize()*4, PURPLE, 6))
+            if self.timer % 100 == 0:
+                diff = p_pos - c
+                if diff.length() > 0: # 에러 방지 (Safe Coding)
+                    e_projs.append(Projectile(c.x, c.y, diff.normalize()*4, PURPLE, 6))
+                else:
+                    e_projs.append(Projectile(c.x, c.y, pygame.Vector2(0, 4), PURPLE, 6))
     def draw(self, surf):
             for c in self.centers:
                 # 원 대신 boss_swarm_img 사용 (중심점 계산을 위해 이미지 크기의 절반인 50을 뺌)
@@ -186,8 +193,39 @@ class Enemy:
         self.etype = etype
         self.pos = pygame.Vector2(random.randint(50, WIDTH-50), -50)
         self.offset = offset
-        self.shoot_delay = random.randint(80, 160)
         
+        # 1. 기본 속성 선언 (KISS: 에러 방지를 위해 변수를 미리 생성)
+        self.vx = 0
+        self.vy = 1.5  # 모든 적의 기본 하강 속도
+        
+        # 2. 타입별 속성 재정의 (유지보수성 향상)
+        if etype == "bouncer": 
+            self.vx, self.vy = random.choice([-3, 3]), 2
+        elif etype == "sniper": 
+            self.vx, self.vy = 2, 0
+            self.pos.y = random.randint(50, 150)
+        elif etype == "sin": 
+            self.vx, self.vy = 0, 1.8
+        elif etype == "elite":
+            self.vy = 1.0 # 엘리트는 천천히 압박
+
+        # 3. HP 및 기타 설정
+        base_hp = (2 + (score // 5000)) * 0.25 
+        self.hp = base_hp * 8 if etype == "elite" else base_hp
+        
+        # 이미지 및 상태 설정
+        self.img_type = f"type_{random.randint(1, 4)}"
+        self.state = "STAND"
+        self.shoot_delay = random.randint(80, 160)
+
+    def shoot(self, e_projs, p_pos):
+        """투사체를 생성하고 발사 상태를 관리하는 독립 메서드 (DRY 원칙 적용)"""
+        dist = (p_pos - self.pos).length()
+        # 플레이어 방향 벡터 계산 (KISS: 명확한 벡터 연산)
+        direction = (p_pos - self.pos).normalize() * 4 if dist > 0 else pygame.Vector2(0, 1)
+        
+        # 투사체 추가 (골드 색상, 데미지 5)
+        e_projs.append(Projectile(self.pos.x + 15, self.pos.y + 15, direction, GOLD, 5))
         # 모든 적이 반드시 hp 속성을 가지도록 초기화
         base_hp = (2 + (score // 5000)) * 0.25 
         if etype == "elite":
@@ -211,11 +249,26 @@ class Enemy:
             if self.pos.x <= 0 or self.pos.x >= WIDTH-30: self.vx *= -1
 
         self.shoot_delay -= 1
+        if self.shoot_delay < 30: # 발사 0.5초 전(30프레임)부터 공격 모션
+            self.state = "ATTACK"
+            
         if self.shoot_delay <= 0:
             dist = (p_pos - self.pos).length()
             dir = (p_pos - self.pos).normalize() * 4 if dist > 0 else pygame.Vector2(0,1)
             e_projs.append(Projectile(self.pos.x+15, self.pos.y+15, dir, GOLD, 5))
+           
+            self.shoot(e_projs, p_pos)
+            self.state = "STAND" # 발사 후 다시 스탠드로 복귀
             self.shoot_delay = 180
+
+    def draw(self, surf):
+        current_img = ENEMY_IMGS[self.img_type][self.state]
+        surf.blit(current_img, self.pos)
+        
+        # 엘리트 전용 시각 효과
+        if self.etype == "elite":
+            pygame.draw.circle(surf, PURPLE, (int(self.pos.x+25), int(self.pos.y+25)), 35, 2)
+            surf.blit(font_m.render("!", True, PURPLE), (self.pos.x+10, self.pos.y-35))
 
     
 
@@ -256,36 +309,134 @@ running = True
 
 
 while running:
-   
-    # 화면 흔들림 효과 계산
+    mouse_pos = pygame.mouse.get_pos()
+    
+    # 1. 화면 흔들림 계산
     render_offset = pygame.Vector2(0, 0)
     if shake_timer > 0:
         render_offset = pygame.Vector2(random.randint(-7, 7), random.randint(-7, 7))
         shake_timer -= 1
 
-    mouse_pos = pygame.mouse.get_pos()
-    
-    # 이벤트 처리
+    # 2. [중요] temp_surf 초기화 - 여기서 정의해야 아래에서 에러가 안 납니다.
+    # 투명도를 지원하는 도화지 생성
+    temp_surf = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    temp_surf.fill((0, 0, 0, 0)) # 투명하게 초기화
+
+    # 3. 이벤트 처리
     for event in pygame.event.get():
         if event.type == pygame.QUIT: running = False
         
         if event.type == pygame.KEYDOWN:
-            if game_state == 'PLAYING':
-                if event.key == pygame.K_w and stats["special_ammo"] > 0:
-                    stats["special_ammo"] -= 1
-                    e_projs.clear()
-                    special_effect_timer = 5
-            elif game_state == 'SHOP' and event.key == pygame.K_s:
-                game_state = 'PLAYING'; stage_timer = STAGE_DURATION; current_stage += 1
+            if game_state == 'SHOP':
+                # 탭 전환 (F1, F2, F3)
+                if event.key == pygame.K_F1: shop_tab = "ITEM"
+                if event.key == pygame.K_F2: shop_tab = "BANK"
+                if event.key == pygame.K_F3: shop_tab = "INVEST"
+                
+                # 중앙은행 입출금 
+                if shop_tab == "BANK":
+                    if event.key == pygame.K_d: # 입금
+                        bank_balance += stats["gold"]; stats["gold"] = 0
+                    if event.key == pygame.K_f: # 출금 (수수료 5% 발생)
+                        stats["gold"] += int(bank_balance * 0.95); bank_balance = 0
+                
+                # 산업 투자 (Key 1, 2, 3) 
+                if shop_tab == "INVEST":
+                    keys = {pygame.K_1: "A", pygame.K_2: "B", pygame.K_3: "C"}
+                    if event.key in keys:
+                        sid = keys[event.key]
+                        if stats["gold"] >= 500:
+                            stats["gold"] -= 500
+                            stocks[sid] += 10 # 지분 상승
+                            # 능력치 즉시 반영
+                            if sid == "A": stats["speed"] += 0.5
+                            if sid == "B": stats["shoot_delay"] = max(10, stats["shoot_delay"] - 2)
+                            if sid == "C": stats["damage"] += 1
 
-        if event.type == pygame.MOUSEBUTTONDOWN and game_state == 'SHOP':
-            for opt in shop_options:
-                idx = shop_options.index(opt)
-                rect = pygame.Rect(30 + idx * 215, 150, 200, 320)
-                if rect.collidepoint(mouse_pos) and not opt["sold"] and stats["gold"] >= opt["data"]["price"]:
-                    stats["gold"] -= opt["data"]["price"]
-                    apply_upgrade(opt["data"])
-                    opt["sold"] = True
+                # 다음 스테이지로 넘어가기 (S 키)
+                if event.key == pygame.K_s:
+                    bank_balance = int(bank_balance * 1.1) # 복리 이자 10% 
+                    game_state = 'PLAYING'
+                    current_stage += 1
+                    stage_timer = STAGE_DURATION
+
+    # --- 1. 배경 및 탭 UI ---
+    temp_surf.fill((20, 20, 30))
+    # 탭 버튼 (A: 아이템, B: 은행, C: 투자)
+    tabs = [("ITEM", 50), ("BANK", 250), ("INVEST", 450)]
+    for name, x in tabs:
+        color = GOLD if shop_tab == name else GRAY
+        pygame.draw.rect(temp_surf, color, (x, 20, 180, 50), border_radius=5)
+        temp_surf.blit(font_m.render(name, True, BLACK), (x+50, 30))
+
+    # --- 2. 탭별 내용 ---
+    if shop_tab == "ITEM":
+        discount = get_discount_ratio()
+        for i, opt in enumerate(shop_options):
+            card_rect = pygame.Rect(30 + i * 215, 150, 200, 320)
+            # 할인율이 적용된 실제 가격 계산
+            display_price = int(opt["data"]["price"] * discount)
+            
+            # 카드 렌더링 (기존 로직 유지하되 가격만 변동)
+            c = (40, 40, 40) if opt["sold"] else (30, 30, 50)
+            pygame.draw.rect(temp_surf, c, card_rect, border_radius=10)
+            
+            if not opt["sold"]:
+                name_text = font_m.render(opt['data']['name'], True, WHITE)
+                temp_surf.blit(name_text, (card_rect.x + 20, card_rect.y + 40))
+                
+                # 지분 상태에 따른 가격 색상 변경
+                p_color = GOLD if stats["gold"] >= display_price else RED
+                price_text = font_m.render(f"{display_price} G", True, p_color)
+                temp_surf.blit(price_text, (card_rect.x + 60, card_rect.y + 260))
+
+    elif shop_tab == "BANK":
+        # UI 배경
+        pygame.draw.rect(temp_surf, (20, 30, 40), (100, 150, 700, 300), border_radius=15)
+        
+        # 예치 정보
+        balance_txt = font_l.render(f"예치 잔액: {bank_balance} G", True, CYAN)
+        interest_txt = font_m.render("예상 다음 배당 이율: +10%", True, GREEN)
+        temp_surf.blit(balance_txt, (150, 200))
+        temp_surf.blit(interest_txt, (150, 280))
+        
+        # 안내 문구
+        guide_txt = font_s.render("[D] 전액 입금  |  [F] 전액 인출 (수수료 5% 발생)", True, WHITE)
+        temp_surf.blit(guide_txt, (150, 400))
+        
+    elif shop_tab == "INVEST":
+        invest_targets = [
+            {"id": "A", "name": "A구역: 지열 운송", "effect": "이동속도 증가", "cost": 500},
+            {"id": "B", "name": "B구역: 에너지 연구", "effect": "쿨타임 감소", "cost": 500},
+            {"id": "C", "name": "C구역: 정밀 합금", "effect": "화력 및 할인율", "cost": 500}
+        ]
+        
+        for i, target in enumerate(invest_targets):
+            y_pos = 150 + (i * 110)
+            pygame.draw.rect(temp_surf, (45, 45, 65), (50, y_pos, 800, 90), border_radius=10)
+            
+            # 지분율 바 (Visual Bar)
+            bar_width = int(stocks[target["id"]] * 2) # 100% = 200px
+            pygame.draw.rect(temp_surf, GOLD, (550, y_pos + 35, bar_width, 20))
+            
+            # 텍스트 정보
+            temp_surf.blit(font_m.render(f"{target['name']} ({stocks[target['id']]}%)", True, WHITE), (70, y_pos + 15))
+            temp_surf.blit(font_s.render(f"효과: {target['effect']}", True, GRAY), (70, y_pos + 50))
+            temp_surf.blit(font_m.render(f"{target['cost']}G [Key:{i+1}]", True, GOLD), (380, y_pos + 30))
+
+    # 지분 하락에 따른 계급 등급 표시 [cite: 15, 16]
+    avg_stock = sum(stocks.values()) / 3
+    rank = "고등급(Noble)" if avg_stock > 80 else "저등급(Commoner)"
+    temp_surf.blit(font_m.render(f"현재 시민 등급: {rank}", True, GOLD), (WIDTH-300, HEIGHT-50))
+
+    if event.type == pygame.MOUSEBUTTONDOWN and game_state == 'SHOP':
+        for opt in shop_options:
+            idx = shop_options.index(opt)
+            rect = pygame.Rect(30 + idx * 215, 150, 200, 320)
+            if rect.collidepoint(mouse_pos) and not opt["sold"] and stats["gold"] >= opt["data"]["price"]:
+                stats["gold"] -= opt["data"]["price"]
+                apply_upgrade(opt["data"])
+                opt["sold"] = True
 
     # [A] 파티클 로직 업데이트 (기존 투사체 업데이트 근처)
     for p in particles[:]:
@@ -374,13 +525,31 @@ while running:
                             save_highscore(score)
                             running = False
 
-            for e in enemies[:]:
-                if p.pos.distance_to(e.pos + pygame.Vector2(15,15)) < 25:
-                    e.hp -= p.dmg
-                    hit_this_frame = True
-                    if e.hp <= 0:
-                        if e.etype == "elite": zero_ticket = True
-                        enemies.remove(e); stats["gold"] += 35; score += 100
+
+            for e in enemies[:]:  # [:] 를 붙여 복사본으로 루프를 돕니다.
+                e.update(e_projs, player_pos)
+                enemy_projectiles = e_projs  # 적 총알 리스트와 이름 맞춤
+                player_pos = player.pos
+                # 1. 화면 밖으로 유출 (지분 하락 페널티)
+                if e.pos.y > HEIGHT:
+                    if e in enemies: # 안전을 위한 체크
+                        enemies.remove(e)
+                        stocks[current_sector] -= 5 # 세계관 반영: 지분 폭락
+                        shake_timer = 10           # 화면 흔들림 효과
+                    continue # 이미 삭제되었으므로 다음 조건 체크 안 함
+
+                # 2. 플레이어 총알과 충돌
+                for p in projectiles[:]:
+                    if e.rect.colliderect(p.rect):
+                        e.hp -= stats["damage"]
+                        if p in projectiles: projectiles.remove(p)
+                        
+                        if e.hp <= 0:
+                            if e in enemies: # 중복 삭제 방지
+                                enemies.remove(e)
+                                stats["gold"] += 35
+                                score += 100
+                            break # 이미 삭제된 적에 대해 다른 총알 체크 중단
 
             if hit_this_frame and not stats["pierce"]:
                 if p in p_projs: p_projs.remove(p)
@@ -443,21 +612,54 @@ while running:
                 boss_alert_timer -= 1
 
     elif game_state == 'SHOP':
-        temp_surf.blit(font_l.render(f"STAGE {current_stage} COMPLETE", True, GOLD), (WIDTH//2-180, 50))
-        for i, opt in enumerate(shop_options):
-            card_rect = pygame.Rect(30 + i * 215, 150, 200, 320)
-            c = (40, 40, 40) if opt["sold"] else (30, 30, 50)
-            pygame.draw.rect(temp_surf, c, card_rect, border_radius=10)
-            if not opt["sold"]:
-                temp_surf.blit(font_m.render(opt['data']['name'], True, WHITE), (card_rect.x + 20, card_rect.y + 80))
-                price_color = GOLD if stats["gold"] >= opt["data"]["price"] else RED
-                temp_surf.blit(font_m.render(f"{opt['data']['price']} G", True, price_color), (card_rect.x + 60, card_rect.y + 260))
-            else:
-                temp_surf.blit(font_m.render("SOLD OUT", True, GRAY), (card_rect.x + 50, card_rect.y + 150))
-        temp_surf.blit(font_m.render(f"GOLD: {stats['gold']}G  |  Press [S] for Next Stage", True, WHITE), (WIDTH//2-200, HEIGHT-50))
+        # 상점 배경색
+        temp_surf.fill((20, 20, 30))
+        
+        # --- 탭 UI ---
+        tabs = [("ITEM", 50), ("BANK", 250), ("INVEST", 450)]
+        for name, x in tabs:
+            color = GOLD if shop_tab == name else (60, 60, 70)
+            pygame.draw.rect(temp_surf, color, (x, 20, 180, 50), border_radius=5)
+            temp_surf.blit(font_m.render(name, True, BLACK if shop_tab == name else WHITE), (x+50, 30))
 
-    # 흔들림 효과를 적용하여 화면에 출력
-    screen.blit(temp_surf, render_offset)
+        # --- 탭별 내용 ---
+        if shop_tab == "ITEM":
+            discount = get_discount_ratio()
+            temp_surf.blit(font_m.render(f"합금 지분 물가 보정: x{discount:.2f}", True, CYAN), (50, 100))
+            for i, opt in enumerate(shop_options):
+                card_rect = pygame.Rect(30 + i * 215, 150, 200, 320)
+                display_price = int(opt["data"]["price"] * discount)
+                c = (40, 40, 40) if opt["sold"] else (30, 30, 50)
+                pygame.draw.rect(temp_surf, c, card_rect, border_radius=10)
+                if not opt["sold"]:
+                    temp_surf.blit(font_m.render(opt['data']['name'], True, WHITE), (card_rect.x + 20, card_rect.y + 40))
+                    p_color = GOLD if stats["gold"] >= display_price else RED
+                    temp_surf.blit(font_m.render(f"{display_price} G", True, p_color), (card_rect.x + 60, card_rect.y + 260))
+
+        elif shop_tab == "BANK":
+            pygame.draw.rect(temp_surf, (30, 40, 60), (100, 150, 700, 300), border_radius=15)
+            temp_surf.blit(font_l.render(f"예치금: {bank_balance} G", True, CYAN), (150, 200))
+            temp_surf.blit(font_m.render(f"다음 스테이지 배당금: +10%", True, GREEN), (150, 280))
+            temp_surf.blit(font_s.render("[D] 전액 입금  |  [F] 전액 인출 (수수료 5%)", True, WHITE), (150, 400))
+
+        elif shop_tab == "INVEST":
+            invest_targets = [
+                {"id": "A", "n": "구역 A: 지열 운송", "y": 150},
+                {"id": "B", "n": "구역 B: 에너지 연구", "y": 260},
+                {"id": "C", "n": "구역 C: 정밀 합금", "y": 370}
+            ]
+            for inv in invest_targets:
+                y = inv["y"]
+                pygame.draw.rect(temp_surf, (45, 45, 65), (50, y, 800, 90), border_radius=10)
+                bar_w = int(stocks[inv["id"]] * 2) 
+                pygame.draw.rect(temp_surf, GOLD, (550, y + 35, bar_w, 20))
+                temp_surf.blit(font_m.render(f"{inv['n']} ({stocks[inv['id']]}%)", True, WHITE), (70, y + 15))
+                temp_surf.blit(font_m.render(f"500G [Key:{inv['id']}]", True, GOLD), (380, y + 30))
+
+        # 하단 상태 정보
+        avg_s = sum(stocks.values()) / 3
+        rank = "Noble" if avg_s > 85 else "Commoner" [cite: 52, 53]
+        temp_surf.blit(font_m.render(f"등급: {rank} | GOLD: {stats['gold']}G", True, WHITE), (300, HEIGHT-50))
     
     # UI (고정 위치)
     pygame.draw.rect(screen, GREEN, (10, 10, max(0, (player_hp/stats['max_hp'])*200), 20))
@@ -470,6 +672,12 @@ while running:
         screen.fill(WHITE)
         special_effect_timer -= 1
 
+    # 배경 그리기
+    screen.blit(bg_img, (0, 0))
+    # 흔들림이 적용된 도화지(temp_surf)를 실제 화면에 출력
+    screen.blit(temp_surf, render_offset)
+    
+    # UI 업데이트 및 프레임 제한
     pygame.display.flip()
     clock.tick(60)
 
