@@ -2,14 +2,7 @@ import pygame
 import random
 import math
 import os
-# --- 0. 경로 및 초기 설정 ---
-IMGS_PATH = os.path.join(os.path.dirname(__file__), "imgs")
 
-# [KISS] 할인율 계산 함수 (C구역 지분에 비례)
-def get_discount_ratio():
-    # 지분이 100%일 때 1.0(원가), 0%일 때 2.0(2배), 지분이 높을수록 할인
-    ratio = 2.0 - (stocks["C"] / 100.0)
-    return max(0.5, min(2.0, ratio))
 # --- 1. 초기화 및 설정 ---
 pygame.init()
 WIDTH, HEIGHT = 900, 600
@@ -24,11 +17,7 @@ font_m = pygame.font.SysFont("malgungothic", 24)
 font_l = pygame.font.SysFont("malgungothic", 40)
 
 # --- 2. 게임 상태 관리 ---
-# stats에 기본 사격 지연시간을 추가하여 투자 효과를 관리하기 쉽게 합니다.
-stats = {
-    "damage": 1, "speed": 5, "gold": 100, "max_hp": 100, 
-    "pierce": False, "special_ammo": 3, "shoot_delay": 15
-}
+stats = {"damage": 1, "speed": 5, "gold": 100, "max_hp": 100, "pierce": False, "special_ammo": 3, "shoot_delay": 10}
 player_hp = 100
 score, game_state = 0, 'PLAYING'
 shoot_cooldown = 0
@@ -43,12 +32,6 @@ particles, enemies, p_projs, e_projs, boss = [], [], [], [], None
 stocks = {"A": 100, "B": 100, "C": 100}
 bank_balance = 0
 shop_tab = "ITEM"
-
-#  할인율 계산 함수 (C구역 지분에 비례)
-def get_discount_ratio():
-    # 지분이 100%일 때 1.0(원가), 0%일 때 2.0(2배), 지분이 높을수록 할인
-    ratio = 2.0 - (stocks["C"] / 100.0)
-    return max(0.5, min(2.0, ratio))
 
 # 최고 점수 로드
 high_score = 0
@@ -90,7 +73,6 @@ class Enemy:
         self.hp = base_hp * 8 if etype == "elite" else base_hp
         self.shoot_delay = random.randint(80, 160)
         self.rect = pygame.Rect(self.pos.x, self.pos.y, 40, 40)
-        self.state = "STAND"
 
     def shoot(self, e_projs, p_pos):
         diff = p_pos - self.pos
@@ -101,8 +83,7 @@ class Enemy:
         self.pos.y += self.vy; self.pos.x += self.vx
         if self.pos.x <= 0 or self.pos.x >= WIDTH-40: self.vx *= -1
         self.rect.topleft = self.pos
-        
-        self.shoot_delay -= 1   # [DRY] 내부 shoot 메서드 활용
+        self.shoot_delay -= 1
         if self.shoot_delay <= 0:
             self.shoot(e_projs, p_pos)
             self.shoot_delay = 180
@@ -163,6 +144,40 @@ while running:
                             stats["gold"] -= 500; stocks[sid] += 10
                             if sid == "A": stats["speed"] += 0.5
                             if sid == "B": stats["shoot_delay"] = max(5, stats["shoot_delay"] - 1) # 쿨타임 감소 반영
+                            
+    # --- 상점 UI 렌더링 섹션 ---
+    if game_state == 'SHOP':
+        # 배경 상자
+        pygame.draw.rect(screen, (30, 30, 50), (100, 50, 700, 500), border_radius=15)
+        discount = get_discount_ratio() # C구역 지분 반영 할인율
+        
+        if shop_tab == "ITEM":
+            screen.blit(font_m.render("--- ITEM SHOP (F1) ---", True, GOLD), (330, 70))
+            for i, opt in enumerate(shop_options):
+                item = opt["data"]
+                price = int(item["price"] * discount) # 실시간 할인 적용
+                color = GOLD if stats["gold"] >= price else GRAY
+                
+                y_pos = 150 + (i * 100)
+                pygame.draw.rect(screen, (45, 45, 65), (150, y_pos, 600, 80), border_radius=10)
+                screen.blit(font_m.render(f"{item['name']} - {price}G", True, color), (170, y_pos + 15))
+                screen.blit(font_s.render(item["desc"], True, WHITE), (170, y_pos + 50))
+
+        elif shop_tab == "BANK":
+            screen.blit(font_m.render("--- CELESTE BANK (F2) ---", True, CYAN), (320, 70))
+            bank_info = f"현재 예금: {bank_balance}G (다음 스테이지 이자 +10%)"
+            screen.blit(font_m.render(bank_info, True, WHITE), (230, 250))
+            
+        elif shop_tab == "INVEST":
+            screen.blit(font_m.render("--- INDUSTRIAL INVEST (F3) ---", True, GREEN), (300, 70))
+            # 지분 투자용 UI (구역별 바 그래프 등) 추가 가능
+            for i, area in enumerate(["A", "B", "C"]):
+                y_pos = 200 + (i * 100)
+                screen.blit(font_m.render(f"구역 {area} 지분: {stocks[area]}%", True, WHITE), (250, y_pos))
+                pygame.draw.rect(screen, GREEN, (450, y_pos + 10, stocks[area] * 2, 20))
+                pygame.draw.rect(screen, WHITE, (450, y_pos + 10, 200, 20), 2)
+                screen.blit(font_s.render(f"투자 비용: 500G (지분 +10%)", True, WHITE), (250, y_pos + 40))
+            # --- 게임 플레이 섹션 ---
 
     if game_state == 'PLAYING':
         # 플레이어 이동
@@ -188,27 +203,37 @@ while running:
         stage_timer -= 1
         if stage_timer <= 0 and not enemies: game_state = 'SHOP'; shop_options = [{"data": i, "sold": False} for i in random.sample(UPGRADE_POOL, 3)]
 
-        # [통합 업데이트 및 충돌 로직]
+        # 통합 적 관리 루프 (ValueError 방지를 위해 복사본 순회)
         for e in enemies[:]:
             e.update(e_projs, player_pos)
-            e_rect = e.rect
-            p_rect = pygame.Rect(player_pos.x, player_pos.y, 40, 40)
-
-            # 플레이어 충돌
-            if p_rect.colliderect(e_rect) and invincible_timer <= 0:
-                player_hp -= 10; shake_timer = 15; invincible_timer = 40; enemies.remove(e)
-            # 화면 유출 (지분 하락)
-            elif e.pos.y > HEIGHT:
-                enemies.remove(e); stocks[random.choice(["A", "B", "C"])] -= 5; shake_timer = 10
             
-            # 총알 충돌
+            # [A] 플레이어 충돌
+            p_rect = pygame.Rect(player_pos.x, player_pos.y, 40, 40)
+            if p_rect.colliderect(e.rect) and invincible_timer <= 0:
+                player_hp -= 15
+                invincible_timer = 40
+                if e in enemies: enemies.remove(e)
+                continue
+
+            # [B] 적 유출 (지분 하락 페널티)
+            if e.pos.y > HEIGHT:
+                if e in enemies:
+                    enemies.remove(e)
+                    # 랜덤 구역 지분 감소 (KISS)
+                    target = random.choice(["A", "B", "C"])
+                    stocks[target] -= 5
+                continue
+
+            # [C] 탄환 충돌 (관통 로직 포함)
             for p in p_projs[:]:
-                if e_rect.collidepoint(p.pos):
-                    e.hp -= p.dmg
-                    if not stats["pierce"]: p_projs.remove(p)
+                if e.rect.collidepoint(p.pos):
+                    e.hp -= stats["damage"]
+                    if not stats["pierce"]: 
+                        if p in p_projs: p_projs.remove(p)
                     if e.hp <= 0:
-                        if e in enemies: enemies.remove(e); stats["gold"] += 35; score += 100
-                        for _ in range(5): particles.append(Particle(e.pos.x+20, e.pos.y+20, RED))
+                        if e in enemies:
+                            enemies.remove(e)
+                            stats["gold"] += 35
                         break
 
         for p in e_projs[:]:
