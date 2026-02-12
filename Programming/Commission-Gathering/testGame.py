@@ -33,6 +33,10 @@ stocks = {"A": 100, "B": 100, "C": 100}
 bank_balance = 0
 shop_tab = "ITEM"
 
+zero_ticket = False
+boss = None
+boss_alert_timer = 0
+
 # 최고 점수 로드
 high_score = 0
 if os.path.exists("highscore.txt"):
@@ -87,6 +91,69 @@ class Enemy:
         if self.shoot_delay <= 0:
             self.shoot(e_projs, p_pos)
             self.shoot_delay = 180
+
+class BossZero:
+    def __init__(self):
+        self.type = "ZERO"; self.pos = pygame.Vector2(WIDTH//2-25, 60)
+        self.hp = 62.5; self.max_hp = 62.5; self.timer = 0; self.visible = True
+    def update(self, e_projs, p_pos):
+        self.timer += 1
+        self.visible = False if (self.timer // 30) % 2 == 0 else True
+        if self.timer % 80 == 0:
+            # 보스가 화면 좌우 끝을 벗어나지 않도록 제한 (Testability)
+            target_x = p_pos.x - 25
+            self.pos.x = max(0, min(WIDTH - 50, target_x))
+    def draw(self, surf):
+        if self.visible:
+            # 사각형 대신 로드한 boss_zero_img 사용
+            surf.blit(boss_zero_img, self.pos)
+
+class BossCrusher:
+    def __init__(self):
+        self.type = "CHERNOBOG"
+        self.hp = 500; self.max_hp = 500
+        # 보스의 실제 충돌 박스 (KISS: Rect를 속성으로 관리)
+        self.rect = pygame.Rect(0, -100, WIDTH, 150)
+        self.pos = pygame.Vector2(0, -100)
+        self.mode = "MOVE"
+        self.timer = 0
+        self.beam_alpha = 0
+
+    def update(self, e_projs, p_pos, player_obj=None): # player_obj를 인자로 받음
+        self.timer += 1
+        # 이동 시 rect도 함께 업데이트
+        self.pos.x += math.sin(self.timer/20) * 5
+        self.rect.topleft = self.pos
+
+        if self.mode == "MOVE":
+            if self.timer % 120 == 0: 
+                self.mode = random.choice(["BEAM_READY", "HOMING"])
+                self.timer = 0 # 타이머 리셋으로 다음 패턴 시간 확보
+
+        elif self.mode == "BEAM_FIRE":
+            if abs(p_pos.x - (self.pos.x + WIDTH//2)) < 60:
+                # global을 선언해야 외부의 player_hp 변수를 수정할 수 있습니다.
+                global player_hp 
+                player_hp -= 2
+                
+class BossSwarm:
+    def __init__(self):
+        self.type = "SWARM"; self.hp = 125; self.max_hp = 125; self.timer = 0
+        self.centers = [pygame.Vector2(random.randint(100,800), random.randint(50,200)) for _ in range(8)]
+    def update(self, e_projs, p_pos):
+        self.timer += 1
+        for i, c in enumerate(self.centers):
+            c.x += math.sin(self.timer/25 + i)*3
+            if self.timer % 100 == 0:
+                diff = p_pos - c
+                if diff.length() > 0: # 에러 방지 (Safe Coding)
+                    e_projs.append(Projectile(c.x, c.y, diff.normalize()*4, PURPLE, 6))
+                else:
+                    e_projs.append(Projectile(c.x, c.y, pygame.Vector2(0, 4), PURPLE, 6))
+    def draw(self, surf):
+            for c in self.centers:
+                # 원 대신 boss_swarm_img 사용 (중심점 계산을 위해 이미지 크기의 절반인 50을 뺌)
+                surf.blit(boss_swarm_img, (c.x - 50, c.y - 50))
 
 # --- 4. 유틸리티 함수 ---
 def get_discount_ratio():
@@ -201,8 +268,24 @@ while running:
             etype = random.choice(["normal", "bouncer", "sniper"])
             enemies.append(Enemy(etype))
         stage_timer -= 1
-        if stage_timer <= 0 and not enemies: game_state = 'SHOP'; shop_options = [{"data": i, "sold": False} for i in random.sample(UPGRADE_POOL, 3)]
+        if boss is None:
+            stage_timer -= 1
 
+            if stage_timer <= 0:
+                if zero_ticket:
+                    boss = BossZero()
+                    zero_ticket = False
+                else:
+                    boss = BossSwarm()
+                enemies.clear()
+        if boss:
+            boss.update(e_projs, player_pos)
+
+            if boss.hp <= 0:
+                stats["gold"] += 1500
+                boss = None
+                game_state = 'SHOP'
+                
         # 통합 적 관리 루프 (ValueError 방지를 위해 복사본 순회)
         for e in enemies[:]:
             e.update(e_projs, player_pos)
