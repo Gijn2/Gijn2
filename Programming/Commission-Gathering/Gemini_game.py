@@ -223,15 +223,15 @@ class Enemy:
         dist = (p_pos - self.pos).length()
         # 플레이어 방향 벡터 계산 (KISS: 명확한 벡터 연산)
         direction = (p_pos - self.pos).normalize() * 4 if dist > 0 else pygame.Vector2(0, 1)
-        
-        # 투사체 추가 (골드 색상, 데미지 5)
-        e_projs.append(Projectile(self.pos.x + 15, self.pos.y + 15, direction, GOLD, 5))
-        # 모든 적이 반드시 hp 속성을 가지도록 초기화
-        base_hp = (2 + (score // 5000)) * 0.25 
-        if etype == "elite":
-            self.hp = base_hp * 8
-        else:
-            self.hp = base_hp
+        e_projs.append(Projectile(self.pos.x + 15, self.pos.y + 15, direction, GOLD, 5))        # 투사체 추가 (골드 색상, 데미지 5)
+
+
+        # # 모든 적이 반드시 hp 속성을 가지도록 초기화
+        # base_hp = (2 + (score // 5000)) * 0.25 
+        # if etype == "elite":
+        #     self.hp = base_hp * 8
+        # else:
+        #     self.hp = base_hp
             
         # 속도 설정
         if etype == "bouncer": self.vx, self.vy = random.choice([-3, 3]), 2
@@ -300,16 +300,16 @@ def apply_upgrade(item_data):
     elif eff == "call_crusher": boss = BossCrusher()
 
 # --- 6. 메인 게임 루프 ---
-
 player_pos = pygame.Vector2(WIDTH//2, HEIGHT-80)
 enemies, p_projs, e_projs, boss = [], [], [], None
 shop_options = []
 
 running = True
-
+current_sector = "A"    # 1. 루프 시작 전 변수 확인
 
 while running:
     mouse_pos = pygame.mouse.get_pos()
+    clock.tick(60)
     
     # 1. 화면 흔들림 계산
     render_offset = pygame.Vector2(0, 0)
@@ -489,11 +489,54 @@ while running:
 
         # 충돌 처리
         p_rect = pygame.Rect(player_pos.x, player_pos.y, 40, 40)
+# --- 메인 루프 내부의 충돌 처리 섹션 (264라인 이후 통합본) ---
+
+        # 1. 적 업데이트 및 충돌 처리 (통합된 단일 루프)
         for e in enemies[:]:
-            e.update(e_projs, player_pos)
-            if p_rect.colliderect(pygame.Rect(e.pos.x, e.pos.y, 30, 30)) and invincible_timer <= 0:
-                player_hp -= 15; shake_timer = 15; invincible_timer = 40; enemies.remove(e)
-            elif e.pos.y > HEIGHT: enemies.remove(e)
+            # 이미 상단에서 선언된 e_projs와 player_pos를 사용합니다.
+            e.update(e_projs, player_pos) 
+            
+            # [A] 플레이어와 적의 충돌 (기본 rect 사용)
+            p_rect = pygame.Rect(player_pos.x, player_pos.y, 40, 40)
+            e_rect = pygame.Rect(e.pos.x, e.pos.y, 30, 30)
+            
+            if p_rect.colliderect(e_rect) and invincible_timer <= 0:
+                player_hp -= 15
+                shake_timer = 15
+                invincible_timer = 40
+                if e in enemies: enemies.remove(e)
+                continue # 이미 삭제되었으므로 다음 단계 생략
+
+            # [B] 화면 밖 유출 (세계관 반영: 지분 하락 페널티)
+            elif e.pos.y > HEIGHT:
+                if e in enemies:
+                    enemies.remove(e)
+                    # '소모임.txt' 설정에 따라 산업 구역 중 하나를 랜덤하게 감점
+                    target_sector = random.choice(["A", "B", "C"]) 
+                    stocks[target_sector] -= 5 
+                    shake_timer = 10
+                continue
+
+            # [C] 플레이어 총알(p_projs)과 적의 충돌
+            for p in p_projs[:]:
+                # Projectile 객체의 pos를 기준으로 충돌 박스 생성
+                p_bullet_rect = pygame.Rect(p.pos.x, p.pos.y, 10, 10)
+                if e_rect.colliderect(p_bullet_rect):
+                    e.hp -= stats["damage"]
+                    if not stats["pierce"]: # 관통 업그레이드가 없을 때만 탄환 제거
+                        if p in p_projs: p_projs.remove(p)
+                    
+                    if e.hp <= 0:
+                        if e in enemies:
+                            # 엘리트 처치 시 제로 티켓 획득
+                            if getattr(e, 'etype', None) == "elite": zero_ticket = True
+                            enemies.remove(e)
+                            stats["gold"] += 35
+                            score += 100
+                            # 폭발 파티클 생성
+                            for _ in range(10): 
+                                particles.append(Particle(e.pos.x+15, e.pos.y+15, (255, 50, 50)))
+                        break # 이미 죽은 적에 대한 탄환 충돌 계산 중단
 
         # 투사체 충돌 (플레이어 탄환)
         for p in p_projs[:]:
@@ -524,32 +567,6 @@ while running:
                         if score > high_score:
                             save_highscore(score)
                             running = False
-
-
-            for e in enemies[:]:  # [:] 를 붙여 복사본으로 루프를 돕니다.
-                e.update(e_projs, player_pos)
-                enemy_projectiles = e_projs  # 적 총알 리스트와 이름 맞춤
-                player_pos = player.pos
-                # 1. 화면 밖으로 유출 (지분 하락 페널티)
-                if e.pos.y > HEIGHT:
-                    if e in enemies: # 안전을 위한 체크
-                        enemies.remove(e)
-                        stocks[current_sector] -= 5 # 세계관 반영: 지분 폭락
-                        shake_timer = 10           # 화면 흔들림 효과
-                    continue # 이미 삭제되었으므로 다음 조건 체크 안 함
-
-                # 2. 플레이어 총알과 충돌
-                for p in projectiles[:]:
-                    if e.rect.colliderect(p.rect):
-                        e.hp -= stats["damage"]
-                        if p in projectiles: projectiles.remove(p)
-                        
-                        if e.hp <= 0:
-                            if e in enemies: # 중복 삭제 방지
-                                enemies.remove(e)
-                                stats["gold"] += 35
-                                score += 100
-                            break # 이미 삭제된 적에 대해 다른 총알 체크 중단
 
             if hit_this_frame and not stats["pierce"]:
                 if p in p_projs: p_projs.remove(p)
@@ -658,9 +675,9 @@ while running:
 
         # 하단 상태 정보
         avg_s = sum(stocks.values()) / 3
-        rank = "Noble" if avg_s > 85 else "Commoner" [cite: 52, 53]
+        rank = "Noble" if avg_s > 85 else "Commoner" 
         temp_surf.blit(font_m.render(f"등급: {rank} | GOLD: {stats['gold']}G", True, WHITE), (300, HEIGHT-50))
-    
+        
     # UI (고정 위치)
     pygame.draw.rect(screen, GREEN, (10, 10, max(0, (player_hp/stats['max_hp'])*200), 20))
     score_txt = font_s.render(f"SCORE: {score} | HI-SCORE: {high_score}", True, WHITE)
