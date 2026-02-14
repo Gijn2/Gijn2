@@ -268,8 +268,6 @@ class Enemy:
             pygame.draw.circle(surf, PURPLE, (int(self.pos.x+25), int(self.pos.y+25)), 35, 2)
             surf.blit(font_m.render("!", True, PURPLE), (self.pos.x+10, self.pos.y-35))
 
-    
-
 # --- 5. 유틸리티 함수 ---
 def save_highscore(score):
     try:
