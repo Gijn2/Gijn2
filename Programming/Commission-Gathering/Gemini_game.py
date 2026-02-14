@@ -15,8 +15,6 @@ clock = pygame.time.Clock()
 
 # --- 2. 에셋 로드 (화면 설정 후 로드해야 함) --
 
-# [추가] 보스용 이미지 (파일이 없다면 기본 도형으로 대체되도록 예외처리 가능)
-# 현재는 기존 도형 렌더링 유지하며 이미지 출력 로직만 준비
 # 플레이어 및 적 이미지 로드
 bg_img     = pygame.image.load(os.path.join(IMGS_PATH, "background.png")).convert()
 player_img = pygame.image.load(os.path.join(IMGS_PATH, "player.png")).convert_alpha()
