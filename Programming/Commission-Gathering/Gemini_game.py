@@ -3,7 +3,6 @@ import random
 import math
 import os
 
-
 # --- 0. 경로 설정 ---
 IMGS_PATH = os.path.join(os.path.dirname(__file__), "imgs")
 

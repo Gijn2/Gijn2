@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wepoll | 우리들의 투자 폴</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* 모달 제어를 위한 추가 스타일 */
+        #auth-modal { display: none; }
+        #auth-modal.active { display: flex; }
+        
+        .modal-overlay { animation: fadeIn 0.2s ease-out; }
+        .modal-content { 
+            animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { 
+            from { transform: translateY(20px); opacity: 0; } 
+            to { transform: translateY(0); opacity: 1; } 
+        }
+
+        /* 탭 전환 시 부드러운 표시 */
+        .auth-form.hidden { display: none; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans selection:bg-blue-500/30">
+
+    <header class="fixed top-0 left-0 right-0 z-50 bg-gray-900/80 backdrop-blur-md border-b border-gray-800">
+        <div class="max-w-md mx-auto px-4 h-14 flex items-center justify-between">
+            <h1 class="text-2xl font-black tracking-tighter text-blue-500 cursor-pointer" onclick="location.reload()">WEPOLL</h1>
+            <div class="flex gap-4">
+                <button class="hover:text-blue-400 p-2 text-xl" onclick="openModal()" aria-label="로그인 팝업 열기">👤</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto px-4 pt-20 pb-10">
+        <section class="live-banner rounded-2xl p-6 mb-8 relative overflow-hidden">
+            <div class="relative z-10">
+                <span class="inline-flex items-center bg-red-600 px-2 py-0.5 rounded text-[10px] font-bold mb-2">
+                    <span class="w-1.5 h-1.5 bg-white rounded-full mr-1 animate-ping"></span> LIVE
+                </span>
+                <h2 class="text-xl font-bold leading-tight">슈카월드와 함께하는<br>실시간 민심 확인 중!</h2>
+                <button class="mt-4 px-4 py-2 bg-white text-black text-sm font-bold rounded-full hover:bg-gray-200 transition">참여하기</button>
+            </div>
+            <div class="absolute right-[-20px] bottom-[-20px] opacity-20 text-8xl" aria-hidden="true">📊</div>
+        </section>
+
+        <section class="mb-10">
+            <h3 class="text-lg font-bold mb-4 flex items-center gap-2">🔮 투자 운세 서비스</h3>
+            <div class="flex gap-2 overflow-x-auto no-scrollbar pb-2 px-1">
+                <div class="fortune-card fortune-gold min-w-[110px]">
+                    <span class="text-2xl">📅</span>
+                    <p class="text-sm font-bold mt-1">오늘의 운세</p>
+                    <p class="text-[10px] opacity-70 italic">"매수운 상승"</p>
+                </div>
+                <div class="fortune-card fortune-red min-w-[110px]">
+                    <span class="text-2xl">🗓️</span>
+                    <p class="text-sm font-bold mt-1">주간 운세</p>
+                    <p class="text-[10px] opacity-70 italic">"금요일 주의"</p>
+                </div>
+                <div class="fortune-card fortune-blue min-w-[110px]">
+                    <span class="text-2xl">📜</span>
+                    <p class="text-sm font-bold mt-1">신토정비결</p>
+                    <p class="text-[10px] opacity-70 italic">"2026 대운"</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <div class="flex justify-between items-end mb-4">
+                <h3 class="text-2xl font-black italic tracking-tighter uppercase">Hot Polls</h3>
+                <button class="text-sm text-gray-500 hover:text-gray-300">더보기 +</button>
+            </div>
+
+            <div class="poll-card glass-card rounded-3xl p-6">
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-[10px]">W</div>
+                    <span class="text-xs font-semibold text-gray-300">위폴 공식 에디터</span>
+                </div>
+                <h4 class="text-xl font-bold mb-6 break-keep leading-snug">"삼성전자 8만전자 탈환, 이번 주 안에 가능할까요?"</h4>
+                
+                <div class="grid gap-3">
+                    <button id="btn-up" class="poll-btn-container relative overflow-hidden group w-full text-left rounded-xl border border-blue-500/30">
+                        <div id="bar-up" class="poll-bar absolute top-0 left-0 h-full bg-blue-600/20" style="width: 0%"></div>
+                        <div class="relative z-10 flex justify-between w-full px-5 py-4 group-hover:bg-blue-600/10 transition">
+                            <span class="font-bold text-blue-400">📈 무조건 간다</span>
+                            <span id="percent-up" class="font-mono font-bold">0%</span>
+                        </div>
+                    </button>
+
+                    <button id="btn-down" class="poll-btn-container relative overflow-hidden group w-full text-left rounded-xl border border-red-500/30">
+                        <div id="bar-down" class="poll-bar absolute top-0 left-0 h-full bg-red-600/20" style="width: 0%"></div>
+                        <div class="relative z-10 flex justify-between w-full px-5 py-4 group-hover:bg-red-600/10 transition">
+                            <span class="font-bold text-red-400">📉 아직은 힘들다</span>
+                            <span id="percent-down" class="font-mono font-bold">0%</span>
+                        </div>
+                    </button>
+                </div>
+                
+                <div class="mt-6 flex justify-between items-center text-[11px] text-gray-500 border-t border-gray-800 pt-4">
+                    <span id="total-votes">👥 0명 참여</span>
+                    <span class="flex items-center gap-1">⏱️ 14:20:05 남음</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="auth-modal" class="fixed inset-0 z-[100] items-center justify-center px-6">
+        <div class="modal-overlay absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeModal()"></div>
+        
+        <div class="modal-content relative w-full max-w-sm bg-gray-800 border border-gray-700 rounded-3xl p-6 shadow-2xl">
+            <button class="absolute top-4 right-4 text-gray-500 hover:text-white transition" onclick="closeModal()">✕</button>
+            
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-black text-blue-500 mb-1">시작하기</h2>
+                <p class="text-xs text-gray-400">개미들의 민심이 모이는 곳</p>
+            </div>
+
+            <nav class="flex bg-gray-900 rounded-xl p-1 mb-6">
+                <button id="login-tab" class="w-1/2 py-2 text-xs font-bold rounded-lg bg-blue-600 transition-all" onclick="switchAuthTab('login')">로그인</button>
+                <button id="signup-tab" class="w-1/2 py-2 text-xs font-bold rounded-lg text-gray-500 transition-all" onclick="switchAuthTab('signup')">회원가입</button>
+            </nav>
+
+            <form id="login-form" class="auth-form space-y-3" onsubmit="event.preventDefault()">
+                <div>
+                    <label class="block text-[10px] font-semibold text-gray-500 mb-1 ml-1">이메일 주소</label>
+                    <input type="email" placeholder="example@email.com" class="auth-input text-sm px-4 py-3" required>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-semibold text-gray-500 mb-1 ml-1">비밀번호</label>
+                    <input type="password" placeholder="••••••••" class="auth-input text-sm px-4 py-3" required>
+                </div>
+                <button type="submit" class="w-full py-3 bg-blue-600 rounded-xl font-bold hover:bg-blue-700 active:scale-95 transition mt-2">로그인하기</button>
+            </form>
+
+            <form id="signup-form" class="auth-form space-y-3 hidden" onsubmit="event.preventDefault()">
+                <div>
+                    <label class="block text-[10px] font-semibold text-gray-500 mb-1 ml-1">닉네임</label>
+                    <input type="text" placeholder="멋진투자자" class="auth-input text-sm px-4 py-3" required>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-semibold text-gray-500 mb-1 ml-1">이메일 주소</label>
+                    <input type="email" placeholder="example@email.com" class="auth-input text-sm px-4 py-3" required>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-semibold text-gray-500 mb-1 ml-1">비밀번호</label>
+                    <input type="password" placeholder="8자리 이상" class="auth-input text-sm px-4 py-3" required minlength="8">
+                </div>
+                <button type="submit" class="w-full py-3 bg-blue-600 rounded-xl font-bold hover:bg-blue-700 active:scale-95 transition mt-2">가입 완료</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        /* 1. 모달 팝업 제어 로직 */
+        const authModal = document.getElementById('auth-modal');
+        
+        function openModal() {
+            authModal.classList.add('active');
+            document.body.style.overflow = 'hidden'; // 배경 스크롤 방지
+        }
+
+        function closeModal() {
+            authModal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        /* 2. 인증 탭 전환 로직 (auth.html 로직 통합) */
+        function switchAuthTab(tab) {
+            const isLogin = tab === 'login';
+            document.getElementById('login-form').classList.toggle('hidden', !isLogin);
+            document.getElementById('signup-form').classList.toggle('hidden', isLogin);
+            
+            document.getElementById('login-tab').className = isLogin 
+                ? 'w-1/2 py-2 text-xs font-bold rounded-lg bg-blue-600 transition-all' 
+                : 'w-1/2 py-2 text-xs font-bold rounded-lg text-gray-500 transition-all';
+            document.getElementById('signup-tab').className = !isLogin 
+                ? 'w-1/2 py-2 text-xs font-bold rounded-lg bg-blue-600 transition-all' 
+                : 'w-1/2 py-2 text-xs font-bold rounded-lg text-gray-500 transition-all';
+        }
+
+        /* 3. 투표 시스템 (localStorage 예외 처리 포함) */
+        const STORAGE_KEY = 'wepoll_vote_v2026';
+        let voteData = { up: 7680, down: 4725, voted: false };
+
+        function initVotes() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) voteData = JSON.parse(saved);
+            } catch (e) {
+                console.error("Storage Access Error:", e);
+            }
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            const total = voteData.up + voteData.down;
+            const upPercent = Math.round((voteData.up / total) * 100);
+            const downPercent = 100 - upPercent;
+
+            document.getElementById('percent-up').innerText = upPercent + '%';
+            document.getElementById('percent-down').innerText = downPercent + '%';
+            document.getElementById('total-votes').innerText = `👥 ${total.toLocaleString()}명 참여`;
+            document.getElementById('bar-up').style.width = upPercent + '%';
+            document.getElementById('bar-down').style.width = downPercent + '%';
+            
+            if (voteData.voted) {
+                document.querySelectorAll('.poll-btn-container').forEach(btn => btn.disabled = true);
+            }
+        }
+
+        function castVote(type) {
+            if (voteData.voted) return alert("이미 투표에 참여하셨습니다!");
+            voteData[type]++;
+            voteData.voted = true;
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(voteData));
+            } catch (e) {}
+            updateDisplay();
+        }
+
+        // 이벤트 리스너 등록
+        document.getElementById('btn-up').addEventListener('click', () => castVote('up'));
+        document.getElementById('btn-down').addEventListener('click', () => castVote('down'));
+        
+        // 초기화 실행
+        initVotes();
+    </script>
+</body>
+</html>
