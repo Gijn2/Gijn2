@@ -2,12 +2,8 @@ import pygame
 import random
 import math
 import os
-import cv2
-import numpy as np
-import time
-import sys
-import json
-import threading
+import numpy
+import hashlib
 
 # --- 0. 경로 설정 ---
 IMGS_PATH = os.path.join(os.path.dirname(__file__), "imgs")
@@ -20,18 +16,27 @@ pygame.display.set_caption("Legendary Bosses: Final Edition (Visual Enhanced)")
 clock = pygame.time.Clock()
 
 # --- 2. 에셋 로드 (화면 설정 후 로드해야 함) --
+# 해킹을 막기 위한 비밀 키
+secretSalt = "MyLegendaryGameSecret2026"
 
 # 플레이어 및 적 이미지 로드
 bgImg = pygame.image.load(os.path.join(IMGS_PATH, "background.png")).convert()
 playerImg = pygame.image.load(os.path.join(IMGS_PATH, "player.png")).convert_alpha()
 playerImg = pygame.transform.scale(playerImg, (60, 60))
 
+# 몬스터 종류 수
+MAX_ENEMY_TYPES = 10
 ENEMY_IMGS = {}
-for i in range(1, 5):
-    ENEMY_IMGS[f"type_{i}"] = {
-        "STAND": pygame.transform.scale(pygame.image.load(os.path.join(IMGS_PATH, f"normalEnemy_{i}_stand.png")).convert_alpha(), (50, 50)),
-        "ATTACK": pygame.transform.scale(pygame.image.load(os.path.join(IMGS_PATH, f"normalEnemy_{i}_attack.png")).convert_alpha(), (50, 50))
-    }
+for i in range(1, MAX_ENEMY_TYPES + 1):
+    type_key = f"type_{i}"
+    try:
+        ENEMY_IMGS[type_key] = {
+            "STAND": pygame.transform.scale(pygame.image.load(os.path.join(IMGS_PATH, f"normalEnemy_{i}_stand.png")).convert_alpha(), (50, 50)),
+            "ATTACK": pygame.transform.scale(pygame.image.load(os.path.join(IMGS_PATH, f"normalEnemy_{i}_attack.png")).convert_alpha(), (50, 50)),
+        }
+    except FileNotFoundError:
+        # 이미지가 없는 경우를 대비한 방어적 프로그래밍
+        ENEMY_IMGS[type_key] = ENEMY_IMGS.get("type_1")
 
 bossSwarmImg = pygame.image.load(os.path.join(IMGS_PATH, "boss_swarm.png")).convert_alpha()
 bossSwarmImg = pygame.transform.scale(bossSwarmImg, (100, 100))
@@ -139,24 +144,66 @@ class Particle:
             surf.blit(p_surf, (self.pos[0]-3, self.pos[1]-3))
 
 class Projectile:
-    def __init__(self, x, y, vel, color, dmg):
-        self.pos, self.vel, self.color, self.dmg = pygame.Vector2(x, y), vel, color, dmg
-    def update(self): self.pos += self.vel
-    def draw(self, surf): pygame.draw.circle(surf, self.color, (int(self.pos.x), int(self.pos.y)), 5)
+    # radius(반지름) 파라미터 추가
+    def __init__(self, x, y, vel, color, dmg, radius=5):
+        self.pos = pygame.Vector2(x, y)
+        self.vel = vel
+        self.color = color
+        self.dmg = dmg
+        self.radius = radius # camelCase 유지
+
+    def update(self): 
+        self.pos += self.vel
+
+    def draw(self, surf): 
+        # 중앙은 하얗게, 테두리는 색상으로 렌더링하여 시인성 극대화
+        pygame.draw.circle(surf, self.color, (int(self.pos.x), int(self.pos.y)), self.radius)
+        pygame.draw.circle(surf, WHITE, (int(self.pos.x), int(self.pos.y)), self.radius - 2)
 
 class BossZero:
     def __init__(self):
-        self.type = "ZERO"; self.pos = pygame.Vector2(WIDTH//2-25, 60)
-        self.hp = 62.5; self.maxHp = 62.5; self.timer = 0; self.visible = True
+        self.type = "REAPER"
+        self.pos = pygame.Vector2(WIDTH//2, 100)
+        self.hp = 150; self.maxHp = 150
+        self.timer = 0
+        self.visible = True
+        self.state = "TELEPORT"
+        
     def update(self, eProjs, pPos):
         self.timer += 1
-        self.visible = False if (self.timer // 30) % 2 == 0 else True
-        if self.timer % 80 == 0:
-            targetX = pPos.x - 25
-            self.pos.x = max(0, min(WIDTH - 50, targetX))
+        
+        if self.state == "TELEPORT":
+            self.visible = False
+            if self.timer > 60: # 1초 후 플레이어 상단으로 텔레포트
+                self.pos.x = max(50, min(WIDTH-50, pPos.x + random.randint(-100, 100)))
+                self.pos.y = max(50, min(HEIGHT-200, pPos.y - 150))
+                self.state = "SCYTHE"
+                self.timer = 0
+                self.visible = True
+                
+        elif self.state == "SCYTHE":
+            # 낫 휘두르기 (크고 빠른 투사체 3갈래)
+            if self.timer == 30:
+                for angle in [-15, 0, 15]:
+                    dirVec = pygame.Vector2(0, 7).rotate(angle)
+                    eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, RED, 10, 12))
+            elif self.timer > 90:
+                self.state = "SOULS"
+                self.timer = 0
+                
+        elif self.state == "SOULS":
+            # 영혼 소환 (느리게 따라가는 투사체)
+            if self.timer % 20 == 0 and self.timer <= 60:
+                dist = pPos - self.pos
+                dirVec = dist.normalize() * 2 if dist.length() > 0 else pygame.Vector2(0, 2)
+                eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, CYAN, 5, 8))
+            elif self.timer > 120:
+                self.state = "TELEPORT"
+                self.timer = 0
+
     def draw(self, surf):
         if self.visible:
-            surf.blit(bossZeroImg, self.pos)
+            surf.blit(bossZeroImg, (self.pos.x - 25, self.pos.y - 25))
 
 class BossCrusher:
     def __init__(self):
@@ -184,71 +231,189 @@ class BossCrusher:
 
 class BossSwarm:
     def __init__(self):
-        self.type = "SWARM"; self.hp = 125; self.maxHp = 125; self.timer = 0
+        self.type = "SWARM"
+        self.hp = 250; self.maxHp = 250
         self.centers = [pygame.Vector2(random.randint(100,800), random.randint(50,200)) for _ in range(8)]
+        # 60~150 프레임 (1초 ~ 2.5초) 개별 타이머 할당
+        self.fireTimers = [random.randint(60, 150) for _ in range(8)]
+        self.maxTimers = list(self.fireTimers) # 크기 계산을 위한 원본 저장
+
     def update(self, eProjs, pPos):
-        self.timer += 1
-        for i, c in enumerate(self.centers):
-            c.x += math.sin(self.timer/25 + i)*3
-            if self.timer % 100 == 0:
-                diff = pPos - c
-                if diff.length() > 0: 
-                    eProjs.append(Projectile(c.x, c.y, diff.normalize()*4, PURPLE, 6))
-                else:
-                    eProjs.append(Projectile(c.x, c.y, pygame.Vector2(0, 4), PURPLE, 6))
+        for i in range(8):
+            self.centers[i].x += math.sin(pygame.time.get_ticks() / 500 + i) * 2
+            self.fireTimers[i] -= 1
+            
+            if self.fireTimers[i] <= 0:
+                # 대기 시간에 비례한 크기 계산 로직 (DRY 원칙)
+                waitRatio = self.maxTimers[i] / 60.0 # 1.0 ~ 2.5 비율 산출
+                pSize = int(4 + (waitRatio * 3))     # 반지름 7 ~ 11
+                pDmg = int(5 + (waitRatio * 2))      # 데미지 7 ~ 10
+                
+                diff = pPos - self.centers[i]
+                dirVec = diff.normalize() * 4 if diff.length() > 0 else pygame.Vector2(0, 4)
+                
+                # 계산된 크기(pSize)를 넘겨 투사체 생성
+                eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, dirVec, PURPLE, pDmg, pSize))
+                
+                # 발사 후 타이머 재설정
+                self.fireTimers[i] = random.randint(60, 150)
+                self.maxTimers[i] = self.fireTimers[i]
+
     def draw(self, surf):
         for c in self.centers:
             surf.blit(bossSwarmImg, (c.x - 50, c.y - 50))
 
+ENEMY_CONFIG = {
+    "type1": {"hp": 5,  "vy": 1.5, "img": "type_1"},
+    "type2": {"hp": 8,  "vy": 1.5, "img": "type_2"},
+    "type3": {"hp": 6,  "vy": 1.0, "img": "type_3"},
+    "type4": {"hp": 5,  "vy": 0.0, "img": "type_4"},
+    # 추후 여기에 type5 ~ type10까지 한 줄씩만 추가하면 됩니다.
+    "type5": {"hp": 10, "vy": 1.2, "img": "type_5"}, 
+    "elite": {"hp": 50, "vy": 0.5, "img": "type_1"}, # 예외 케이스
+}
+
 class Enemy:
-    def __init__(self, etype="normal", offset=0):
-        self.etype = etype
+    def __init__(self, eType="type1", offset=0):
+        self.eType = eType
+
+        config = ENEMY_CONFIG.get(eType, ENEMY_CONFIG["type1"])
+        self.hp = config["hp"]
+        self.vy = config["vy"]
+        self.imgType = config["img"]
+
+        # 공통 로직
         self.pos = pygame.Vector2(random.randint(50, WIDTH-50), -50)
         self.offset = offset
         self.vx = 0
         self.vy = 1.5  
-        
-        if etype == "bouncer": self.vx, self.vy = random.choice([-3, 3]), 2
-        elif etype == "sniper": self.vx, self.vy = 2, 0; self.pos.y = random.randint(50, 150)
-        elif etype == "sin": self.vx, self.vy = 0, 1.8
-        elif etype == "elite": self.vy = 1.0 
-
-        baseHp = (2 + (score // 5000)) * 0.25 
-        self.hp = baseHp * 8 if etype == "elite" else baseHp
-        self.imgType = f"type_{random.randint(1, 4)}"
         self.state = "STAND"
         self.shootDelay = random.randint(80, 160)
+        self.attackTimer = 0
+        self.orbitBullets = [] # type3를 위한 회전 총알 저장소
+        
+        # 타입별 초기화 로직 분리 (KISS)
+        if eType == "type1":
+            self.hp = 5
+        elif eType == "type2":
+            self.hp = 8
+        elif eType == "type3":
+            self.hp = 6
+            self.vy = 1.0
+        elif eType == "type4":
+            self.hp = 5
+            self.vy = 0
+            self.pos.y = random.randint(50, 200)
+            self.pos.x = -30 if random.random() > 0.5 else WIDTH + 30
+            self.vx = 2.5 if self.pos.x < 0 else -2.5
 
-    def shoot(self, eProjs, pPos):
-        dist = (pPos - self.pos).length()
-        direction = (pPos - self.pos).normalize() * 4 if dist > 0 else pygame.Vector2(0, 1)
-        eProjs.append(Projectile(self.pos.x + 15, self.pos.y + 15, direction, GOLD, 5))
+        if self.eType.startswith("type"):
+            self.imgType = self.eType.replace("type", "type_")
+        else:
+            self.imgType = "type_1"
 
     def update(self, eProjs, pPos):
-        if self.etype == "sin":
+        # 1. 이동 로직 (type4는 수평 이동만)
+        if self.eType == "type3":
             self.pos.y += self.vy
-            self.pos.x += math.sin((pygame.time.get_ticks() + self.offset) / 200) * 5
+            self.pos.x += math.sin(pygame.time.get_ticks() / 200) * 4 
         else:
             self.pos.y += self.vy
             self.pos.x += self.vx
-            if self.pos.x <= 0 or self.pos.x >= WIDTH-30: self.vx *= -1
+            if self.eType != "type4" and (self.pos.x <= 0 or self.pos.x >= WIDTH-30): 
+                self.vx *= -1
 
-        self.shootDelay -= 1
-        if self.shootDelay < 30: self.state = "ATTACK"
+        # 2. 공격 상태 전환
+        if self.state == "STAND":
+            self.shootDelay -= 1
+            if self.shootDelay <= 0:
+                self.state = "ATTACK"
+                self.attackTimer = 0 
+                if self.eType == "type3":
+                    self.orbitAngles = [0, 120, 240] # type3 회전 총알 초기화
+                
+        # 3. 공격 패턴 실행 (모션 동기화)
+        elif self.state == "ATTACK":
+            self.attackTimer += 1
             
-        if self.shootDelay <= 0:
-            self.shoot(eProjs, pPos)
-            self.state = "STAND" 
-            self.shootDelay = 180
+            # 일반몬스터 1: 아래로 내려오며 플레이어 조준 사격
+            if self.eType == "type1":
+                if self.attackTimer == 1: 
+                    dist = pPos - self.pos
+                    dirVec = dist.normalize() * 4 if dist.length() > 0 else pygame.Vector2(0, 1)
+                    eProjs.append(Projectile(self.pos.x+15, self.pos.y+15, dirVec, RED, 5, 6))
+                if self.attackTimer > 30: 
+                    self.state = "STAND"; self.shootDelay = 120
+                    
+            # 일반몬스터 2: 부채꼴 0.1초(6프레임) 간격 발사
+            elif self.eType == "type2":
+                if self.attackTimer % 6 == 0 and self.attackTimer <= 30:
+                    angles = [-0.2, 0, 0.2]
+                    for angle in angles:
+                        dirVec = pygame.Vector2(0, 4).rotate(math.degrees(angle))
+                        eProjs.append(Projectile(self.pos.x+15, self.pos.y+15, dirVec, PURPLE, 4, 5))
+                if self.attackTimer > 40:
+                    self.state = "STAND"; self.shootDelay = 150
+                    
+            # 일반몬스터 3: 궤도 회전 후 대기 상태 복귀 시 발사
+            elif self.eType == "type3":
+                if self.attackTimer < 60:
+                    for i in range(len(self.orbitAngles)):
+                        self.orbitAngles[i] += 5 # 프레임당 5도씩 회전
+                elif self.attackTimer == 60:
+                    for angle in self.orbitAngles:
+                        dirVec = pygame.Vector2(0, 4).rotate(angle)
+                        eProjs.append(Projectile(self.pos.x+15, self.pos.y+15, dirVec, GOLD, 6, 6))
+                    self.state = "STAND"; self.shootDelay = 180
+                    
+            # 일반몬스터 4: 수평 이동 중 발사
+            elif self.eType == "type4":
+                if self.attackTimer == 1:
+                    eProjs.append(Projectile(self.pos.x+15, self.pos.y+15, pygame.Vector2(0, 5), RED, 5, 7))
+                if self.attackTimer > 30:
+                    self.state = "STAND"; self.shootDelay = 90
 
     def draw(self, surf):
-        currentImg = ENEMY_IMGS[self.imgType][self.state]
+        currentImg = ENEMY_IMGS.get(self.imgType, ENEMY_IMGS["type_1"])[self.state]
         surf.blit(currentImg, self.pos)
-        if self.etype == "elite":
-            pygame.draw.circle(surf, PURPLE, (int(self.pos.x+25), int(self.pos.y+25)), 35, 2)
-            surf.blit(fontM.render("!", True, PURPLE), (self.pos.x+10, self.pos.y-35))
-
+        
+        # type3의 회전하는 투사체 시각화 (STAND 전환 전까지)
+        if self.state == "ATTACK" and self.eType == "type3":
+            for angle in getattr(self, 'orbitAngles', []):
+                offset = pygame.Vector2(0, 25).rotate(angle)
+                pygame.draw.circle(surf, GOLD, (int(self.pos.x+25 + offset.x), int(self.pos.y+25 + offset.y)), 5)
 # --- 5. 유틸리티 함수 ---
+# 해킹을 막기 위한 함수
+def saveHighscoreSecure(scoreValue):
+    # 점수와 비밀키를 합쳐 해시값(Checksum) 생성
+    dataStr = str(scoreValue) + secretSalt
+    checksum = hashlib.sha256(dataStr.encode()).hexdigest()
+    
+    with open("highscore.dat", "w") as f:
+        # 점수와 해시값을 같이 저장
+        f.write(f"{scoreValue}\n{checksum}")
+
+def loadHighscoreSecure():
+    if os.path.exists("highscore.dat"):
+        try:
+            with open("highscore.dat", "r") as f:
+                lines = f.readlines()
+                scoreValue = int(lines[0].strip())
+                savedChecksum = lines[1].strip()
+                
+                # 파일을 읽을 때 동일한 공식으로 해시를 재계산하여 검증
+                calcChecksum = hashlib.sha256((str(scoreValue) + secretSalt).encode()).hexdigest()
+                
+                if savedChecksum == calcChecksum:
+                    return scoreValue
+                else:
+                    print("점수 조작이 감지되었습니다.")
+                    return 0 # 조작 감지 시 0점으로 초기화
+        except Exception:
+            return 0
+    return 0
+
+# 유틸리티 함수
 def saveHighscore(s):
     try:
         with open("highscore.txt", "w") as f:
@@ -294,42 +459,59 @@ while running:
         
         if event.type == pygame.KEYDOWN:
             if gameState == 'SHOP':
-                if event.key == pygame.K_F1: shopTab = "ITEM"
-                if event.key == pygame.K_F2: shopTab = "BANK"
-                if event.key == pygame.K_F3: shopTab = "INVEST"
+                # 탭 전환
+                if event.key in (pygame.K_1, pygame.K_F1): shopTab = "ITEM"
+                if event.key in (pygame.K_2, pygame.K_F2): shopTab = "BANK"
+                if event.key in (pygame.K_3, pygame.K_F3): shopTab = "INVEST"
                 
+                # 은행 탭 기능 연동 (D: 입금, F: 출금)
                 if shopTab == "BANK":
-                    if event.key == pygame.K_d: 
-                        bankBalance += stats["gold"]; stats["gold"] = 0
-                    if event.key == pygame.K_f: 
-                        stats["gold"] += int(bankBalance * 0.95); bankBalance = 0
+                    if event.key == pygame.K_d and stats["gold"] > 0: 
+                        bankBalance += stats["gold"]
+                        stats["gold"] = 0
+                    if event.key == pygame.K_f and bankBalance > 0: 
+                        stats["gold"] += int(bankBalance * 0.95) # 5% 수수료
+                        bankBalance = 0
                 
+                # 투자 탭 기능 연동 (1, 2, 3 키)
                 if shopTab == "INVEST":
-                    keys = {pygame.K_1: "A", pygame.K_2: "B", pygame.K_3: "C"}
+                    keys = {pygame.K_q: "A", pygame.K_w: "B", pygame.K_e: "C"}
                     if event.key in keys:
                         sid = keys[event.key]
                         if stats["gold"] >= 500:
                             stats["gold"] -= 500
                             stocks[sid] += 10 
+                            # C 투자 시 상점 물가 할인율이 자동 적용됨 (getDiscountRatio 함수 연동)
                             if sid == "A": stats["speed"] += 0.5
+                            if sid == "B": shootCooldown -= 1 # B 투자 시 쿨타임 감소 효과 추가
                             if sid == "C": stats["damage"] += 1
 
+                # 다음 스테이지로 진행 (S키)
                 if event.key == pygame.K_s:
-                    bankBalance = int(bankBalance * 1.1) 
+                    bankBalance = int(bankBalance * 1.1) # 배당금 10% 추가
                     gameState = 'PLAYING'
                     currentStage += 1
                     stageTimer = STAGE_DURATION
 
         # 마우스 클릭 처리 (UI 분리 및 로직 통합)
-        if event.type == pygame.MOUSEBUTTONDOWN and gameState == 'SHOP' and shopTab == "ITEM":
-            for i, opt in enumerate(shopOptions):
-                rect = pygame.Rect(30 + i * 215, 150, 200, 320)
-                discount = getDiscountRatio()
-                displayPrice = int(opt["data"]["price"] * discount)
-                if rect.collidepoint(mouse_pos) and not opt["sold"] and stats["gold"] >= displayPrice:
-                    stats["gold"] -= displayPrice
-                    applyUpgrade(opt["data"])
-                    opt["sold"] = True
+        if event.type == pygame.MOUSEBUTTONDOWN and gameState == 'SHOP':
+            mousePos = pygame.mouse.get_pos()
+            
+            # 탭 영역 클릭 판정 (AABB 충돌)
+            if pygame.Rect(50, 20, 180, 50).collidepoint(mousePos): shopTab = "ITEM"
+            if pygame.Rect(250, 20, 180, 50).collidepoint(mousePos): shopTab = "BANK"
+            if pygame.Rect(450, 20, 180, 50).collidepoint(mousePos): shopTab = "INVEST"
+            
+            # 아이템 구매 클릭 로직
+            if shopTab == "ITEM":
+                for i, opt in enumerate(shopOptions):
+                    rect = pygame.Rect(30 + i * 215, 150, 200, 320)
+                    discount = getDiscountRatio()
+                    displayPrice = int(opt["data"]["price"] * discount)
+                    if rect.collidepoint(mouse_pos) and not opt["sold"] and stats["gold"] >= displayPrice:
+                        stats["gold"] -= displayPrice
+                        applyUpgrade(opt["data"])
+                        opt["sold"] = True
                     
     # --- 1. 배경 및 탭 UI ---
     temp_surf.fill((20, 20, 30))
@@ -442,10 +624,15 @@ while running:
             
             # 2. 모든 일반 적에게 강력한 데미지
             for e in enemies[:]:
-                e.hp -= 20  
-                if e.hp <= 0:
-                    if e in enemies: enemies.remove(e)
-                    score += 150
+                # 안전하게 hp 속성 존재 여부 확인 후 데미지 적용
+                if hasattr(e, 'hp'):
+                    e.hp -= 20
+                    if e.hp <= 0:
+                        if e in enemies: enemies.remove(e)
+                        score += 150
+                        # 처치 이펙트 생성 (선택 사항)
+                        for _ in range(5): 
+                            particles.append(Particle(e.pos.x+15, e.pos.y+15, (255, 255, 255)))
             
             # 3. 보스가 있다면 보스에게도 데미지
             if boss:
@@ -460,8 +647,10 @@ while running:
                 enemies.clear()
             
             if len(enemies) < 6:
-                etype = random.choices(["normal", "bouncer", "sin", "sniper", "elite"], weights=[50, 15, 15, 18.5, 1.5])[0]
-                enemies.append(Enemy(etype, random.randint(0, 1000)))
+                # 명확한 Naming Convention 적용 및 통일
+                # etype = random.choices(["normal", "bouncer", "sin", "sniper", "elite"], weights=[50, 15, 15, 18.5, 1.5])[0]
+                enemyType = random.choices(["type1", "type2", "type3", "type4", "elite"], weights=[50, 15, 15, 18.5, 1.5])[0]
+                enemies.append(Enemy(enemyType, random.randint(0, 1000)))
 
         if boss:
             boss.update(eProjs, playerPos)
@@ -470,7 +659,11 @@ while running:
                 playerHp -= 20; shakeTimer = 20; invincibleTimer = 60
             
             if boss.hp <= 0:
-                stats["gold"] += 1500; boss = None; gameState = 'SHOP'; shopOptions = getShopItems()
+                boss = None
+                stats["gold"] += 1500
+                score += 5000
+                gameState = 'SHOP'
+                shopOptions = getShopItems()
 
         # 적 및 충돌 로직 업데이트
         for e in enemies[:]:
@@ -494,15 +687,32 @@ while running:
             for p in pProjs[:]:
                 pBulletRect = pygame.Rect(p.pos.x, p.pos.y, 10, 10)
                 if eRect.colliderect(pBulletRect):
-                    e.hp -= stats["damage"]
-                    if not stats["pierce"] and p in pProjs: pProjs.remove(p)
+                    # 1. 관통 여부에 따른 투사체 제거
+                    if not stats["pierce"] and p in pProjs: 
+                        pProjs.remove(p)
                     
+                    # 2. HP 감소 (안전하게 속성 확인 후 연산)
+                    if hasattr(e, 'hp'):
+                        e.hp -= stats["damage"]
+                    else:
+                        # 만약 클래스에서 실수로 누락했다면 기본값 할당 후 연산
+                        e.hp = 5 - stats["damage"]
+                    
+                    # 3. 사망 처리 로직
                     if e.hp <= 0:
                         if e in enemies:
-                            if getattr(e, 'etype', None) == "elite": zeroTicket = True
-                            enemies.remove(e); stats["gold"] += 35; score += 100
-                            for _ in range(10): particles.append(Particle(e.pos.x+15, e.pos.y+15, (255, 50, 50)))
-                        break 
+                            # getattr을 사용하여 안전하게 엘리트 여부 확인
+                            if getattr(e, 'eType', None) == "elite": 
+                                zeroTicket = True
+                                
+                            enemies.remove(e)
+                            stats["gold"] += 35
+                            score += 100 # 점수 누적 확인
+                            
+                            # 처치 이펙트(파티클) 생성
+                            for _ in range(10): 
+                                particles.append(Particle(e.pos.x+15, e.pos.y+15, (255, 50, 50)))
+                        break
 
         for p in pProjs[:]:
             p.update()
