@@ -24,8 +24,7 @@ bgImg = pygame.image.load(os.path.join(IMGS_PATH, "background.png")).convert()
 playerImg = pygame.image.load(os.path.join(IMGS_PATH, "player.png")).convert_alpha()
 playerImg = pygame.transform.scale(playerImg, (60, 60))
 
-# 몬스터 종류 수
-MAX_ENEMY_TYPES = 10
+MAX_ENEMY_TYPES = 10 # 몬스터 종류 수
 ENEMY_IMGS = {}
 for i in range(1, MAX_ENEMY_TYPES + 1):
     type_key = f"type_{i}"
@@ -35,7 +34,6 @@ for i in range(1, MAX_ENEMY_TYPES + 1):
             "ATTACK": pygame.transform.scale(pygame.image.load(os.path.join(IMGS_PATH, f"normalEnemy_{i}_attack.png")).convert_alpha(), (50, 50)),
         }
     except FileNotFoundError:
-        # 이미지가 없는 경우를 대비한 방어적 프로그래밍
         ENEMY_IMGS[type_key] = ENEMY_IMGS.get("type_1")
 
 bossSwarmImg = pygame.image.load(os.path.join(IMGS_PATH, "boss_swarm.png")).convert_alpha()
@@ -50,7 +48,6 @@ except:
     snd_hit = None
     snd_expl = None
 
-
 # 색상 및 폰트
 WHITE, RED, GOLD, BLACK, GREEN, CYAN, PURPLE, GRAY = (255, 255, 255), (255, 50, 50), (255, 215, 0), (10, 10, 15), (50, 255, 50), (0, 255, 255), (200, 50, 255), (50, 50, 50)
 font_s = pygame.font.SysFont("malgungothic", 16)
@@ -64,7 +61,6 @@ except Exception as e:
     sndHit = None
     sndExpl = None
 
-# 바로 이 위치에 폰트 정의를 넣으세요!
 try:
     fontS = pygame.font.SysFont("malgungothic", 16)
     fontM = pygame.font.SysFont("malgungothic", 24)
@@ -74,7 +70,7 @@ except:
     fontM = pygame.font.Font(None, 32)
     fontL = pygame.font.Font(None, 50)
 
-# --- 3. 게임 상태 관리 변수 (camelCase 반영) ---
+# --- 3. 게임 상태 관리 변수 ---
 stats = {"damage": 100, "speed": 5, "gold": 1000, "maxHp": 100, "pierce": False, "specialAmmo": 3}
 playerHp = 100
 score = 0
@@ -95,13 +91,11 @@ shopTab = "ITEM"
 stocks = {"A": 100, "B": 100, "C": 100}
 bankBalance = 0
 
-# 지분에 따른 할인율 계산 함수 (C구역: 정밀 합금 기업이 물가 담당)
-# 기능 분리: 함수는 camelCase 사용 (KISS & DRY)
+# 지분에 따른 할인율 계산 함수
 def getDiscountRatio():
-    ratio = 2.0 - (stocks["C"] / 100.0)
+    ratio = 2.0 - (stocks["C"] / 100.0) #(C구역: 정밀 합금 기업이 물가 담당)
     return max(0.5, min(2.0, ratio))
 
-# 예외 처리 반영
 def loadHighscore():
     if os.path.exists("highscore.txt"):
         try:
@@ -144,7 +138,6 @@ class Particle:
             surf.blit(p_surf, (self.pos[0]-3, self.pos[1]-3))
 
 class Projectile:
-    # radius(반지름) 파라미터 추가
     def __init__(self, x, y, vel, color, dmg, radius=5):
         self.pos = pygame.Vector2(x, y)
         self.vel = vel
@@ -155,8 +148,7 @@ class Projectile:
     def update(self): 
         self.pos += self.vel
 
-    def draw(self, surf): 
-        # 중앙은 하얗게, 테두리는 색상으로 렌더링하여 시인성 극대화
+    def draw(self, surf):
         pygame.draw.circle(surf, self.color, (int(self.pos.x), int(self.pos.y)), self.radius)
         pygame.draw.circle(surf, WHITE, (int(self.pos.x), int(self.pos.y)), self.radius - 2)
 
@@ -244,7 +236,6 @@ class BossSwarm:
             self.fireTimers[i] -= 1
             
             if self.fireTimers[i] <= 0:
-                # 대기 시간에 비례한 크기 계산 로직 (DRY 원칙)
                 waitRatio = self.maxTimers[i] / 60.0 # 1.0 ~ 2.5 비율 산출
                 pSize = int(4 + (waitRatio * 3))     # 반지름 7 ~ 11
                 pDmg = int(5 + (waitRatio * 2))      # 데미지 7 ~ 10
@@ -313,7 +304,7 @@ class Enemy:
             self.imgType = "type_1"
 
     def update(self, eProjs, pPos):
-        # 1. 이동 로직 (type4는 수평 이동만)
+        # 1. 이동 로직
         if self.eType == "type3":
             self.pos.y += self.vy
             self.pos.x += math.sin(pygame.time.get_ticks() / 200) * 4 
