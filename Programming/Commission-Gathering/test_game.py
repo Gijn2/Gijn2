@@ -75,7 +75,7 @@ except:
     fontL = pygame.font.Font(None, 50)
 
 # --- 3. 게임 상태 관리 변수 (camelCase 반영) ---
-stats = {"damage": 1, "speed": 5, "gold": 1000, "maxHp": 100, "pierce": False, "specialAmmo": 3}
+stats = {"damage": 100, "speed": 5, "gold": 1000, "maxHp": 100, "pierce": False, "specialAmmo": 3}
 playerHp = 100
 score = 0
 gameState = 'PLAYING'
@@ -150,7 +150,7 @@ class Projectile:
         self.vel = vel
         self.color = color
         self.dmg = dmg
-        self.radius = radius # camelCase 유지
+        self.radius = radius
 
     def update(self): 
         self.pos += self.vel
@@ -382,6 +382,7 @@ class Enemy:
             for angle in getattr(self, 'orbitAngles', []):
                 offset = pygame.Vector2(0, 25).rotate(angle)
                 pygame.draw.circle(surf, GOLD, (int(self.pos.x+25 + offset.x), int(self.pos.y+25 + offset.y)), 5)
+
 # --- 5. 유틸리티 함수 ---
 # 해킹을 막기 위한 함수
 def saveHighscoreSecure(scoreValue):
@@ -679,32 +680,20 @@ while running:
                 if e in enemies: enemies.remove(e)
                 continue 
 
-            elif e.pos.y > HEIGHT:
-                if e in enemies:
-                    enemies.remove(e)
-                    targetSector = random.choice(["A", "B", "C"]) 
-                    stocks[targetSector] -= 5 
-                    shakeTimer = 10
-                continue
-
             for p in pProjs[:]:
                 pBulletRect = pygame.Rect(p.pos.x, p.pos.y, 10, 10)
                 if eRect.colliderect(pBulletRect):
-                    # 1. 관통 여부에 따른 투사체 제거
+                    
                     if not stats["pierce"] and p in pProjs: 
                         pProjs.remove(p)
-                    
-                    # 2. HP 감소 (안전하게 속성 확인 후 연산)
+
                     if hasattr(e, 'hp'):
                         e.hp -= stats["damage"]
                     else:
-                        # 만약 클래스에서 실수로 누락했다면 기본값 할당 후 연산
                         e.hp = 5 - stats["damage"]
                     
-                    # 3. 사망 처리 로직
                     if e.hp <= 0:
                         if e in enemies:
-                            # getattr을 사용하여 안전하게 엘리트 여부 확인
                             if getattr(e, 'eType', None) == "elite": 
                                 zeroTicket = True
                                 
@@ -740,7 +729,7 @@ while running:
 
         for p in eProjs[:]:
             p.update()
-            if p.pos.distance_to(playerPos + pygame.Vector2(20,20)) < 22 and invincibleTimer <= 0:
+            if p.pos.distance_to(playerPos + pygame.Vector2(30,30)) < 22 and invincibleTimer <= 0:
                 playerHp -= p.dmg; eProjs.remove(p); shakeTimer = 10; invincibleTimer = 30
             elif p.pos.y > HEIGHT: eProjs.remove(p)
             
@@ -770,9 +759,19 @@ while running:
         for p in pProjs: p.draw(tempSurf)
         for p in eProjs: p.draw(tempSurf)
         
+        # --- 수정된 렌더링 코드 ---
         if invincibleTimer % 4 == 0: 
             tempSurf.blit(playerImg, playerPos)
-        
+            
+            playerCenter = (int(playerPos.x + 30), int(playerPos.y + 30))
+            hitboxRadius = 10 
+
+            # 1. 원형 테두리 (이건 투명도가 필요 없으므로 그대로 유지)
+            pygame.draw.circle(tempSurf, CYAN, playerCenter, hitboxRadius, 2)
+            fillSurf = pygame.Surface((hitboxRadius * 2, hitboxRadius * 2), pygame.SRCALPHA)
+            pygame.draw.circle(fillSurf, (0, 255, 255, 80), (hitboxRadius, hitboxRadius), hitboxRadius - 2)
+            tempSurf.blit(fillSurf, (playerCenter[0] - hitboxRadius, playerCenter[1] - hitboxRadius))
+            
         if boss is None:
             pygame.draw.rect(tempSurf, GRAY, (WIDTH//2-100, 20, 200, 8))
             pygame.draw.rect(tempSurf, CYAN, (WIDTH//2-100, 20, (stageTimer/STAGE_DURATION)*200, 8))
@@ -811,9 +810,9 @@ while running:
 
         elif shopTab == "INVEST":
             investTargets = [
-                {"id": "A", "n": "구역 A: 지열 운송", "y": 150},
-                {"id": "B", "n": "구역 B: 에너지 연구", "y": 260},
-                {"id": "C", "n": "구역 C: 정밀 합금", "y": 370}
+                {"id": "A", "n": "구역 A: 지열 운송", "y": 150, "k": "1"},
+                {"id": "B", "n": "구역 B: 에너지 연구", "y": 260, "k": "2"},
+                {"id": "C", "n": "구역 C: 정밀 합금", "y": 370, "k": "3"}
             ]
             for i, inv in enumerate(investTargets):
                 y = inv["y"]
@@ -849,18 +848,18 @@ while running:
         
     # --- 배경에 덮이지 않도록 UI를 마지막에 렌더링 ---
     
-    # 1. 체력바 배경(빨간색) 및 현재 체력(초록색)
-    pygame.draw.rect(screen, RED, (10, 10, 200, 20)) 
+    # 1. 체력바 배경 현재 체력(초록색)
+    # pygame.draw.rect(screen, RED, (10, 10, 200, 20)) 
     pygame.draw.rect(screen, GREEN, (10, 10, max(0, (playerHp/stats['maxHp'])*200), 20))
     # 직관성을 위한 체력 수치 텍스트 표기 추가
-    screen.blit(fontS.render(f"{int(playerHp)} / {stats['maxHp']}", True, WHITE), (80, 10))
+    screen.blit(fontS.render(f"{int(playerHp)} / {stats['maxHp']}", True, BLACK), (80, 10))
     
     # 2. 정보 텍스트 (점수, 최고점수, 스테이지 정보 그룹화)
     infoTxt1 = fontS.render(f"SCORE: {score} | HI-SCORE: {highScore} | STAGE: {currentStage}", True, WHITE)
     screen.blit(infoTxt1, (10, 35))
     
     # 3. 재화 및 특수기 개수 표기 (눈에 띄도록 골드 색상 강조)
-    infoTxt2 = fontS.render(f"GOLD: {stats['gold']} G | SPECIAL(W): {stats['specialAmmo']} 개", True, GOLD)
+    infoTxt2 = fontS.render(f"GOLD: {stats['gold']} G | SPECIAL (W): {stats['specialAmmo']} 개", True, GOLD)
     screen.blit(infoTxt2, (10, 55))
     
     # 4. 제로 티켓 활성화 상태 (UI가 겹치지 않게 y좌표 75로 하향 조정)
