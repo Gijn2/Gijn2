@@ -558,24 +558,27 @@ while running:
         temp_surf.blit(guide_txt, (150, 400))
         
     elif shopTab == "INVEST":
-        invest_targets = [
-            {"id": "A", "name": "A구역: 지열 운송", "effect": "이동속도 증가", "cost": 500},
-            {"id": "B", "name": "B구역: 에너지 연구", "effect": "쿨타임 감소", "cost": 500},
-            {"id": "C", "name": "C구역: 정밀 합금", "effect": "화력 및 할인율", "cost": 500}
+        # camelCase 적용 및 UI 표시를 위한 key 데이터 통합 (DRY 원칙)
+        investTargets = [
+            {"id": "A", "name": "A구역: 지열 운송", "effect": "이동속도 증가", "cost": 500, "key": "Q"},
+            {"id": "B", "name": "B구역: 에너지 연구", "effect": "쿨타임 감소", "cost": 500, "key": "W"},
+            {"id": "C", "name": "C구역: 정밀 합금", "effect": "화력 및 할인율", "cost": 500, "key": "E"}
         ]
         
-        for i, target in enumerate(invest_targets):
-            y_pos = 150 + (i * 110)
-            pygame.draw.rect(temp_surf, (45, 45, 65), (50, y_pos, 800, 90), border_radius=10)
+        for i, target in enumerate(investTargets):
+            yPos = 150 + (i * 110)
+            pygame.draw.rect(tempSurf, (45, 45, 65), (50, yPos, 800, 90), border_radius=10)
             
             # 지분율 바 (Visual Bar)
-            bar_width = int(stocks[target["id"]] * 2) # 100% = 200px
-            pygame.draw.rect(temp_surf, GOLD, (550, y_pos + 35, bar_width, 20))
+            barWidth = int(stocks[target["id"]] * 2) 
+            pygame.draw.rect(tempSurf, GOLD, (550, yPos + 35, barWidth, 20))
             
-            # 텍스트 정보
-            temp_surf.blit(font_m.render(f"{target['name']} ({stocks[target['id']]}%)", True, WHITE), (70, y_pos + 15))
-            temp_surf.blit(font_s.render(f"효과: {target['effect']}", True, GRAY), (70, y_pos + 50))
-            temp_surf.blit(font_m.render(f"{target['cost']}G [Key:{i+1}]", True, GOLD), (380, y_pos + 30))
+            # 텍스트 정보 표기
+            tempSurf.blit(fontM.render(f"{target['name']} ({stocks[target['id']]}%)", True, WHITE), (70, yPos + 15))
+            tempSurf.blit(fontS.render(f"효과: {target['effect']}", True, GRAY), (70, yPos + 50))
+            
+            # 버그 해결 지점: i+1 이 아닌, 딕셔너리에 정의된 실제 로직 키(Q, W, E)를 출력하도록 변경
+            tempSurf.blit(fontM.render(f"{target['cost']}G [Key:{target['key']}]", True, GOLD), (380, yPos + 30))
 
     # 지분 하락에 따른 계급 등급 표시 [cite: 15, 16]
     avg_stock = sum(stocks.values()) / 3
@@ -844,12 +847,25 @@ while running:
     # 흔들림이 적용된 도화지(temp_surf)를 실제 화면에 출력
     screen.blit(tempSurf, render_offset)
         
-    # 배경에 덮이지 않도록 UI를 마지막에 렌더링
+    # --- 배경에 덮이지 않도록 UI를 마지막에 렌더링 ---
+    
+    # 1. 체력바 배경(빨간색) 및 현재 체력(초록색)
+    pygame.draw.rect(screen, RED, (10, 10, 200, 20)) 
     pygame.draw.rect(screen, GREEN, (10, 10, max(0, (playerHp/stats['maxHp'])*200), 20))
-    scoreTxt = fontS.render(f"SCORE: {score} | HI-SCORE: {highScore}", True, WHITE)
-    screen.blit(scoreTxt, (10, 40))
-    if zeroTicket: screen.blit(fontS.render("★ ZERO TICKET ACTIVE ★", True, CYAN), (10, 60))
-
+    # 직관성을 위한 체력 수치 텍스트 표기 추가
+    screen.blit(fontS.render(f"{int(playerHp)} / {stats['maxHp']}", True, WHITE), (80, 10))
+    
+    # 2. 정보 텍스트 (점수, 최고점수, 스테이지 정보 그룹화)
+    infoTxt1 = fontS.render(f"SCORE: {score} | HI-SCORE: {highScore} | STAGE: {currentStage}", True, WHITE)
+    screen.blit(infoTxt1, (10, 35))
+    
+    # 3. 재화 및 특수기 개수 표기 (눈에 띄도록 골드 색상 강조)
+    infoTxt2 = fontS.render(f"GOLD: {stats['gold']} G | SPECIAL(W): {stats['specialAmmo']} 개", True, GOLD)
+    screen.blit(infoTxt2, (10, 55))
+    
+    # 4. 제로 티켓 활성화 상태 (UI가 겹치지 않게 y좌표 75로 하향 조정)
+    if zeroTicket: 
+        screen.blit(fontS.render("★ ZERO TICKET ACTIVE ★", True, CYAN), (10, 75))
     # UI 업데이트 및 프레임 제한
     pygame.display.flip()
     clock.tick(60)
