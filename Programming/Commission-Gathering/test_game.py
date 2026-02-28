@@ -71,7 +71,7 @@ except:
     fontL = pygame.font.Font(None, 50)
 
 # --- 3. 게임 상태 관리 변수 ---
-stats = {"damage": 100, "speed": 5, "gold": 1000, "maxHp": 100, "pierce": False, "specialAmmo": 3}
+stats = {"damage": 10, "speed": 5, "gold": 1000, "maxHp": 100, "pierce": False, "specialAmmo": 3}
 playerHp = 100
 score = 0
 gameState = 'PLAYING'
@@ -152,9 +152,37 @@ class Projectile:
         pygame.draw.circle(surf, self.color, (int(self.pos.x), int(self.pos.y)), self.radius)
         pygame.draw.circle(surf, WHITE, (int(self.pos.x), int(self.pos.y)), self.radius - 2)
 
+class HomingProjectile(Projectile):
+    def __init__(self, x, y, vel, color, dmg, radius=5, turnSpeed=0.03):
+        super().__init__(x, y, vel, color, dmg, radius)
+        self.turnSpeed = turnSpeed
+        self.timer = 0  # 폭발 타이머 추가
+        self.maxLife = 360 
+        
+    def updateTarget(self, targetPos, eProjs):
+        self.timer += 1
+        
+        # 6초가 지나면 폭발 및 분열
+        if self.timer >= self.maxLife:
+            self.explode(eProjs)
+            return True # 삭제 신호 반환
+        
+        desiredDir = targetPos - self.pos
+        if desiredDir.length() > 0:
+            desiredDir = desiredDir.normalize() * self.vel.length()
+            self.vel = self.vel.lerp(desiredDir, self.turnSpeed)
+        super().update()
+        return False
+    
+    def explode(self, eProjs):
+        for i in range(10):
+            angle = i * 36        
+            splitVel = pygame.Vector2(0, 4).rotate(angle)       # 전방향(360도)으로 퍼지는 속도 벡터 계산
+            eProjs.append(Projectile(self.pos.x, self.pos.y, splitVel, self.color, self.dmg, 4))    # 분열된 탄환은 일반 Projectile로 생성 (무한 분열 방지)
+
 class BossZero:
     def __init__(self):
-        self.type = "REAPER"
+        self.type = "ZERO"
         self.pos = pygame.Vector2(WIDTH//2, 100)
         self.hp = 150; self.maxHp = 150
         self.timer = 0
@@ -176,16 +204,24 @@ class BossZero:
         elif self.state == "SCYTHE":
             # 낫 휘두르기 (크고 빠른 투사체 3갈래)
             if self.timer == 30:
-                for angle in [-15, 0, 15]:
+                for angle in range(-45, 46, 10): 
                     dirVec = pygame.Vector2(0, 7).rotate(angle)
                     eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, RED, 10, 12))
             elif self.timer > 90:
+                self.state = "BURST" # [수정] 신규 패턴으로 연결
+                self.timer = 0
+
+        elif self.state == "BURST":
+            if self.timer == 30:
+                for angle in range(0, 360, 20):
+                    dirVec = pygame.Vector2(0, 5).rotate(angle)
+                    eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, GOLD, 8, 8))
+            elif self.timer > 90:
                 self.state = "SOULS"
                 self.timer = 0
-                
-        elif self.state == "SOULS":
-            # 영혼 소환 (느리게 따라가는 투사체)
-            if self.timer % 20 == 0 and self.timer <= 60:
+
+        elif self.state == "SOULS":            
+            if self.timer % 4 == 0 and self.timer <= 60:
                 dist = pPos - self.pos
                 dirVec = dist.normalize() * 2 if dist.length() > 0 else pygame.Vector2(0, 2)
                 eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, CYAN, 5, 8))
@@ -226,33 +262,60 @@ class BossSwarm:
         self.type = "SWARM"
         self.hp = 250; self.maxHp = 250
         self.centers = [pygame.Vector2(random.randint(100,800), random.randint(50,200)) for _ in range(8)]
-        # 60~150 프레임 (1초 ~ 2.5초) 개별 타이머 할당
         self.fireTimers = [random.randint(60, 150) for _ in range(8)]
-        self.maxTimers = list(self.fireTimers) # 크기 계산을 위한 원본 저장
+        self.maxTimers = list(self.fireTimers) 
+        self.weakIndex = random.randint(0, 7) # [신규] 약점 개체 인덱스
+        self.state = "SCATTER" # [신규] 상태 머신
+        self.stateTimer = 0
 
     def update(self, eProjs, pPos):
-        for i in range(8):
-            self.centers[i].x += math.sin(pygame.time.get_ticks() / 500 + i) * 2
-            self.fireTimers[i] -= 1
-            
-            if self.fireTimers[i] <= 0:
-                waitRatio = self.maxTimers[i] / 60.0 # 1.0 ~ 2.5 비율 산출
-                pSize = int(4 + (waitRatio * 3))     # 반지름 7 ~ 11
-                pDmg = int(5 + (waitRatio * 2))      # 데미지 7 ~ 10
+        self.stateTimer += 1
+        
+        # 일정 시간마다 패턴 변환
+        if self.stateTimer > 300:
+            self.state = "GATHER" if self.state == "SCATTER" else "SCATTER"
+            self.stateTimer = 0
+            if self.state == "SCATTER":
+                self.weakIndex = random.randint(0, 7) # 흩어질 때마다 약점 변경
+        
+        if self.state == "SCATTER":
+            for i in range(8):
+                self.centers[i].x += math.sin(pygame.time.get_ticks() / 500 + i) * 2
+                self.fireTimers[i] -= 1
                 
-                diff = pPos - self.centers[i]
-                dirVec = diff.normalize() * 4 if diff.length() > 0 else pygame.Vector2(0, 4)
+                if self.fireTimers[i] <= 0:
+                    waitRatio = self.maxTimers[i] / 60.0 
+                    pSize = int(4 + (waitRatio * 3))     
+                    pDmg = int(5 + (waitRatio * 2))      
+                    
+                    diff = pPos - self.centers[i]
+                    dirVec = diff.normalize() * 4 if diff.length() > 0 else pygame.Vector2(0, 4)
+                    
+                    eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, dirVec, PURPLE, pDmg, pSize))
+                    self.fireTimers[i] = random.randint(60, 150)
+                    self.maxTimers[i] = self.fireTimers[i]
+                    
+        elif self.state == "GATHER":
+            # [신규] 화면 중앙 상단에 원형으로 모여서 탄막을 뿌리는 패턴
+            targetCenter = pygame.Vector2(WIDTH//2, 150)
+            for i in range(8):
+                angle = (i / 8) * math.pi * 2 + (self.stateTimer * 0.05)
+                targetPos = targetCenter + pygame.Vector2(math.cos(angle)*80, math.sin(angle)*80)
+                self.centers[i] = self.centers[i].lerp(targetPos, 0.05) # 부드러운 이동
                 
-                # 계산된 크기(pSize)를 넘겨 투사체 생성
-                eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, dirVec, PURPLE, pDmg, pSize))
-                
-                # 발사 후 타이머 재설정
-                self.fireTimers[i] = random.randint(60, 150)
-                self.maxTimers[i] = self.fireTimers[i]
+            if self.stateTimer % 45 == 0:
+                for i in range(8):
+                    diff = pPos - self.centers[i]
+                    dirVec = diff.normalize() * 5 if diff.length() > 0 else pygame.Vector2(0, 5)
+                    eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, dirVec, RED, 8, 5))
 
     def draw(self, surf):
-        for c in self.centers:
+        for i, c in enumerate(self.centers):
             surf.blit(bossSwarmImg, (c.x - 50, c.y - 50))
+            # [신규] 약점 개체 특수 표시 (붉은색 원과 WEAK 텍스트)
+            if i == self.weakIndex:
+                pygame.draw.circle(surf, RED, (int(c.x), int(c.y)), 60, 2)
+                surf.blit(font_s.render("WEAK", True, RED), (c.x - 25, c.y - 70))
 
 ENEMY_CONFIG = {
     "type1": {"hp": 5,  "vy": 1.5, "img": "type_1"},
@@ -321,7 +384,7 @@ class Enemy:
                 self.state = "ATTACK"
                 self.attackTimer = 0 
                 if self.eType == "type3":
-                    self.orbitAngles = [0, 120, 240] # type3 회전 총알 초기화
+                    self.orbitAngles = [i * 40 for i in range(9)]
                 
         # 3. 공격 패턴 실행 (모션 동기화)
         elif self.state == "ATTACK":
@@ -360,7 +423,7 @@ class Enemy:
             # 일반몬스터 4: 수평 이동 중 발사
             elif self.eType == "type4":
                 if self.attackTimer == 1:
-                    eProjs.append(Projectile(self.pos.x+15, self.pos.y+15, pygame.Vector2(0, 5), RED, 5, 7))
+                    eProjs.append(HomingProjectile(self.pos.x+15, self.pos.y+15, pygame.Vector2(0, 5), RED, 5, 7))
                 if self.attackTimer > 30:
                     self.state = "STAND"; self.shootDelay = 90
 
@@ -639,13 +702,19 @@ while running:
             if stageTimer <= 0:
                 if zeroTicket: boss = BossZero(); zeroTicket = False
                 else: boss = BossSwarm()
-                enemies.clear()
             
-            if len(enemies) < 6:
+            if len(enemies) < 10:
                 # 명확한 Naming Convention 적용 및 통일
                 # etype = random.choices(["normal", "bouncer", "sin", "sniper", "elite"], weights=[50, 15, 15, 18.5, 1.5])[0]
                 enemyType = random.choices(["type1", "type2", "type3", "type4", "elite"], weights=[50, 15, 15, 18.5, 1.5])[0]
                 enemies.append(Enemy(enemyType, random.randint(0, 1000)))
+        else:
+            if boss.type == "swarm":
+                if len(enemies) < 5: 
+                    # 너무 자주 스폰되지 않도록 낮은 확률 부여
+                    if random.random() < 0.25:
+                        enemies.append(Enemy("type4", random.randint(0, 1000)))
+            pass
 
         if boss:
             boss.update(eProjs, playerPos)
@@ -670,6 +739,11 @@ while running:
                 playerHp -= 15; shakeTimer = 15; invincibleTimer = 40
                 if e in enemies: enemies.remove(e)
                 continue 
+            
+            if e.eType == "type4":
+                if e.pos.x < -50 or e.pos.x > WIDTH + 50:
+                    enemies.remove(e)
+                    continue 
 
             for p in pProjs[:]:
                 pBulletRect = pygame.Rect(p.pos.x, p.pos.y, 10, 10)
@@ -702,14 +776,26 @@ while running:
             hitThisFrame = False
             if boss:
                 hit = False
+                hitSwarmWeak = False # 약점을 때렸는지 여부
+                
                 if boss.type == "CHERNOBOG" and boss.rect.collidepoint(p.pos): hit = True
                 elif boss.type == "SWARM":
-                    for c in boss.centers:
-                        if p.pos.distance_to(c) < 25: hit = True; break
+                    for i, c in enumerate(boss.centers):
+                        if p.pos.distance_to(c) < 25: 
+                            hit = True
+                            if i == getattr(boss, 'weakIndex', -1):
+                                hitSwarmWeak = True # 약점 개체 적중!
+                            break
                 elif boss.type == "ZERO" and p.pos.distance_to(boss.pos + pygame.Vector2(25,25)) < 40: hit = True
                 
                 if hit:
-                    boss.hp -= p.dmg; hitThisFrame = True
+                    if boss.type == "SWARM":
+                        actualDmg = p.dmg if hitSwarmWeak else p.dmg * 0.25 # 약점이 아니면 25% 피해
+                        boss.hp -= actualDmg
+                    else:
+                        boss.hp -= p.dmg
+                        
+                    hitThisFrame = True
                     if sndHit: sndHit.play() 
                     for _ in range(5): particles.append(Particle(p.pos.x, p.pos.y, (255, 200, 50)))
 
@@ -719,7 +805,21 @@ while running:
                 if p in pProjs: pProjs.remove(p)
 
         for p in eProjs[:]:
-            p.update()
+            shouldRemove = False
+            
+            if isinstance(p, HomingProjectile):
+                shouldRemove = p.updateTarget(playerPos, eProjs)
+            else:
+                p.update()
+            
+            offScreen = p.pos.x < -100 or p.pos.x > WIDTH+100 or p.pos.y < -100 or p.pos.y > HEIGHT+100
+            
+            if shouldRemove or offScreen:
+                if p in eProjs:
+                    eProjs.remove(p)
+                continue
+
+            # 플레이어 충돌 판정
             if p.pos.distance_to(playerPos + pygame.Vector2(30,30)) < 22 and invincibleTimer <= 0:
                 playerHp -= p.dmg; eProjs.remove(p); shakeTimer = 10; invincibleTimer = 30
             elif p.pos.y > HEIGHT: eProjs.remove(p)
