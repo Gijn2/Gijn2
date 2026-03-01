@@ -180,6 +180,44 @@ class HomingProjectile(Projectile):
             splitVel = pygame.Vector2(0, 4).rotate(angle)       # 전방향(360도)으로 퍼지는 속도 벡터 계산
             eProjs.append(Projectile(self.pos.x, self.pos.y, splitVel, self.color, self.dmg, 4))    # 분열된 탄환은 일반 Projectile로 생성 (무한 분열 방지)
 
+class Meteor:
+    def __init__(self, target):
+        self.target = pygame.Vector2(target)
+        # 화면 위쪽에서 생성되어 낙하지점으로 이동
+        self.pos = pygame.Vector2(target.x, -100)
+        self.speed = 0
+        self.radius = random.randint(20, 35)
+        self.alive = True
+        
+    def update(self, playerPos):
+        # 가속 낙하 로직
+        self.speed = min(14, self.speed + 0.6)
+        direction = (self.target - self.pos)
+        
+        if direction.length() > 0:
+            direction = direction.normalize()
+        self.pos += direction * self.speed
+        
+        # [추가] 플레이어와 메테오 본체의 직접 충돌 판정
+        if self.pos.distance_to(playerPos + pygame.Vector2(30, 30)) < self.radius + 10:
+            return True # 충돌 발생 신호
+            
+        # 목표 지점에 도달하면 폭발
+        if (self.target - self.pos).length() < 10:
+            self.alive = False
+        return False
+
+    def draw(self, surf):
+        # 낙하지점 표시 (그림자)
+        s = pygame.Surface((self.radius * 2, self.radius * 2), pygame.SRCALPHA)
+        pygame.draw.circle(s, (60, 0, 0, 150), (self.radius, self.radius), self.radius)
+        surf.blit(s, (self.target.x - self.radius, self.target.y - self.radius))
+        
+        # 메테오 본체
+        pygame.draw.circle(surf, (100, 100, 100), (int(self.pos.x), int(self.pos.y)), self.radius)
+        pygame.draw.circle(surf, (150, 150, 150), (int(self.pos.x), int(self.pos.y)), self.radius - 5)
+
+
 class BossZero:
     def __init__(self):
         self.type = "ZERO"
@@ -327,6 +365,74 @@ ENEMY_CONFIG = {
     "elite": {"hp": 50, "vy": 0.5, "img": "type_1"}, # 예외 케이스
 }
 
+class BossRock:
+    def __init__(self):
+        self.type = "ROCK"
+        self.pos = pygame.Vector2(WIDTH // 2, 120)
+        self.hp = 350; self.maxHp = 350
+        self.state = "IDLE"
+        self.timer = 0
+        self.meteors = []
+
+    def _spawn_meteor(self, playerPos):
+        # 플레이어 근처 무작위 지점을 타겟으로 설정
+        offset = pygame.Vector2(random.randint(-150, 150), random.randint(-120, 120))
+        target = playerPos + offset
+        # 화면 밖으로 나가지 않게 제한
+        target.x = max(50, min(WIDTH - 50, target.x))
+        target.y = max(50, min(HEIGHT - 50, target.y))
+        self.meteors.append(Meteor(target))
+
+    def _explode_meteor(self, meteor, eProjs):
+        # 폭발 시 12방향으로 파편 발사
+        for angle in range(0, 360, 30):
+            dirVec = pygame.Vector2(0, 5).rotate(angle)
+            eProjs.append(Projectile(meteor.target.x, meteor.target.y, dirVec, RED, 10, 6))
+
+    def update(self, eProjs, playerPos):
+        self.timer += 1
+        global playerHp, shakeTimer, invincibleTimer
+
+        if self.state == "IDLE":
+            if self.timer > 90:
+                self.state = "METEOR_PREP"
+                self.timer = 0
+        
+        elif self.state == "METEOR_PREP":
+            if self.timer % 20 == 0 and self.timer <= 80:
+                self._spawn_meteor(playerPos)
+            if self.timer > 100:
+                self.state = "METEOR_RAIN"
+                self.timer = 0
+        
+        elif self.state == "METEOR_RAIN":
+            for meteor in self.meteors[:]:
+                hitPlayer = meteor.update(playerPos)
+                
+                # 메테오에 직접 맞았을 때
+                if hitPlayer and invincibleTimer <= 0:
+                    playerHp -= 20
+                    invincibleTimer = 40
+                    shakeTimer = 20
+                    meteor.alive = False # 맞으면 즉시 터짐
+
+                if not meteor.alive:
+                    self._explode_meteor(meteor, eProjs)
+                    self.meteors.remove(meteor)
+            
+            if not self.meteors and self.timer > 60:
+                self.state = "IDLE"
+                self.timer = 0
+
+    def draw(self, surf):
+        # 보스 본체
+        pygame.draw.circle(surf, (50, 50, 50), (int(self.pos.x), int(self.pos.y)), 45)
+        pygame.draw.circle(surf, (80, 80, 80), (int(self.pos.x), int(self.pos.y)), 40)
+        surf.blit(font_s.render("BOSS: ROCK", True, WHITE), (self.pos.x - 35, self.pos.y - 10))
+        
+        for meteor in self.meteors:
+            meteor.draw(surf)
+            
 class Enemy:
     def __init__(self, eType="type1", offset=0):
         self.eType = eType
