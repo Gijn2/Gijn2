@@ -12,12 +12,12 @@ IMGS_PATH = os.path.join(os.path.dirname(__file__), "imgs")
 pygame.init()
 WIDTH, HEIGHT = 900, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Legendary Bosses: Final Edition (Visual Enhanced)")
+pygame.display.set_caption("Topdown Shooting Pygame: Limited Edition")
 clock = pygame.time.Clock()
 
 # --- 2. 에셋 로드 (화면 설정 후 로드해야 함) --
 # 해킹을 막기 위한 비밀 키
-secretSalt = "MyLegendaryGameSecret2026"
+secretSalt = "MyPyGameTest2026"
 
 # 플레이어 및 적 이미지 로드
 bgImg = pygame.image.load(os.path.join(IMGS_PATH, "background.png")).convert()
