@@ -127,7 +127,7 @@ ENEMY_SPAWN_POOL = [
     {"type": "type2", "weight": 15.0, "minStage": 2},
     {"type": "type3", "weight": 15.0, "minStage": 3},
     {"type": "type4", "weight": 18.5, "minStage": 4}, 
-    {"type": "elite", "weight": 1.5, "minStage": 4},
+    {"type": "elite", "weight": 1.5, "minStage": 5},
 ]
 
 # --- 4. 유틸리티 함수 ---
