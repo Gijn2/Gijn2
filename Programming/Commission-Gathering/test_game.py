@@ -2,8 +2,8 @@ import pygame
 import random
 import math
 import os
-import numpy
 import hashlib
+import json
 
 # --- 0. 경로 설정 ---
 IMGS_PATH = os.path.join(os.path.dirname(__file__), "imgs")
@@ -150,6 +150,21 @@ def loadHighscore():
 
 highScore = loadHighscore()
 
+# --- [신규] 보안 및 다국어 시스템 ---
+def save_game_secure(data, filename="save.dat"):
+    """해시 검증을 포함한 보안 세이브 (치트 방지)"""
+    data_str = json.dumps(data, sort_keys=True)
+    signature = hashlib.sha256((data_str + secretSalt).encode()).hexdigest()
+    with open(filename, "w") as f:
+        json.dump({"payload": data, "signature": signature}, f)
+
+LANG_DB = {
+    "ko": {"shop_title": "시스템 업그레이드", "core_warn": "코어 감지됨", "start": "전투 개시"},
+    "en": {"shop_title": "SYSTEM UPGRADE", "core_warn": "CORE DETECTED", "start": "START BATTLE"}
+}
+current_lang = "ko"
+def _t(key): return LANG_DB[current_lang].get(key, key)
+
 # 해킹을 막기 위한 함수
 def saveHighscoreSecure(scoreValue):
     # 점수와 비밀키를 합쳐 해시값(Checksum) 생성
@@ -198,6 +213,8 @@ def applyUpgrade(itemData):
     elif eff == "pierce": stats["pierce"] = True
     elif eff == "maxhp": stats["maxHp"] += 40; playerHp += 40
     elif eff == "ammo": stats["specialAmmo"] += 2
+
+
 
 # --- 5. 클래스 정의 ---
 class BossAssetManager:
