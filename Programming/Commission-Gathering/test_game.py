@@ -36,13 +36,6 @@ for i in range(1, MAX_ENEMY_TYPES + 1):
     except FileNotFoundError:
         ENEMY_IMGS[type_key] = ENEMY_IMGS.get("type_1")
 
-bossSwarmImg = pygame.image.load(os.path.join(IMGS_PATH, "boss_swarm.png")).convert_alpha()
-bossSwarmImg = pygame.transform.scale(bossSwarmImg, (75, 75))
-bossZeroImg = pygame.image.load(os.path.join(IMGS_PATH, "boss_zero.png")).convert_alpha()
-bossZeroImg = pygame.transform.scale(bossZeroImg, (50, 50))
-bossRockImg = pygame.image.load(os.path.join(IMGS_PATH, "boss_rock.png")).convert_alpha()
-bossRockImg = pygame.transform.scale(bossRockImg, (100, 100))
-
 try:
     snd_hit = pygame.mixer.Sound(os.path.join(IMGS_PATH, "hit.wav"))
     snd_expl = pygame.mixer.Sound(os.path.join(IMGS_PATH, "explosion.wav"))
@@ -88,7 +81,7 @@ shootCooldown = 0
 specialEffectTimer = 0
 shakeTimer = 0
 zeroTicket = False 
-STAGE_DURATION = 1800 
+STAGE_DURATION = 50 
 stageTimer = STAGE_DURATION
 bossAlertTimer = 0
 currentStage = 1
@@ -120,13 +113,14 @@ ENEMY_CONFIG = {
     # 추후 여기에 type5 ~ type10까지 한 줄씩만 추가하면 됩니다.
     "type5": {"hp": 10, "vy": 1.2, "img": "type_5"}, 
     "elite": {"hp": 50, "vy": 0.5, "img": "type_1"}, # 예외 케이스
+
 }
 
 ENEMY_SPAWN_POOL = [
     {"type": "type1", "weight": 50.0, "minStage": 1},
     {"type": "type2", "weight": 15.0, "minStage": 2},
     {"type": "type3", "weight": 15.0, "minStage": 3},
-    {"type": "type4", "weight": 18.5, "minStage": 4}, 
+    {"type": "type4", "weight": 18.5, "minStage": 5}, 
     {"type": "elite", "weight": 1.5, "minStage": 5},
 ]
 
@@ -206,6 +200,48 @@ def applyUpgrade(itemData):
     elif eff == "ammo": stats["specialAmmo"] += 2
 
 # --- 5. 클래스 정의 ---
+class BossAssetManager:
+    _cache = {}
+
+    # 1. 보스별 개별 설정 (이름: (가로, 세로, 확장자)) / 여기에 새 보스를 추가하기만 하면 자동으로 로드됩니다.
+    BOSS_CONFIG = {
+        "bossSwarm": {"size": (100, 100), "ext": ".png"},
+        "bossZero": {"size": (100, 150), "ext": ".png"},
+        "bossCrusher": {"size": (300, 300), "ext": ".png"}
+    }
+
+    @staticmethod
+    def get_images(boss_name):
+        # 캐시 확인
+        if boss_name in BossAssetManager._cache:
+            return BossAssetManager._cache[boss_name]
+
+        # 설정 가져오기 (설정이 없으면 기본값 적용)
+        config = BossAssetManager.BOSS_CONFIG.get(boss_name, {"size": (100, 100), "ext": ".png"})
+        size = config["size"]
+        ext = config["ext"]
+
+        images = {}
+        for motion in ["stand", "attack"]:
+            file_name = f"{boss_name}_{motion}{ext}"
+            path = os.path.join(IMGS_PATH, file_name)
+            key = motion.upper()
+
+            try:
+                # 0. 동적 파일 형식 지원 (png, gif 등 ext 설정에 따름)
+                img = pygame.image.load(path).convert_alpha()
+                images[key] = pygame.transform.scale(img, size)
+            except Exception as e:
+                print(f"Asset Error [{file_name}]: {e}")
+                # 대체 이미지 생성 (설정된 사이즈에 맞게)
+                placeholder = pygame.Surface(size, pygame.SRCALPHA)
+                color = (255, 0, 0) if key == "ATTACK" else (100, 100, 100)
+                pygame.draw.rect(placeholder, color, (0, 0, size[0], size[1]), 2)
+                images[key] = placeholder
+
+        BossAssetManager._cache[boss_name] = images
+        return images
+        
 class Particle:
     def __init__(self, x, y, color):
         self.pos = [x, y]
@@ -312,89 +348,116 @@ class BossZero:
         self.pos = pygame.Vector2(WIDTH//2, 100)
         self.hp = 150; self.maxHp = 150
         self.timer = 0
-        self.visible = True
-        self.state = "TELEPORT"
-        self.slashRect = None
+        self.state = "TELEPORT" # 11. 통합된 콤보 로직
+        self.comboStep = 0
+        self.hitboxRadius = 30
+        self.coneDir = pygame.Vector2(0, 1)
+        self.images = BossAssetManager.get_images("bossZero")
+        self.currentImg = self.images["STAND"]
         
     def update(self, eProjs, pPos):
         self.timer += 1
+        global particles # 사신 이펙트를 위한 파티클 전역변수
         
         if self.state == "TELEPORT":
-            self.visible = False
-            if self.timer > 60: # 1초 후 플레이어 상단으로 텔레포트
-                self.pos.x = max(50, min(WIDTH-50, pPos.x + random.randint(-100, 100)))
-                self.pos.y = max(50, min(HEIGHT-200, pPos.y - 150))
-                self.slashRect = pygame.Rect(0, pPos.y - 40, WIDTH, 80)
-                self.state = "SCYTHE"
-                self.timer = 0
-                self.visible = True
+            if self.comboStep == 0: # 텔레포트 대기
+                if self.timer > 60:
+                    self.pos.x = max(50, min(WIDTH-50, pPos.x))
+                    self.pos.y = max(50, min(HEIGHT-200, pPos.y - 150))
+                    self.timer = 0
+                    self.comboStep = 1
+                    self.coneDir = (pPos - self.pos).normalize() if (pPos - self.pos).length() > 0 else pygame.Vector2(0, 1)
+
+            elif self.comboStep == 1: # 낫 부채꼴 경고
+                # 11. 텔레포트 후 사신 이펙트 (검보라색 파티클)
+                for _ in range(2):
+                    particles.append(Particle(self.pos.x + random.randint(-30, 30), self.pos.y + random.randint(-30, 30), (150, 0, 255)))
+                    
+                if self.timer > 37:
+                    self.comboStep = 2
+                    self.timer = 0
+                    
+            elif self.comboStep == 2:
+                # 11. 부채꼴 테두리에서 SOULS 로직 구현
+                if self.timer == 1:
+                    # 양쪽 테두리 끝 위치 계산
+                    leftEdge = self.pos + self.coneDir.rotate(-45) * 200
+                    rightEdge = self.pos + self.coneDir.rotate(45) * 200
+                    for _ in range(8):
+                        eProjs.append(HomingProjectile(leftEdge.x, leftEdge.y, pygame.Vector2(random.uniform(-2, 2), 2), CYAN, 5, 8))
+                        eProjs.append(HomingProjectile(rightEdge.x, rightEdge.y, pygame.Vector2(random.uniform(-2, 2), 2), CYAN, 5, 8))
                 
-        elif self.state == "SCYTHE":
-            if self.timer == 60 and self.slashRect:
-                for _ in range(8): # 일반 투사체
-                    spawn_x = random.randint(0, WIDTH)
-                    spawn_y = random.randint(self.slashRect.top, self.slashRect.bottom)
-                    eProjs.append(Projectile(spawn_x, spawn_y, pygame.Vector2(random.uniform(-2, 2), 5), RED, 10, 6))
-                for _ in range(4): # 호밍 투사체
-                    spawn_x = random.randint(0, WIDTH)
-                    spawn_y = random.randint(self.slashRect.top, self.slashRect.bottom)
-                    eProjs.append(HomingProjectile(spawn_x, spawn_y, pygame.Vector2(0, 2), PURPLE, 8, 5))
-                self.slashRect = None # 범위 표시 해제
-
-            elif self.timer > 100:
-                self.state = "BURST"
-                self.timer = 0
-
-        elif self.state == "BURST":
-            if self.timer == 30:
-                for angle in range(0, 360, 20):
-                    dirVec = pygame.Vector2(0, 5).rotate(angle)
-                    eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, GOLD, 8, 8))
-            elif self.timer > 90:
-                self.state = "SOULS"
-                self.timer = 0
-
-        elif self.state == "SOULS":            
-            if self.timer % 4 == 0 and self.timer <= 60:
-                dist = pPos - self.pos
-                dirVec = dist.normalize() * 2 if dist.length() > 0 else pygame.Vector2(0, 2)
-                eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, CYAN, 5, 8))
-            elif self.timer > 120:
-                self.state = "TELEPORT"
-                self.timer = 0
+                if self.timer > 60:
+                    self.comboStep = 0
+                    self.timer = 0
 
     def draw(self, surf):
-        if self.visible:
-            surf.blit(bossZeroImg, (self.pos.x - 25, self.pos.y - 25))
-            
-        if self.slashRect:
-            s = pygame.Surface((self.slashRect.width, self.slashRect.height), pygame.SRCALPHA)
-            s.fill((255, 0, 0, 100)) # 알파값 100으로 투명도 적용
-            surf.blit(s, (self.slashRect.x, self.slashRect.y))
+        surf.blit(self.currentImg, (self.pos.x - 25, self.pos.y - 25))
+        if self.state == "TELEPORT_COMBO" and self.comboStep == 1:
+            # 11. 플레이어가 완전히 갇히는 거대한 부채꼴 (폴리곤)
+            leftVec = self.coneDir.rotate(-45) * 400
+            rightVec = self.coneDir.rotate(45) * 400
+            points = [self.pos, self.pos + leftVec, self.pos + rightVec]
+            pygame.draw.polygon(surf, (255, 0, 0, 80), points)
+        
+        hpRatio = max(0, self.hp / self.maxHp)
+        pygame.draw.rect(surf, GREEN, (self.pos.x - 30, self.pos.y + 40, 60 * hpRatio, 5))
 
 class BossCrusher:
     def __init__(self):
-        self.type = "CHERNOBOG"
+        self.type = "Crusher"
         self.hp = 500; self.maxHp = 500
-        self.rect = pygame.Rect(0, -100, WIDTH, 150)
-        self.pos = pygame.Vector2(0, -100)
-        self.mode = "MOVE"
+        self.pos = pygame.Vector2(WIDTH//2, 50)
+        self.homePos = pygame.Vector2(WIDTH//2, 50)
+        self.mode = "IDLE"
         self.timer = 0
-        self.beamAlpha = 0
+        self.hitboxRadius = 50 
+        self.targetPos = None
+        self.spinAngle = 0
+        self.images = BossAssetManager.get_images("bossCrusher")
+        self.currentImg = self.images["STAND"]
 
     def update(self, eProjs, pPos): 
         self.timer += 1
-        self.pos.x += math.sin(self.timer/20) * 5
-        self.rect.topleft = self.pos
+        # 9. 돌진 -> 정지 후 회전 사격 -> 부메랑 복귀 로직
+        if self.mode == "IDLE":
+            if self.timer > 90:
+                self.mode = "DASH"
+                self.targetPos = pygame.Vector2(pPos.x, pPos.y)
+                self.timer = 0
+        elif self.mode == "DASH":
+            self.currentImg = self.images["ATTACK"]
+            dirVec = self.targetPos - self.pos
+            if dirVec.length() > 15:
+                self.pos += dirVec.normalize() * 15
+            else:
+                self.mode = "SPIN_SHOOT"
+                self.timer = 0
+        elif self.mode == "SPIN_SHOOT":
+            self.currentImg = self.images["ATTACK"]
+            self.spinAngle += 15
+            # 추후 거대한 투사체 이미지로 교체를 위한 Projectile 반경 15 설정
+            if self.timer % 8 == 0:
+                dirVec = pygame.Vector2(0, 6).rotate(self.spinAngle)
+                eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, RED, 10, 15))
+            if self.timer > 120: # 약 3~4초 유지
+                self.mode = "RETURN"
+                self.timer = 0
+        elif self.mode == "RETURN":
+            dirVec = self.homePos - self.pos
+            self.currentImg = self.images["STAND"]
+            if dirVec.length() > 8:
+                self.pos += dirVec.normalize() * 8
+            else:
+                self.mode = "IDLE"
+                self.timer = 0
 
-        if self.mode == "MOVE":
-            if self.timer % 120 == 0: 
-                self.mode = random.choice(["BEAM_READY", "HOMING"])
-                self.timer = 0 
-        elif self.mode == "BEAM_FIRE":
-            if abs(pPos.x - (self.pos.x + WIDTH//2)) < 60:
-                global playerHp 
-                playerHp -= 2
+    def draw(self, surf):
+        surf.blit(self.currentImg, (self.pos.x - 75, self.pos.y - 75))
+        # 개별 체력바 표기
+        hpRatio = max(0, self.hp / self.maxHp)
+        pygame.draw.rect(surf, RED, (self.pos.x - 30, self.pos.y + 60, 60, 6))
+        pygame.draw.rect(surf, GREEN, (self.pos.x - 30, self.pos.y + 60, 60 * hpRatio, 6))
 
 class BossSwarm:
     def __init__(self):
@@ -403,9 +466,13 @@ class BossSwarm:
         self.centers = [pygame.Vector2(random.randint(100,800), random.randint(50,200)) for _ in range(8)]
         self.fireTimers = [random.randint(60, 150) for _ in range(8)]
         self.maxTimers = list(self.fireTimers) 
-        self.weakIndex = random.randint(0, 7) # [신규] 약점 개체 인덱스
-        self.state = "SCATTER" # [신규] 상태 머신
+        self.weakIndex = random.randint(0, 7)
+        self.state = "SCATTER" 
         self.stateTimer = 0
+        self.hitboxRadius = 25
+        self.spinAngle = 0
+        self.images = BossAssetManager.get_images("bossSwarm")
+        self.currentImg = self.images["STAND"]
 
     def update(self, eProjs, pPos):
         self.stateTimer += 1
@@ -415,11 +482,12 @@ class BossSwarm:
             self.state = "GATHER" if self.state == "SCATTER" else "SCATTER"
             self.stateTimer = 0
             if self.state == "SCATTER":
-                self.weakIndex = random.randint(0, 7) # 흩어질 때마다 약점 변경
+                self.weakIndex = random.randint(0, 7)
+                self.currentImg = self.images["STAND"]
         
         if self.state == "SCATTER":
             for i in range(8):
-                self.centers[i].x += math.sin(pygame.time.get_ticks() / 500 + i) * 2
+                self.centers[i].x += math.sin(pygame.time.get_ticks() / 500 + i) * 7
                 self.fireTimers[i] -= 1
                 
                 if self.fireTimers[i] <= 0:
@@ -434,40 +502,86 @@ class BossSwarm:
                     self.fireTimers[i] = random.randint(60, 150)
                     self.maxTimers[i] = self.fireTimers[i]
 
-        # 화면 중앙 상단에 원형으로 모여서 탄막을 뿌리는 패턴        
         elif self.state == "GATHER":
             targetCenter = pygame.Vector2(WIDTH//2, 150)
             
-            # 1단계: 모이면서 호밍 투사체 발사 (0~180 프레임)
-            if self.stateTimer < 180:
-                for i in range(8):
-                    angle = (i / 8) * math.pi * 2 + (self.stateTimer * 0.05)
-                    targetPos = targetCenter + pygame.Vector2(math.cos(angle)*80, math.sin(angle)*80)
-                    self.centers[i] = self.centers[i].lerp(targetPos, 0.05) 
-                    
-                if self.stateTimer % 60 == 0:
-                    for i in range(8):
-                        eProjs.append(HomingProjectile(self.centers[i].x, self.centers[i].y, pygame.Vector2(0, 3), RED, 8, 5))
-            
-            # 2단계: 중앙에서 광선(빠르고 큰 투사체) 발사 (180 프레임)
-            elif self.stateTimer == 180:
-                diff = pPos - targetCenter
-                dirVec = diff.normalize() * 18 if diff.length() > 0 else pygame.Vector2(0, 18)
-                eProjs.append(Projectile(targetCenter.x, targetCenter.y, dirVec, CYAN, 20, 15)) # 광선 역할
+            # 1. 이동 및 회전 공격 단계 (120~350프레임)
+            if 120 <= self.stateTimer < 350:
+                # 보스 개체들이 회전하는 속도 (이 값을 키우면 보스들이 더 빨리 돕니다)
+                self.spinAngle += 3 
+                self.currentImg = self.images["ATTACK"] # 공격 모션 유지
                 
-            # 3단계: 패턴 종료 및 다시 산개 준비
-            elif self.stateTimer > 220:
+                for i in range(8):
+                    # 보스 개체들의 위치를 원형으로 회전시킴 (반지름 120의 원)
+                    # i * 45는 8개 개체를 360도에 균등 배분 (360/8 = 45)
+                    orbitAngle = self.spinAngle + (i * 45)
+                    rad = math.radians(orbitAngle)
+                    
+                    # 새로운 위치 계산 (중앙점 + 회전 좌표)
+                    self.centers[i].x = targetCenter.x + math.cos(rad) * 120
+                    self.centers[i].y = targetCenter.y + math.sin(rad) * 120
+                    self.currentImg = self.images["ATTACK"]
+                
+                # 탄막 발사 로직 (5프레임 간격)
+                if self.stateTimer % 5 == 0:
+                    for i in range(8):
+                        # 발사 방향: 보스가 바라보는 바깥쪽 방향에 회전 가미
+                        # rotate()를 사용해 화려한 스파이럴 효과 연출
+                        baseDir = (self.centers[i] - targetCenter).normalize() * 4
+                        bulletSpin = self.spinAngle * 2 # 탄막 회전 가속
+                        
+                        for offset in [-25, 0, 25]:
+                            # 보스의 회전 방향과 탄막의 회전 방향을 조합
+                            finalDir = baseDir.rotate(offset + bulletSpin)
+                            eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, finalDir, RED, 5, 5))
+                      
+                    
+                    
+            # 2. 이동 단계 (0~120프레임): 초기 진입 시에는 부드럽게 모임
+            elif self.stateTimer < 120:
+                for i in range(8):
+                    angle = (i / 8) * math.pi * 2
+                    targetPos = targetCenter + pygame.Vector2(math.cos(angle)*120, math.sin(angle)*120)
+                    self.centers[i] = self.centers[i].lerp(targetPos, 0.05)
+                
+            
+            # 3. 상태 종료
+            else:
                 self.state = "SCATTER"
                 self.stateTimer = 0
-                self.weakIndex = random.randint(0, 7)
+                self.weakIndex = random.randint(0, 7)                
                 
     def draw(self, surf):
-        for i, c in enumerate(self.centers):
-            surf.blit(bossSwarmImg, (c.x - 50, c.y - 50))
-            # [신규] 약점 개체 특수 표시 (붉은색 원과 WEAK 텍스트)
+        for i, c in enumerate(self.centers):    
+            
             if i == self.weakIndex:
-                pygame.draw.circle(surf, RED, (int(c.x), int(c.y)), 60, 2)
-                surf.blit(font_s.render("WEAK", True, RED), (c.x - 25, c.y - 70))
+                # (A) 본체 뒤에서 타오르는 플라즈마 불꽃 (이미지보다 뒤에 렌더링)
+                time_f = pygame.time.get_ticks() * 0.01
+                # 안쪽(흰색) -> 중간(보라) -> 바깥(청록) 순서로 겹쳐서 입체감 부여
+                flame_layers = [
+                    {"color": (255, 60, 0, 100), "radius": 32.5}, # 외곽 광륜
+                    {"color": (255, 140, 0, 160), "radius": 27.5}, # 플라즈마 에너지
+                    {"color": (255, 255, 200, 220), "radius": 25}  # 핵심 코어
+                ]
+                
+                for layer in flame_layers:
+                    # 숨쉬는 듯한 크기 변화 (Pulse)
+                    pulse = math.sin(time_f * 2) * 5
+                    # 위아래로 요동치는 움직임
+                    y_float = math.sin(time_f * 1.5) * 7
+                    
+                    # 투명도 적용을 위한 임시 서피스
+                    f_size = int((layer["radius"] + pulse) * 2)
+                    f_surf = pygame.Surface((f_size, f_size), pygame.SRCALPHA)
+                    pygame.draw.circle(f_surf, layer["color"], (f_size//2, f_size//2), f_size//2)
+                    
+                    # 개체 위치(c)를 기준으로 블릿 (이미지 뒤쪽으로 배치)
+                    surf.blit(f_surf, (c.x - f_size//2, c.y - f_size//2 + y_float))
+            # --- [핵심] 약점 개체 연출 끝 ---
+
+            # 2. 보스 개체 이미지 출력 (중앙 정렬)
+            surf.blit(self.currentImg, (c.x - 50, c.y - 50))
+                
 
 class BossRock:
     def __init__(self):
@@ -477,6 +591,9 @@ class BossRock:
         self.state = "IDLE"
         self.timer = 0
         self.meteors = []
+        self.images = BossAssetManager.get_images("bossRock")
+        self.currentImg = self.images["STAND"]
+
 
     def _spawn_meteor(self, playerPos):
         # 플레이어 근처 무작위 지점을 타겟으로 설정
@@ -528,9 +645,13 @@ class BossRock:
                 self.timer = 0
 
     def draw(self, surf):
+        # 개별 체력바 표기
+        hpRatio = max(0, self.hp / self.maxHp)
+        pygame.draw.rect(surf, RED, (self.pos.x - 30, self.pos.y + 60, 60, 6))
+        pygame.draw.rect(surf, GREEN, (self.pos.x - 30, self.pos.y + 60, 60 * hpRatio, 6))
+
         # 보스 본체
-        surf.blit(bossRockImg, (self.pos.x - 50, self.pos.y - 50))
-        # surf.blit(bossRockImg, (self.pos.x, self.pos.y))
+        surf.blit(self.currentImg, (self.pos.x - 150, self.pos.y - 150))
         for meteor in self.meteors:
             meteor.draw(surf)
             
@@ -606,13 +727,12 @@ class Enemy:
                 if self.attackTimer > 30: 
                     self.state = "STAND"; self.shootDelay = 120
                     
-            # 일반몬스터 2: 부채꼴 0.1초(6프레임) 간격 발사
             elif self.eType == "type2":
                 if self.attackTimer % 6 == 0 and self.attackTimer <= 30:
                     angles = [-0.2, 0, 0.2]
                     for angle in angles:
                         dirVec = pygame.Vector2(0, 4).rotate(math.degrees(angle))
-                        eProjs.append(Projectile(self.pos.x+15, self.pos.y+15, dirVec, PURPLE, 4, 5))
+                        eProjs.append(Projectile(self.pos.x+25, self.pos.y+15, dirVec, PURPLE, 4, 5))
                 if self.attackTimer > 40:
                     self.state = "STAND"; self.shootDelay = 150
                     
@@ -858,7 +978,7 @@ while running:
             if stageTimer <= 0:
                 if zeroTicket: boss = BossZero(); zeroTicket = False
                 elif currentStage == 1:
-                    boss = BossRock()
+                    boss = BossSwarm()
                 elif currentStage == 2:
                     boss = BossSwarm()
                 elif currentStage == 3:
@@ -967,11 +1087,12 @@ while running:
                             break
                 elif boss.type == "ZERO" and p.pos.distance_to(boss.pos + pygame.Vector2(25,25)) < 40: hit = True
                 elif boss.type == "ROCK" and p.pos.distance_to(boss.pos) < 60: hit = True # 판정 범위 상향
+                elif boss.type == "Crusher" and p.pos.distance_to(boss.pos) < 60: hit = True
 
                 if hit:
                     actualDmg = p.dmg
                     if boss.type == "SWARM":
-                        actualDmg = p.dmg if hitSwarmWeak else p.dmg * 0.25
+                        actualDmg = p.dmg if hitSwarmWeak else p.dmg * 0.0001
                     
                     boss.hp -= actualDmg
                     hitThisFrame = True
@@ -1019,9 +1140,6 @@ while running:
             
         if boss:
             boss.draw(tempSurf)
-            pygame.draw.rect(tempSurf, RED, (WIDTH//2-150, 20, 300, 15))
-            pygame.draw.rect(tempSurf, GREEN, (WIDTH//2-150, 20, max(0, (boss.hp/boss.maxHp)*300), 15))
-            tempSurf.blit(fontS.render(f"BOSS: {boss.type}", True, WHITE), (WIDTH//2-40, 40))
         
         for p in pProjs: p.draw(tempSurf)
         for p in eProjs: p.draw(tempSurf)
