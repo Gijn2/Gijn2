@@ -1,0 +1,26 @@
+{
+  "enemyConfig": {
+    "type1": {"hp": 5, "vy": 1.5, "img": "type_1"},
+    "elite": {"hp": 50, "vy": 0.5, "img": "type_1"}
+  },
+  "upgradePool": [
+    {"name": "공격력 강화", "desc": "데미지 +1.5", "effect": "dmg", "price": 1200}
+  ],
+  
+  "upgradePrices": {
+    "dmg": 1200,
+    "maxHp": 1000,
+    "fireRate": 1500
+  },
+  "enemySpawnPool": [
+    {"type": "type1", "minStage": 1, "weight": 100},
+    {"type": "type2", "minStage": 2, "weight": 50},
+    {"type": "elite", "minStage": 3, "weight": 10}
+  ],
+  "investment": {
+    "minAmount": 500,
+    "riskChance": 0.4
+  }
+
+}
+

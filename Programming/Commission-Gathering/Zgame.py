@@ -36,18 +36,9 @@ for i in range(1, MAX_ENEMY_TYPES + 1):
     except FileNotFoundError:
         ENEMY_IMGS[type_key] = ENEMY_IMGS.get("type_1")
 
-try:
-    snd_hit = pygame.mixer.Sound(os.path.join(IMGS_PATH, "hit.wav"))
-    snd_expl = pygame.mixer.Sound(os.path.join(IMGS_PATH, "explosion.wav"))
-except:
-    snd_hit = None
-    snd_expl = None
-
 # 색상 및 폰트
 WHITE, RED, GOLD, BLACK, GREEN, CYAN, PURPLE, GRAY = (255, 255, 255), (255, 50, 50), (255, 215, 0), (10, 10, 15), (50, 255, 50), (0, 255, 255), (200, 50, 255), (50, 50, 50)
-font_s = pygame.font.SysFont("malgungothic", 16)
-font_m = pygame.font.SysFont("malgungothic", 24)
-font_l = pygame.font.SysFont("malgungothic", 40)
+
 
 try:
     meteorImg = pygame.image.load(os.path.join(IMGS_PATH, "meteor.png")).convert_alpha()
@@ -124,10 +115,10 @@ ENEMY_SPAWN_POOL = [
     {"type": "elite", "weight": 1.5, "minStage": 5},
 ]
 
-# --- 4. 유틸리티 함수 ---
+# --- 유틸리티 함수 ---
 
-def get_random_enemy(current_stage):
-    # 현재 스테이지보다 진입 조건이 같거나 낮은 몬스터만 필터링
+# 현재 스테이지보다 진입 조건이 같거나 낮은 몬스터만 필터링
+def getRandomEnemy(current_stage):
     available = [e for e in ENEMY_SPAWN_POOL if current_stage >= e["minStage"]]
     if not available: return "type1"
     types = [e["type"] for e in available]
@@ -151,8 +142,7 @@ def loadHighscore():
 highScore = loadHighscore()
 
 # --- [신규] 보안 및 다국어 시스템 ---
-def save_game_secure(data, filename="save.dat"):
-    """해시 검증을 포함한 보안 세이브 (치트 방지)"""
+def saveGameSecure(data, filename="save.dat"):
     data_str = json.dumps(data, sort_keys=True)
     signature = hashlib.sha256((data_str + secretSalt).encode()).hexdigest()
     with open(filename, "w") as f:
@@ -671,7 +661,35 @@ class BossRock:
         surf.blit(self.currentImg, (self.pos.x - 150, self.pos.y - 150))
         for meteor in self.meteors:
             meteor.draw(surf)
-            
+
+class BossChernobog:
+    def __init__(self):
+        self.type = "CHERNOBOG"
+        self.pos = pygame.Vector2(WIDTH // 2, 150)
+        self.hp = 3000
+        self.maxHp = 3000
+        self.timer = 0
+        self.hitboxRadius = 60
+        self.rect = pygame.Rect(self.pos.x - 60, self.pos.y - 60, 120, 120)
+        # 에셋 매니저에서 이미지 로드 (없을 시 기본 사각형 반환)
+        self.images = BossAssetManager.get_images("bossChernobog")
+        self.currentImg = self.images["STAND"]
+
+    def update(self, eProjs, pPos):
+        self.timer += 1
+        self.rect.topleft = (self.pos.x - 60, self.pos.y - 60)
+        
+        # 거대 십자 탄막 패턴
+        if self.timer % 60 == 0:
+            for angle in range(0, 360, 45):
+                dirVec = pygame.Vector2(0, 6).rotate(angle)
+                eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, PURPLE, 15, 12))
+
+    def draw(self, surf):
+        surf.blit(self.currentImg, (self.pos.x - 75, self.pos.y - 75))
+        hpRatio = max(0, self.hp / self.maxHp)
+        pygame.draw.rect(surf, GREEN, (self.pos.x - 50, self.pos.y + 80, 100 * hpRatio, 8))
+
 class Enemy:
     def __init__(self, eType="type1", offset=0):
         self.eType = eType
@@ -798,8 +816,8 @@ while running:
         shakeTimer -= 1
 
     # 투명도를 지원하는 도화지 생성
-    temp_surf = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-    temp_surf.fill((0, 0, 0, 0)) # 투명하게 초기화
+    tempSurf = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    tempSurf.fill((0, 0, 0, 0)) # 투명하게 초기화
 
     # [1] Input & Event Handling (책임 분리)
     for event in pygame.event.get():
@@ -862,13 +880,13 @@ while running:
                         opt["sold"] = True
                     
     # --- 1. 배경 및 탭 UI ---
-    temp_surf.fill((20, 20, 30))
+    tempSurf.fill((20, 20, 30))
     # 탭 버튼 (A: 아이템, B: 은행, C: 투자)
     tabs = [("ITEM", 50), ("BANK", 250), ("INVEST", 450)]
     for name, x in tabs:
         color = GOLD if shopTab == name else GRAY
-        pygame.draw.rect(temp_surf, color, (x, 20, 180, 50), border_radius=5)
-        temp_surf.blit(font_m.render(name, True, BLACK), (x+50, 30))
+        pygame.draw.rect(tempSurf, color, (x, 20, 180, 50), border_radius=5)
+        tempSurf.blit(fontM.render(name, True, BLACK), (x+50, 30))
 
     # --- 2. 탭별 내용 ---
     if shopTab == "ITEM":
@@ -880,30 +898,30 @@ while running:
             
             # 카드 렌더링 (기존 로직 유지하되 가격만 변동)
             c = (40, 40, 40) if opt["sold"] else (30, 30, 50)
-            pygame.draw.rect(temp_surf, c, card_rect, border_radius=10)
+            pygame.draw.rect(tempSurf, c, card_rect, border_radius=10)
             
             if not opt["sold"]:
-                name_text = font_m.render(opt['data']['name'], True, WHITE)
-                temp_surf.blit(name_text, (card_rect.x + 20, card_rect.y + 40))
+                name_text = fontM.render(opt['data']['name'], True, WHITE)
+                tempSurf.blit(name_text, (card_rect.x + 20, card_rect.y + 40))
                 
                 # 지분 상태에 따른 가격 색상 변경
                 p_color = GOLD if stats["gold"] >= display_price else RED
-                price_text = font_m.render(f"{display_price} G", True, p_color)
-                temp_surf.blit(price_text, (card_rect.x + 60, card_rect.y + 260))
+                price_text = fontM.render(f"{display_price} G", True, p_color)
+                tempSurf.blit(price_text, (card_rect.x + 60, card_rect.y + 260))
 
     elif shopTab == "BANK":
         # UI 배경
-        pygame.draw.rect(temp_surf, (20, 30, 40), (100, 150, 700, 300), border_radius=15)
+        pygame.draw.rect(tempSurf, (20, 30, 40), (100, 150, 700, 300), border_radius=15)
         
         # 예치 정보
-        balance_txt = font_l.render(f"예치 잔액: {bankBalance} G", True, CYAN)
-        interest_txt = font_m.render("예상 다음 배당 이율: +10%", True, GREEN)
-        temp_surf.blit(balance_txt, (150, 200))
-        temp_surf.blit(interest_txt, (150, 280))
+        balance_txt = fontL.render(f"예치 잔액: {bankBalance} G", True, CYAN)
+        interest_txt = fontM.render("예상 다음 배당 이율: +10%", True, GREEN)
+        tempSurf.blit(balance_txt, (150, 200))
+        tempSurf.blit(interest_txt, (150, 280))
         
         # 안내 문구
-        guide_txt = font_s.render("[D] 전액 입금  |  [F] 전액 인출 (수수료 5% 발생)", True, WHITE)
-        temp_surf.blit(guide_txt, (150, 400))
+        guide_txt = fontS.render("[D] 전액 입금  |  [F] 전액 인출 (수수료 5% 발생)", True, WHITE)
+        tempSurf.blit(guide_txt, (150, 400))
         
     elif shopTab == "INVEST":
         # camelCase 적용 및 UI 표시를 위한 key 데이터 통합 (DRY 원칙)
@@ -931,7 +949,7 @@ while running:
     # 지분 하락에 따른 계급 등급 표시 [cite: 15, 16]
     avg_stock = sum(stocks.values()) / 3
     rank = "고등급(Noble)" if avg_stock > 80 else "저등급(Commoner)"
-    temp_surf.blit(font_m.render(f"현재 시민 등급: {rank}", True, GOLD), (WIDTH-300, HEIGHT-50))
+    tempSurf.blit(fontM.render(f"현재 시민 등급: {rank}", True, GOLD), (WIDTH-300, HEIGHT-50))
 
     if event.type == pygame.MOUSEBUTTONDOWN and gameState == 'SHOP':
         for opt in shopOptions:
@@ -996,18 +1014,19 @@ while running:
                 if zeroTicket: boss = BossZero(); zeroTicket = False
                 elif currentStage == 1:
                     boss = BossSwarm()
+                    # boss = BossZero()
+                    # boss = BossRock()
+                    # boss = BossChernobog()
                 elif currentStage == 2:
                     boss = BossSwarm()
                 elif currentStage == 3:
-                    # [추후 추가할 보스 자리]
-                    # boss = BossNew()
-                    boss = BossRock() # 임시로 Rock 재등장
+                    boss = BossChernobog()
                 else:
                     # 모든 지정된 스테이지 이후에는 무작위 혹은 기본 보스
                     boss = random.choice([BossRock(), BossSwarm()])
 
             if len(enemies) < 10:
-                enemyType = get_random_enemy(currentStage)
+                enemyType = getRandomEnemy(currentStage)
                 enemies.append(Enemy(enemyType, random.randint(0, 1000)))
         else:
             if boss.type == "swarm":
@@ -1137,12 +1156,16 @@ while running:
             elif p.pos.y < -50 or p.pos.y > HEIGHT + 50 or p.pos.x < -50 or p.pos.x > WIDTH + 50:
                 if p in pProjs: pProjs.remove(p)
 
-        # --- 4. 게임 오버 체크 ---
+        # --- 게임 오버 체크 ---
         if playerHp <= 0:
-            if score > highScore: saveHighscore(score)
+            if score > highScore: 
+                try:
+                    saveHighscoreSecure(score) # 보안 저장 함수로 변경
+                except Exception as e:
+                    print(f"점수 저장 실패: {e}") # try-catch 예외 처리 규칙 반영
             running = False
 
-    # --- 7. 최종 렌더링 부 ---
+    # --- 최종 렌더링 부 ---
     # 배경 영상 처리
     screen.fill(BLACK)
     screen.blit(bgImg, (0, 0))
@@ -1232,7 +1255,7 @@ while running:
         # 하단 상태 정보
         avg_s = sum(stocks.values()) / 3
         rank = "Noble" if avg_s > 85 else "Commoner" 
-        temp_surf.blit(font_m.render(f"등급: {rank} | GOLD: {stats['gold']}G", True, WHITE), (300, HEIGHT-50))
+        tempSurf.blit(fontM.render(f"등급: {rank} | GOLD: {stats['gold']}G", True, WHITE), (300, HEIGHT-50))
 
     # W 특수기 효과 (화면 반전)
     if specialEffectTimer > 0:
@@ -1245,7 +1268,7 @@ while running:
 
     # 배경 그리기
     screen.blit(bgImg, (0, 0))
-    # 흔들림이 적용된 도화지(temp_surf)를 실제 화면에 출력
+    # 흔들림이 적용된 도화지(tempSurf)를 실제 화면에 출력
     screen.blit(tempSurf, render_offset)
         
     # --- 배경에 덮이지 않도록 UI를 마지막에 렌더링 ---
