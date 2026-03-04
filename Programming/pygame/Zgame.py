@@ -117,17 +117,6 @@ ENEMY_SPAWN_POOL = [
 
 # --- 유틸리티 함수 ---
 
-# 데이터 로드 함수
-def loadGameData():
-    try:
-        with open("data.json", "r", encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        print("data.json을 찾을 수 없습니다. 기본값을 사용합니다.")
-        return {} # 기본 딕셔너리 반환
-
-gameData = loadGameData()   # 이후 ENEMY_CONFIG = gameData.get("enemyConfig", {}) 형태로 사용
-
 # 현재 스테이지보다 진입 조건이 같거나 낮은 몬스터만 필터링
 def getRandomEnemy(current_stage):
     available = [e for e in ENEMY_SPAWN_POOL if current_stage >= e["minStage"]]
@@ -152,7 +141,7 @@ def loadHighscore():
 
 highScore = loadHighscore()
 
-# --- 보안 및 다국어 시스템 ---
+# --- [신규] 보안 및 다국어 시스템 ---
 def saveGameSecure(data, filename="save.dat"):
     data_str = json.dumps(data, sort_keys=True)
     signature = hashlib.sha256((data_str + secretSalt).encode()).hexdigest()

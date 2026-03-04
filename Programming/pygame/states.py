@@ -5,7 +5,6 @@ import hashlib
 from constants import *
 from entities import *
 
-
 class GameState:
     def handleEvents(self, events): pass
     def update(self): pass
