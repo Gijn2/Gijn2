@@ -1,7 +1,8 @@
 import json
 import hashlib
 import os
-from constants import SECRET_SALT
+import random
+from constants import *
 
 def getRandomEnemy(current_stage):
     available = [e for e in ENEMY_SPAWN_POOL if current_stage >= e["minStage"]]
