@@ -1013,8 +1013,8 @@ while running:
             if stageTimer <= 0:
                 if zeroTicket: boss = BossZero(); zeroTicket = False
                 elif currentStage == 1:
-                    boss = BossSwarm()
-                    # boss = BossZero()
+                    # boss = BossSwarm()
+                    boss = BossZero()
                     # boss = BossRock()
                     # boss = BossChernobog()
                 elif currentStage == 2:

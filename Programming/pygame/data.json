@@ -1,5 +1,13 @@
 
 {
+  "stats": {
+    "damage": 10,
+    "speed": 5,
+    "gold": 1000,
+    "maxHp": 100,
+    "pierce": "False",
+    "specialAmmo": 3
+  },
   "upgradePool": [
     {"name": "공격력 강화", "desc": "데미지 +1.5", "effect": "dmg", "price": 1200},
     {"name": "기동성 강화", "desc": "이동속도 +2", "effect": "speed", "price": 720},
