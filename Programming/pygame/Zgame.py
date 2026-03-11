@@ -352,64 +352,47 @@ class Meteor:
 class BossZero:
     def __init__(self):
         self.type = "ZERO"
-        self.pos = pygame.Vector2(WIDTH//2, 100)
-        self.hp = 150; self.maxHp = 150
+        self.pos = pygame.Vector2(WIDTH // 2, 100)
+        self.hp = 2500
+        self.maxHp = 2500
         self.timer = 0
-        self.state = "TELEPORT" # 11. 통합된 콤보 로직
-        self.comboStep = 0
-        self.hitboxRadius = 30
-        self.coneDir = pygame.Vector2(0, 1)
-        self.images = BossAssetManager.get_images("bossZero")
-        self.currentImg = self.images["STAND"]
-        
-    def update(self, eProjs, pPos):
+        self.state = "IDLE" # IDLE, DASH, ART
+        self.rect = pygame.Rect(self.pos.x - 40, self.pos.y - 40, 80, 80)
+        self.dashTarget = None
+        self.artAngle = 0
+
+    def update(self, eProjs, pPos, ctx):
         self.timer += 1
-        global particles # 사신 이펙트를 위한 파티클 전역변수
+        self.rect.topleft = (self.pos.x - 40, self.pos.y - 40)
+
+        # 패턴 1: 원혼(영혼) 소환 (Homing Projectiles)
+        if self.timer % 120 == 0:
+            for _ in range(3): # 한 번에 3개의 원혼 소환
+                # 플레이어 주변으로 휘어 들어가는 유도탄
+                offset = pygame.Vector2(random.uniform(-100, 100), -200)
+                eProjs.append(HomingProjectile(self.pos.x, self.pos.y, pPos, CYAN, 12))
+
+        # 패턴 2: 사신의 참격 (충돌 데미지 로직)
+        if self.timer % 200 == 150:
+            self.state = "DASH"
+            self.dashTarget = (pPos - self.pos).normalize() * 15 # 빠른 속도로 참격
         
-        if self.state == "TELEPORT":
-            if self.comboStep == 0: # 텔레포트 대기
-                if self.timer > 60:
-                    self.pos.x = max(50, min(WIDTH-50, pPos.x))
-                    self.pos.y = max(50, min(HEIGHT-200, pPos.y - 150))
-                    self.timer = 0
-                    self.comboStep = 1
-                    self.coneDir = (pPos - self.pos).normalize() if (pPos - self.pos).length() > 0 else pygame.Vector2(0, 1)
+        if self.state == "DASH":
+            self.pos += self.dashTarget
+            # 참격 잔상 효과를 위해 투사체 생성 (선형 탄막 아트)
+            eProjs.append(Projectile(self.pos.x, self.pos.y, pygame.Vector2(0,0), WHITE, 5, 3))
+            if not (0 < self.pos.x < WIDTH and 0 < self.pos.y < HEIGHT):
+                self.state = "IDLE"
+                self.pos = pygame.Vector2(WIDTH // 2, 100) # 복귀
 
-            elif self.comboStep == 1: # 낫 부채꼴 경고
-                # 11. 텔레포트 후 사신 이펙트 (검보라색 파티클)
-                for _ in range(2):
-                    particles.append(Particle(self.pos.x + random.randint(-30, 30), self.pos.y + random.randint(-30, 30), (150, 0, 255)))
-                    
-                if self.timer > 37:
-                    self.comboStep = 2
-                    self.timer = 0
-                    
-            elif self.comboStep == 2:
-                # 11. 부채꼴 테두리에서 SOULS 로직 구현
-                if self.timer == 1:
-                    # 양쪽 테두리 끝 위치 계산
-                    leftEdge = self.pos + self.coneDir.rotate(-45) * 200
-                    rightEdge = self.pos + self.coneDir.rotate(45) * 200
-                    for _ in range(8):
-                        eProjs.append(HomingProjectile(leftEdge.x, leftEdge.y, pygame.Vector2(random.uniform(-2, 2), 2), CYAN, 5, 8))
-                        eProjs.append(HomingProjectile(rightEdge.x, rightEdge.y, pygame.Vector2(random.uniform(-2, 2), 2), CYAN, 5, 8))
-                
-                if self.timer > 60:
-                    self.comboStep = 0
-                    self.timer = 0
-
-    def draw(self, surf):
-        surf.blit(self.currentImg, (self.pos.x - 25, self.pos.y - 25))
-        if self.state == "TELEPORT_COMBO" and self.comboStep == 1:
-            # 11. 플레이어가 완전히 갇히는 거대한 부채꼴 (폴리곤)
-            leftVec = self.coneDir.rotate(-45) * 400
-            rightVec = self.coneDir.rotate(45) * 400
-            points = [self.pos, self.pos + leftVec, self.pos + rightVec]
-            pygame.draw.polygon(surf, (255, 0, 0, 80), points)
-        
-        hpRatio = max(0, self.hp / self.maxHp)
-        pygame.draw.rect(surf, GREEN, (self.pos.x - 30, self.pos.y + 40, 60 * hpRatio, 5))
-
+        # 패턴 3: 탄막 아트 (나선형 영혼 방출)
+        self.artAngle += 15
+        if self.timer % 2 == 0:
+            rad = pygame.Vector2(4, 0).rotate(self.artAngle)
+            # 사신의 낫 궤적처럼 보이도록 보라색과 검은색 혼합
+            color = PURPLE if self.timer % 4 == 0 else BLACK
+            eProjs.append(Projectile(self.pos.x, self.pos.y, rad, color, 10, 8))
+            
 class BossCrusher:
     def __init__(self):
         self.type = "Crusher"

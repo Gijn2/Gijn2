@@ -4,6 +4,7 @@ import os
 import random
 from constants import *
 
+
 def getRandomEnemy(current_stage):
     available = [e for e in ENEMY_SPAWN_POOL if current_stage >= e["minStage"]]
     if not available: return "type1"
