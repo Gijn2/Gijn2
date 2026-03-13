@@ -6,22 +6,19 @@ from urllib.parse import urljoin
 import time
 import random
 
-session = requests.Session() # 세션 생성
+session = requests.Session()
+
+# 고마워요
 
 for i in range(5):
     response = session.get(f"https://www.wepoll.kr/api/v1/polls?page={i+1}&size=10")
-    # 1~3초 사이의 랜덤한 시간 동안 대기 (서버 부하 방지)
     time.sleep(random.uniform(1, 3))
 base_url = "https://www.wepoll.kr"
 relative_path = "/img/logo.png"
 
-# 상대 경로를 절대 경로로 변환
-full_url = urljoin(base_url, relative_path)
-# 결과: https://www.example.com/img/logo.png
-# 'article_'로 시작하는 모든 id를 가진 div 태그 찾기
-articles = bs.find_all('div', id=re.compile(r'^article_'))
 
-# 'price'라는 단어가 포함된 클래스를 가진 모든 요소 찾기
+full_url = urljoin(base_url, relative_path)
+articles = bs.find_all('div', id=re.compile(r'^article_'))
 price_elements = bs.find_all(class_=re.compile(r'price'))
 
 def crawl_multiple_pages(base_url, total_pages):
