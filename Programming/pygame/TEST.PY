@@ -8,8 +8,6 @@ import random
 
 session = requests.Session()
 
-# 고마워요
-
 for i in range(5):
     response = session.get(f"https://www.wepoll.kr/api/v1/polls?page={i+1}&size=10")
     time.sleep(random.uniform(1, 3))
