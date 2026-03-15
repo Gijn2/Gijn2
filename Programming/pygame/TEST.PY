@@ -48,7 +48,6 @@ def getHtmlWithRetry(url, session, maxRetries=3):
     return None
 
 # 2026-03-15 수정: 더 유연한 HTML 구조 대응 및 텍스트 정제 추가
-# 멋진
 def parseData(html, baseUrl):
     if not html: return []
     soup = bs(html, 'html.parser')
