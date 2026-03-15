@@ -5,6 +5,17 @@ import re
 from urllib.parse import urljoin
 import time
 import random
+import logging
+import os
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("crawling.log"),
+        logging.StreamHandler()
+    ]
+)
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
@@ -29,32 +40,28 @@ def getHtmlWithRetry(url, session, maxRetries=3):
         time.sleep(wait)
     return None
 
-# HTML에서 데이터를 추출하고 상대 경로를 절대 경로로 변환 
+# 2026-03-15 수정: 더 유연한 HTML 구조 대응 및 텍스트 정제 추가
+# 멋진
 def parseData(html, baseUrl):
-    if not html:
-        return []
-
+    if not html: return []
     soup = bs(html, 'html.parser')
     results = []
-
-    items = soup.select('div.content-item') or soup.find_all('div', id=re.compile(r'^article_'))[:10]
-
+    
+    items = soup.select('div.content-item, div[id^="article_"]')
+    
     for item in items:
         titleTag = item.find(['h1', 'h2', 'h3', 'a'])
-        linkTag = item.find('a')
-
         if titleTag:
-            relativeLink = linkTag.get('href', '#') if linkTag else "#"
-            fullLink = urljoin(baseUrl, relativeLink)
-
-            results.append({
-                "title": titleTag.get_text(strip=True),
-                "link": fullLink
-            })
+            title = re.sub(r'\s+', ' ', titleTag.get_text(strip=True))
+            linkTag = item.find('a', href=True)
+            fullLink = urljoin(baseUrl, linkTag['href']) if linkTag else None
+            
+            if fullLink:
+                results.append({"title": title, "link": fullLink})
     
     return results
 
-# 페이지를 순회하며 데이터 수집 (Orchestration)
+
 def crawlMultiplePages(baseUrl, totalPages, session):
 
     allResults = []
@@ -93,17 +100,27 @@ def saveToCsv(dataList, filename="scraped_data.csv"):
 
 def main():
     targetUrl = "https://www.wepoll.kr"
-    totalPages = 1
+    outputFile = "wepoll_results.csv"
     session = requests.Session()
     
-    print(f"크롤링 시작: {targetUrl}...")
+    # 중복 수집 방지용 (기존 파일이 있다면 불러오기 가능)
+    seen_links = set()
     
     try:
-        scrapedData = crawlMultiplePages(targetUrl, totalPages, session)
-        saveToCsv(scrapedData, "wepoll_results.csv")
+        # 1. 수집 로직 수행
+        scrapedData = crawlMultiplePages(targetUrl, 3, session)
+        
+        # 2. 유효성 검사 및 중복 제거
+        uniqueData = []
+        for d in scrapedData:
+            if d['link'] not in seen_links:
+                uniqueData.append(d)
+                seen_links.add(d['link'])
+        
+        saveToCsv(uniqueData, outputFile)
+        
+    except Exception as e:
+        logging.error(f"예상치 못한 시스템 오류: {e}")
     finally:
-        session.close() # 세션 종료
-        print("우리")
-
-if __name__ == "__main__":
-    main()
+        session.close()
+        print("작업이 종료되었습니다.")
