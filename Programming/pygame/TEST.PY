@@ -9,6 +9,7 @@ import logging
 import os
 
 logging.basicConfig(
+    filename='crawler.log',
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
@@ -17,10 +18,16 @@ logging.basicConfig(
     ]
 )
 
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+]
 
 def getHtml(url, session):
-    headers = {"User-Agent": USER_AGENT}
+
+    headers = {"User-Agent": random.choice(USER_AGENTS)}
+    
     try:
         response = session.get(url, headers=headers, timeout=10)
         response.raise_for_status()
@@ -100,27 +107,25 @@ def saveToCsv(dataList, filename="scraped_data.csv"):
 
 def main():
     targetUrl = "https://www.wepoll.kr"
-    outputFile = "wepoll_results.csv"
+    totalPages = 5
     session = requests.Session()
-    
-    # 중복 수집 방지용 (기존 파일이 있다면 불러오기 가능)
-    seen_links = set()
+    # 초기 접속 시 쿠키를 세션에 저장하기 위해 메인 페이지 방문
+    session.get(targetUrl, headers={"User-Agent": random.choice(USER_AGENTS)})
     
     try:
-        # 1. 수집 로직 수행
-        scrapedData = crawlMultiplePages(targetUrl, 3, session)
+        # 데이터 수집
+        scrapedData = crawlMultiplePages(targetUrl, totalPages, session)
         
-        # 2. 유효성 검사 및 중복 제거
-        uniqueData = []
-        for d in scrapedData:
-            if d['link'] not in seen_links:
-                uniqueData.append(d)
-                seen_links.add(d['link'])
-        
-        saveToCsv(uniqueData, outputFile)
+        # 데이터 정제 (공백 제거 등)
+        for item in scrapedData:
+            item['title'] = re.sub(r'\s+', ' ', item['title']).strip()
+            
+        saveToCsv(scrapedData, "wepoll_results.csv")
+        logging.info(f"총 {len(scrapedData)}개의 데이터를 성공적으로 수집했습니다.")
         
     except Exception as e:
-        logging.error(f"예상치 못한 시스템 오류: {e}")
+        logging.critical(f"치명적 오류 발생: {e}")
     finally:
         session.close()
-        print("작업이 종료되었습니다.")
+        print("모든 작업이 완료되었습니다.")
+    
