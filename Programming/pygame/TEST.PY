@@ -16,8 +16,7 @@ CONFIG = {
     "DELAY_RANGE": (1.0, 2.0)
 }
 
-
-# main() 또는 crawlMultiplePages()에서 사용
+# 2026-03-17 수정: isValid() 함수로 데이터 유효성 검사 로직 분리
 scrapedData = [item for item in scrapedData if isValid(item)]
 
 logging.basicConfig(
