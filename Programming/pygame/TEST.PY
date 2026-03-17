@@ -8,6 +8,18 @@ import random
 import logging
 import os
 
+CONFIG = {
+    "TARGET_URL": "https://www.wepoll.kr",
+    "TOTAL_PAGES": 5,
+    "OUTPUT_FILE": "wepoll_results.csv",
+    "TIMEOUT": 10,
+    "DELAY_RANGE": (1.0, 2.0)
+}
+
+
+# main() 또는 crawlMultiplePages()에서 사용
+scrapedData = [item for item in scrapedData if isValid(item)]
+
 logging.basicConfig(
     filename='crawler.log',
     level=logging.INFO,
@@ -71,12 +83,19 @@ def parseData(html, baseUrl):
 def crawlMultiplePages(baseUrl, totalPages, session):
 
     allResults = []
+    seen_links = set()
+    
     for pageNum in range(1, totalPages + 1):
         pageUrl = f"{baseUrl}?page={pageNum}"
         print(f"현재 {pageNum}페이지 수집 중: {pageUrl}")
         
         html = getHtmlWithRetry(pageUrl, session)
         data = parseData(html, baseUrl)
+
+        for item in data:
+            if item['link'] not in seen_links:
+                allResults.append(item)
+                seen_links.add(item['link'])
         
         if not data:
             print("더 이상 가져올 데이터가 없습니다.")
@@ -104,27 +123,49 @@ def saveToCsv(dataList, filename="scraped_data.csv"):
     except IOError as e:
         print(f"파일 저장 중 오류 발생: {e}")
 
+def isValid(item):
+    # 제목이 2글자 미만이거나 링크가 http로 시작하지 않으면 제외
+    if len(item['title']) < 2: return False
+    if not item['link'].startswith('http'): return False
+    return True
+
+
 def main():
-    targetUrl = "https://www.wepoll.kr"
-    totalPages = 5
+    # 1. 설정 관리
+    target_url = "https://www.wepoll.kr"
+    output_file = "wepoll_results.csv"
+    
     session = requests.Session()
-    # 초기 접속 시 쿠키를 세션에 저장하기 위해 메인 페이지 방문
-    session.get(targetUrl, headers={"User-Agent": random.choice(USER_AGENTS)})
     
     try:
-        # 데이터 수집
-        scrapedData = crawlMultiplePages(targetUrl, totalPages, session)
+        # 2. 세션 초기화 (Referer 추가로 보안 우회 확률 높임)
+        session.headers.update({
+            "Referer": target_url,
+            "User-Agent": random.choice(USER_AGENTS)
+        })
         
-        # 데이터 정제 (공백 제거 등)
+        # 3. 데이터 수집 및 실시간 로그 반영
+        logging.info("크롤링 프로세스 시작")
+        scrapedData = crawlMultiplePages(target_url, 5, session)
+        
+        # 4. 데이터 정제 및 유효성 검사 (List Comprehension)
+        final_data = []
         for item in scrapedData:
             item['title'] = re.sub(r'\s+', ' ', item['title']).strip()
-            
-        saveToCsv(scrapedData, "wepoll_results.csv")
-        logging.info(f"총 {len(scrapedData)}개의 데이터를 성공적으로 수집했습니다.")
+            if len(item['title']) > 0 and item['link']:
+                final_data.append(item)
         
+        # 5. 저장 전 결과 확인
+        if final_data:
+            saveToCsv(final_data, output_file)
+            logging.info(f"성공: {len(final_data)}개 저장 완료.")
+        else:
+            logging.warning("수집된 유효 데이터가 없습니다.")
+            
+    except KeyboardInterrupt:
+        logging.warning("사용자에 의해 중단되었습니다.")
     except Exception as e:
-        logging.critical(f"치명적 오류 발생: {e}")
+        logging.critical(f"시스템 중단 오류: {e}")
     finally:
         session.close()
-        print("모든 작업이 완료되었습니다.")
-    
+        print("작업이 종료되었습니다. 로그 파일(crawling.log)을 확인하세요.")
