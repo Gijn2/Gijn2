@@ -16,7 +16,6 @@ CONFIG = {
     "DELAY_RANGE": (1.0, 2.0)
 }
 
-# 2026-03-17 수정: isValid() 함수로 데이터 유효성 검사 로직 분리
 scrapedData = [item for item in scrapedData if isValid(item)]
 
 logging.basicConfig(
@@ -47,7 +46,6 @@ def getHtml(url, session):
         print(f"네트워크 오류 발생: {e}")
         return None
 
-# 실패 시 지수 백오프 전략으로 재시도하는 함수
 def getHtmlWithRetry(url, session, maxRetries=3):
     for i in range(maxRetries):
         html = getHtml(url, session)
@@ -58,7 +56,6 @@ def getHtmlWithRetry(url, session, maxRetries=3):
         time.sleep(wait)
     return None
 
-# 2026-03-15 수정: 더 유연한 HTML 구조 대응 및 텍스트 정제 추가
 def parseData(html, baseUrl):
     if not html: return []
     soup = bs(html, 'html.parser')
@@ -78,7 +75,7 @@ def parseData(html, baseUrl):
     
     return results
 
-
+# 2026-03-18 : 페이지네이션을 지원하는 크롤링 함수 반복 구문 수정 및 중복 제거 로직 추가
 def crawlMultiplePages(baseUrl, totalPages, session):
 
     allResults = []
@@ -99,8 +96,7 @@ def crawlMultiplePages(baseUrl, totalPages, session):
         if not data:
             print("더 이상 가져올 데이터가 없습니다.")
             break
-            
-        allResults.extend(data)
+
         # Ethics: 서버 부하 방지를 위한 랜덤 지연
         time.sleep(random.uniform(1.0, 2.0))
         
