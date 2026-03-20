@@ -348,50 +348,108 @@ class Meteor:
         surf.blit(shadow_surf, (self.target.x - self.radius * 2, self.target.y - self.radius * 2))
         surf.blit(self.img, (self.pos.x - self.radius, self.pos.y - self.radius))
 
+class BossChernobog:
+    def __init__(self):
+        self.type = "CHERNOBOG"
+        self.pos = pygame.Vector2(WIDTH // 2, 150)
+        self.hp = 3000
+        self.maxHp = 3000
+        self.timer = 0
+        self.hitboxRadius = 60
+        self.rect = pygame.Rect(self.pos.x - 60, self.pos.y - 60, 120, 120)
+        # 에셋 매니저에서 이미지 로드 (없을 시 기본 사각형 반환)
+        self.images = BossAssetManager.get_images("bossChernobog")
+        self.currentImg = self.images["STAND"]
 
-class BossZero:
+    def update(self, eProjs, pPos):
+        self.timer += 1
+        self.rect.topleft = (self.pos.x - 60, self.pos.y - 60)
+        
+        # 거대 십자 탄막 패턴
+        if self.timer % 60 == 0:
+            for angle in range(0, 360, 45):
+                dirVec = pygame.Vector2(0, 6).rotate(angle)
+                eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, PURPLE, 15, 12))
+
+    def draw(self, surf):
+        surf.blit(self.currentImg, (self.pos.x - 75, self.pos.y - 75))
+        hpRatio = max(0, self.hp / self.maxHp)
+        pygame.draw.rect(surf, GREEN, (self.pos.x - 50, self.pos.y + 80, 100 * hpRatio, 8))
+        
+class BossCounter:
     def __init__(self):
         self.type = "ZERO"
-        self.pos = pygame.Vector2(WIDTH // 2, 100)
-        self.hp = 2500
-        self.maxHp = 2500
+        self.pos = pygame.Vector2(WIDTH // 2, 200) # 중앙 배치
+        self.hp = 3500
+        self.maxHp = 3500
         self.timer = 0
-        self.state = "IDLE" # IDLE, DASH, ART
+        self.pattern_cycle = 15 * 37.5  # 15초 주기 (FPS 37.5 기준)
         self.rect = pygame.Rect(self.pos.x - 40, self.pos.y - 40, 80, 80)
-        self.dashTarget = None
-        self.artAngle = 0
+        self.angle_offset = 0
 
-    def update(self, eProjs, pPos, ctx):
+    def update(self, eProjs, pPos, ctx=None):
         self.timer += 1
-        self.rect.topleft = (self.pos.x - 40, self.pos.y - 40)
-
-        # 패턴 1: 원혼(영혼) 소환 (Homing Projectiles)
-        if self.timer % 120 == 0:
-            for _ in range(3): # 한 번에 3개의 원혼 소환
-                # 플레이어 주변으로 휘어 들어가는 유도탄
-                offset = pygame.Vector2(random.uniform(-100, 100), -200)
-                eProjs.append(HomingProjectile(self.pos.x, self.pos.y, pPos, CYAN, 12))
-
-        # 패턴 2: 사신의 참격 (충돌 데미지 로직)
-        if self.timer % 200 == 150:
-            self.state = "DASH"
-            self.dashTarget = (pPos - self.pos).normalize() * 15 # 빠른 속도로 참격
+        current_time = self.timer % self.pattern_cycle
+        phase_1_end = 10 * 37.5 # 10초 지점
         
-        if self.state == "DASH":
-            self.pos += self.dashTarget
-            # 참격 잔상 효과를 위해 투사체 생성 (선형 탄막 아트)
-            eProjs.append(Projectile(self.pos.x, self.pos.y, pygame.Vector2(0,0), WHITE, 5, 3))
-            if not (0 < self.pos.x < WIDTH and 0 < self.pos.y < HEIGHT):
-                self.state = "IDLE"
-                self.pos = pygame.Vector2(WIDTH // 2, 100) # 복귀
+        # 보스 위치를 부드럽게 8자 모양으로 이동 (공격 범위 분산)
+        self.pos.x = WIDTH // 2 + math.sin(self.timer * 0.05) * 100
+        self.pos.y = 150 + math.cos(self.timer * 0.03) * 50
+        self.rect.center = (self.pos.x, self.pos.y)
 
-        # 패턴 3: 탄막 아트 (나선형 영혼 방출)
-        self.artAngle += 15
-        if self.timer % 2 == 0:
-            rad = pygame.Vector2(4, 0).rotate(self.artAngle)
-            # 사신의 낫 궤적처럼 보이도록 보라색과 검은색 혼합
-            color = PURPLE if self.timer % 4 == 0 else BLACK
-            eProjs.append(Projectile(self.pos.x, self.pos.y, rad, color, 10, 8))
+        # --- 패턴 1: 0~10초 - 화면 밖에서 수축하는 원형 탄막 ---
+        if current_time < phase_1_end:
+            # 15프레임마다 한 번씩 원형 탄막 생성
+            if self.timer % 15 == 0:
+                num_bullets = 24 # 한 원에 생성될 탄알 수
+                radius = 600 - (current_time * 1.2) # 시간에 따라 소환 반경이 줄어듦
+                radius = max(200, radius) # 최소 200px 거리 유지
+                
+                self.angle_offset += 10 # 소환 각도를 틀어 나선형 느낌 부여
+                
+                for i in range(num_bullets):
+                    angle = math.radians(i * (360 / num_bullets) + self.angle_offset)
+                    # 화면 밖(반경 radius) 지점에서 위치 계산
+                    spawn_x = self.pos.x + math.cos(angle) * radius
+                    spawn_y = self.pos.y + math.sin(angle) * radius
+                    
+                    # 중앙(보스)을 향해 서서히 수축하는 속도 벡터
+                    vel = (self.pos - pygame.Vector2(spawn_x, spawn_y)).normalize() * 3.5
+                    
+                    # 아트 효과: 시간대에 따라 색상 교차 (청록 -> 보라)
+                    color = CYAN if self.timer % 30 == 0 else PURPLE
+                    eProjs.append(Projectile(spawn_x, spawn_y, vel, color, 12, 6))
+
+        # --- 패턴 2: 10~15초 - 위에서 아래로 지그재그 하강 탄막 ---
+        else:
+            # 더 촘촘하게 발사 (5프레임 주기)
+            if self.timer % 5 == 0:
+                # 화면 가로폭을 일정 간격으로 나누어 여러 줄 생성
+                for x_gate in range(0, WIDTH + 1, 120):
+                    # 지그재그 효과: sin 함수를 사용하여 수평 속도 조절
+                    zigzag_x = math.sin(self.timer * 0.2 + x_gate) * 4 
+                    vel = pygame.Vector2(zigzag_x, 6) # 아래로 빠른 속도로 하강
+                    
+                    # 시작 위치는 화면 상단
+                    spawn_x = x_gate + math.cos(self.timer * 0.1) * 30
+                    eProjs.append(Projectile(spawn_x, -20, vel, WHITE, 10, 5))
+
+        # 보너스: 보스 주변을 보호하는 회전 영혼 (항시 발동)
+        if self.timer % 3 == 0:
+            rot_vel = pygame.Vector2(5, 0).rotate(self.timer * 8)
+            eProjs.append(Projectile(self.pos.x, self.pos.y, rot_vel, BLACK, 8, 4))
+
+    def draw(self, surf):
+        # 체력바 드로우
+        hpRatio = max(0, self.hp / self.maxHp)
+        pygame.draw.rect(surf, GRAY, (self.pos.x - 50, self.pos.y + 60, 100, 8))
+        pygame.draw.rect(surf, RED, (self.pos.x - 50, self.pos.y + 60, 100 * hpRatio, 8))
+        
+        # 보스 본체 연출 (오라 효과)
+        pulse = math.sin(pygame.time.get_ticks() * 0.01) * 10
+        pygame.draw.circle(surf, (100, 0, 150, 100), (int(self.pos.x), int(self.pos.y)), 40 + int(pulse))
+        # 실제 이미지는 메인 루프에서 그릴 수도 있으나, 클래스 내 draw가 있다면 아래 추가 가능
+        # surf.blit(이미지, 좌표)
             
 class BossCrusher:
     def __init__(self):
@@ -449,6 +507,67 @@ class BossCrusher:
         pygame.draw.rect(surf, RED, (self.pos.x - 30, self.pos.y + 60, 60, 6))
         pygame.draw.rect(surf, GREEN, (self.pos.x - 30, self.pos.y + 60, 60 * hpRatio, 6))
 
+class BossRock:
+    def __init__(self):
+        self.type = "ROCK"
+        self.pos = pygame.Vector2(WIDTH // 2, 120)
+        self.hp = 1350; self.maxHp = 1350
+        self.state = "IDLE"
+        self.timer = 0
+        self.meteors = []
+        self.images = BossAssetManager.get_images("bossRock")
+        self.currentImg = self.images["STAND"]
+
+
+    def _spawn_meteor(self, playerPos):
+        # 플레이어 근처 무작위 지점을 타겟으로 설정
+        offset = pygame.Vector2(random.randint(-150, 150), random.randint(-120, 120))
+        target = playerPos + offset
+        # 화면 밖으로 나가지 않게 제한
+        target.x = max(50, min(WIDTH - 50, target.x))
+        target.y = max(50, min(HEIGHT - 50, target.y))
+        self.meteors.append(Meteor(target))
+
+    def _explode_meteor(self, meteor, eProjs):
+        for angle in range(0, 360, 40):
+            dirVec = pygame.Vector2(0, 3).rotate(angle)
+            eProjs.append(Projectile(meteor.target.x, meteor.target.y, dirVec, RED, 10, 6))
+
+    def update(self, eProjs, playerPos):
+        self.timer += 1
+        global playerHp, shakeTimer, invincibleTimer
+
+        if self.state == "IDLE":
+            if self.timer > 90:
+                self.state = "METEOR_PREP"
+                self.timer = 0
+        
+        elif self.state == "METEOR_PREP":
+            if self.timer % 5 == 0 and self.timer <= 80:
+                self._spawn_meteor(playerPos)
+            if self.timer > 120:
+                self.state = "METEOR_RAIN"
+                self.timer = 0
+        
+        elif self.state == "METEOR_RAIN":
+            for meteor in self.meteors[:]:
+                hitPlayer = meteor.update(playerPos)
+                
+                # 메테오에 직접 맞았을 때
+                if hitPlayer and invincibleTimer <= 0:
+                    playerHp -= 20
+                    invincibleTimer = 40
+                    shakeTimer = 20
+                    meteor.alive = False # 맞으면 즉시 터짐
+
+                if not meteor.alive:
+                    self._explode_meteor(meteor, eProjs)
+                    self.meteors.remove(meteor)
+            
+            if not self.meteors and self.timer > 60:
+                self.state = "IDLE"
+                self.timer = 0
+                
 class BossSwarm:
     def __init__(self):
         self.type = "SWARM"
@@ -573,66 +692,6 @@ class BossSwarm:
             surf.blit(self.currentImg, (c.x - 50, c.y - 50))
                 
 
-class BossRock:
-    def __init__(self):
-        self.type = "ROCK"
-        self.pos = pygame.Vector2(WIDTH // 2, 120)
-        self.hp = 1350; self.maxHp = 1350
-        self.state = "IDLE"
-        self.timer = 0
-        self.meteors = []
-        self.images = BossAssetManager.get_images("bossRock")
-        self.currentImg = self.images["STAND"]
-
-
-    def _spawn_meteor(self, playerPos):
-        # 플레이어 근처 무작위 지점을 타겟으로 설정
-        offset = pygame.Vector2(random.randint(-150, 150), random.randint(-120, 120))
-        target = playerPos + offset
-        # 화면 밖으로 나가지 않게 제한
-        target.x = max(50, min(WIDTH - 50, target.x))
-        target.y = max(50, min(HEIGHT - 50, target.y))
-        self.meteors.append(Meteor(target))
-
-    def _explode_meteor(self, meteor, eProjs):
-        for angle in range(0, 360, 40):
-            dirVec = pygame.Vector2(0, 3).rotate(angle)
-            eProjs.append(Projectile(meteor.target.x, meteor.target.y, dirVec, RED, 10, 6))
-
-    def update(self, eProjs, playerPos):
-        self.timer += 1
-        global playerHp, shakeTimer, invincibleTimer
-
-        if self.state == "IDLE":
-            if self.timer > 90:
-                self.state = "METEOR_PREP"
-                self.timer = 0
-        
-        elif self.state == "METEOR_PREP":
-            if self.timer % 5 == 0 and self.timer <= 80:
-                self._spawn_meteor(playerPos)
-            if self.timer > 120:
-                self.state = "METEOR_RAIN"
-                self.timer = 0
-        
-        elif self.state == "METEOR_RAIN":
-            for meteor in self.meteors[:]:
-                hitPlayer = meteor.update(playerPos)
-                
-                # 메테오에 직접 맞았을 때
-                if hitPlayer and invincibleTimer <= 0:
-                    playerHp -= 20
-                    invincibleTimer = 40
-                    shakeTimer = 20
-                    meteor.alive = False # 맞으면 즉시 터짐
-
-                if not meteor.alive:
-                    self._explode_meteor(meteor, eProjs)
-                    self.meteors.remove(meteor)
-            
-            if not self.meteors and self.timer > 60:
-                self.state = "IDLE"
-                self.timer = 0
 
     def draw(self, surf):
         # 개별 체력바 표기
@@ -645,33 +704,404 @@ class BossRock:
         for meteor in self.meteors:
             meteor.draw(surf)
 
-class BossChernobog:
+class BossZero:
     def __init__(self):
-        self.type = "CHERNOBOG"
-        self.pos = pygame.Vector2(WIDTH // 2, 150)
-        self.hp = 3000
-        self.maxHp = 3000
+        self.type = "ZERO"
+        self.pos = pygame.Vector2(WIDTH // 2, 200)
+        self.hp = 3500
+        self.maxHp = 3500
         self.timer = 0
-        self.hitboxRadius = 60
-        self.rect = pygame.Rect(self.pos.x - 60, self.pos.y - 60, 120, 120)
-        # 에셋 매니저에서 이미지 로드 (없을 시 기본 사각형 반환)
-        self.images = BossAssetManager.get_images("bossChernobog")
-        self.currentImg = self.images["STAND"]
-
-    def update(self, eProjs, pPos):
-        self.timer += 1
-        self.rect.topleft = (self.pos.x - 60, self.pos.y - 60)
+        self.rect = pygame.Rect(self.pos.x - 40, self.pos.y - 40, 80, 80)
         
-        # 거대 십자 탄막 패턴
-        if self.timer % 60 == 0:
-            for angle in range(0, 360, 45):
-                dirVec = pygame.Vector2(0, 6).rotate(angle)
-                eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, PURPLE, 15, 12))
+        # --- 대량 회전 탄막 관련 변수 설정 ---
+        self.orbitBullets = []
+        self.orbitAngle = 0
+        self.numOrbitBullets = 240   # 12개에서 20배 증가 (240개)
+        self.rotationSpeed = 0.02    # 탄막이 많으므로 회전 속도를 조금 낮춤 (우아한 연출)
+        
+        # 반경 로직 (기존 요청 유지)
+        self.baseRadius = 150
+        self.startRadius = self.baseRadius * 3.5
+        self.targetRadius = self.baseRadius * 0.5
+        self.currentRadius = self.startRadius
+        self.shrinkSpeed = 0.003     # 탄막이 많으므로 수렴 속도를 살짝 늦춤
+
+    def update(self, eProjs, pPos, ctx=None):
+        self.timer += 1
+        
+        # 1. 보스 본체 이동 (8자 기동)
+        self.pos.x = WIDTH // 2 + math.sin(self.timer * 0.03) * 150
+        self.pos.y = 150 + math.cos(self.timer * 0.02) * 50
+        self.rect.center = (self.pos.x, self.pos.y)
+
+        # 2. 회전 및 반경 업데이트
+        self.orbitAngle += self.rotationSpeed
+        if self.currentRadius > self.targetRadius:
+            self.currentRadius -= (self.currentRadius - self.targetRadius) * self.shrinkSpeed
+
+        # 3. 궤도 탄막 관리 (리스트 정리)
+        self.orbitBullets = [b for b in self.orbitBullets if b in eProjs]
+
+        # 4. 탄막 순차적 생성 (한 번에 240개를 만들면 끊길 수 있으므로 매 프레임 4개씩 보충)
+        if len(self.orbitBullets) < self.numOrbitBullets:
+            for _ in range(4): 
+                if len(self.orbitBullets) < self.numOrbitBullets:
+                    # 초기 위치는 보스 위치, 색상은 화려함을 위해 타이머에 따라 가변
+                    newBullet = Projectile(self.pos.x, self.pos.y, pygame.Vector2(0, 0), CYAN, 8, 5)
+                    self.orbitBullets.append(newBullet)
+                    eProjs.append(newBullet)
+
+        # 5. 대량 탄막 배치 (고밀도 원형/소용돌이 로직)
+        for i, bullet in enumerate(self.orbitBullets):
+            # i값에 따라 각도를 분배하여 촘촘한 원 생성
+            angle = self.orbitAngle + (i * (2 * math.pi / self.numOrbitBullets))
+            
+            # 중심에서 밖으로 퍼졌다가 다시 안으로 모이는 시각적 효과
+            bullet.pos.x = self.pos.x + math.cos(angle) * self.currentRadius
+            bullet.pos.y = self.pos.y + math.sin(angle) * self.currentRadius
+            bullet.vel = pygame.Vector2(0, 0)
+
+        # 6. 공격 로직: 촘촘한 탄막 중 무작위로 발사 (비처럼 쏟아지는 효과)
+        if self.timer % 3 == 0 and self.orbitBullets:
+            # 궤도 탄막 중 랜덤하게 하나를 골라 플레이어에게 발사
+            target_idx = random.randint(0, len(self.orbitBullets) - 1)
+            firedBullet = self.orbitBullets.pop(target_idx)
+            
+            targetDir = (pPos - firedBullet.pos).normalize()
+            firedBullet.vel = targetDir * 7
+            firedBullet.color = (255, 100, 100) # 발사되는 탄막은 붉은색 계열로 변경
 
     def draw(self, surf):
-        surf.blit(self.currentImg, (self.pos.x - 75, self.pos.y - 75))
+        # 보스 체력바 및 본체 렌더링
         hpRatio = max(0, self.hp / self.maxHp)
-        pygame.draw.rect(surf, GREEN, (self.pos.x - 50, self.pos.y + 80, 100 * hpRatio, 8))
+        pygame.draw.rect(surf, (50, 50, 50), (self.pos.x - 60, self.pos.y + 80, 120, 10))
+        pygame.draw.rect(surf, (200, 0, 255), (self.pos.x - 60, self.pos.y + 80, 120 * hpRatio, 10))
+        
+        # 보스 코어 연출 (대량 탄막의 중심점)
+        pygame.draw.circle(surf, WHITE, (int(self.pos.x), int(self.pos.y)), 15)
+
+class BossZero4:
+    def __init__(self):
+        self.type = "ZERO"
+        self.pos = pygame.Vector2(WIDTH // 2, 200)
+        self.hp = 3500
+        self.maxHp = 3500
+        self.timer = 0
+        self.rect = pygame.Rect(self.pos.x - 40, self.pos.y - 40, 80, 80)
+        
+        # --- 회전 탄막 관련 변수 설정 ---
+        self.orbitBullets = []
+        self.orbitAngle = 0
+        self.numOrbitBullets = 12
+        self.rotationSpeed = 0.05
+        
+        # 반경 관련 설정
+        self.baseRadius = 150              # 기준 반경
+        self.startRadius = self.baseRadius * 3.5  # 초기 반경 (3.5배)
+        self.targetRadius = self.baseRadius * 0.5 # 최종 반경 (0.5배)
+        self.currentRadius = self.startRadius     # 현재 적용 중인 반경
+        self.shrinkSpeed = 0.005           # 반경이 줄어드는 속도 계수
+
+    def update(self, eProjs, pPos, ctx=None):
+        self.timer += 1
+        
+        # 1. 보스 본체 이동
+        self.pos.x = WIDTH // 2 + math.sin(self.timer * 0.03) * 150
+        self.pos.y = 150 + math.cos(self.timer * 0.02) * 50
+        self.rect.center = (self.pos.x, self.pos.y)
+
+        # 2. 회전 각도 및 반경 업데이트
+        self.orbitAngle += self.rotationSpeed
+        
+        # 반경이 targetRadius(0.5배)에 도달할 때까지 서서히 줄어듦 (지수적 감소)
+        # 현재 값에서 목표 값으로 부드럽게 접근하는 보간 로직
+        if self.currentRadius > self.targetRadius:
+            self.currentRadius -= (self.currentRadius - self.targetRadius) * self.shrinkSpeed
+
+        # 3. 궤도 탄막 리스트 관리
+        self.orbitBullets = [b for b in self.orbitBullets if b in eProjs]
+
+        # 4. 탄막 보충
+        if len(self.orbitBullets) < self.numOrbitBullets:
+            if self.timer % 8 == 0:
+                newBullet = Projectile(self.pos.x, self.pos.y, pygame.Vector2(0, 0), CYAN, 10, 6)
+                self.orbitBullets.append(newBullet)
+                eProjs.append(newBullet)
+
+        # 5. 수렴하는 원형 궤도 계산
+        for i, bullet in enumerate(self.orbitBullets):
+            # 탄막별 간격 계산
+            angle = self.orbitAngle + (i * (2 * math.pi / self.numOrbitBullets))
+            
+            # 점점 작아지는 currentRadius를 적용하여 위치 결정
+            bullet.pos.x = self.pos.x + math.cos(angle) * self.currentRadius
+            bullet.pos.y = self.pos.y + math.sin(angle) * self.currentRadius
+            bullet.vel = pygame.Vector2(0, 0)
+
+        # 6. 공격 로직 (궤도에서 플레이어에게 발사)
+        if self.timer % 50 == 0 and self.orbitBullets:
+            firedBullet = self.orbitBullets.pop(0)
+            targetDir = (pPos - firedBullet.pos).normalize()
+            firedBullet.vel = targetDir * 9
+            firedBullet.color = RED
+
+    def draw(self, surf):
+        # 체력바 등 기본 그리기 로직 (생략 가능, 기존 유지)
+        hpRatio = max(0, self.hp / self.maxHp)
+        pygame.draw.rect(surf, (100, 100, 100), (self.pos.x - 50, self.pos.y + 70, 100, 8))
+        pygame.draw.rect(surf, (255, 0, 0), (self.pos.x - 50, self.pos.y + 70, 100 * hpRatio, 8))
+        pygame.draw.circle(surf, (0, 255, 255), (int(self.pos.x), int(self.pos.y)), 20, 2)
+
+class BossZero3:
+    def __init__(self):
+        self.type = "ZERO"
+        self.pos = pygame.Vector2(WIDTH // 2, HEIGHT // 2)
+        self.hp = 3500
+        self.maxHp = 3500
+        self.timer = 0
+        self.rect = pygame.Rect(self.pos.x - 40, self.pos.y - 40, 80, 80)
+        
+        # 패턴 설정 변수
+        self.angleOffset = 0
+        self.cycleFrames = 10 * 37.5  # 10초 주기 수축
+        
+        # [수정] 초기 중심 거리 3.5배(600 * 3.5 = 2100) 및 최종 반경 0.5배(50 * 0.5 = 25) 설정
+        self.startRadius = 600 * 3.5 
+        self.targetRadius = 50 * 0.5 
+
+    def update(self, eProjs, pPos, ctx=None):
+        self.timer += 1
+        self.angleOffset += 0.15 # 회전 속도
+        
+        # 선형 보간(Lerp)을 위한 진행률 계산 (0.0 ~ 1.0)
+        progress = (self.timer % self.cycleFrames) / self.cycleFrames
+        
+        # 시작 지점(startRadius)에서 목표 지점(targetRadius)까지 서서히 줄어드는 반지름 계산
+        currentRadius = self.startRadius - (self.startRadius - self.targetRadius) * progress
+        
+        # 3프레임마다 탄막 생성
+        if self.timer % 3 == 0:
+            numBullets = 8
+            for i in range(numBullets):
+                # 원의 테두리 좌표 계산
+                angle = (i * (2 * math.pi / numBullets)) + self.angleOffset
+                spawnX = self.pos.x + math.cos(angle) * currentRadius
+                spawnY = self.pos.y + math.sin(angle) * currentRadius
+                
+                # 보스 중심을 향해 파고드는 속도 벡터 설정
+                direction = (self.pos - pygame.Vector2(spawnX, spawnY)).normalize()
+                vel = direction * 2.5
+                
+                # 진행도에 따른 색상 변화 연출 (Cyan -> Purple)
+                color = CYAN if progress < 0.6 else PURPLE
+                eProjs.append(Projectile(spawnX, spawnY, vel, color, 10, 5))
+
+    def draw(self, surf):
+        # 체력바 드로우
+        hpRatio = max(0, self.hp / self.maxHp)
+        pygame.draw.rect(surf, GRAY, (self.pos.x - 50, self.pos.y + 60, 100, 8))
+        pygame.draw.rect(surf, RED, (self.pos.x - 50, self.pos.y + 60, 100 * hpRatio, 8))
+        
+        # 보스 코어 연출
+        pulse = math.sin(self.timer * 0.1) * 10
+        pygame.draw.circle(surf, WHITE, (int(self.pos.x), int(self.pos.y)), 20 + int(pulse), 2)
+        pygame.draw.circle(surf, CYAN, (int(self.pos.x), int(self.pos.y)), 5)
+
+class BossZero2:
+    def __init__(self):
+        self.type = "ZERO"
+        self.pos = pygame.Vector2(WIDTH // 2, 200) # 보스의 초기 위치 설정
+        self.hp = 3500 # 보스의 최대 체력 설정
+        self.maxHp = 3500
+        self.timer = 0
+        self.rect = pygame.Rect(self.pos.x - 40, self.pos.y - 40, 80, 80) # 충돌 판정용 사각형
+        
+        # --- 회전 탄막 관련 변수 (유지보수를 위해 camelCase 적용) ---
+        self.orbitBullets = []      # 현재 보스 주변을 도는 탄막 리스트
+        self.orbitAngle = 0         # 기준 회전 각도
+        self.orbitRadius = 150      # 보스와 탄막 사이의 거리
+        self.numOrbitBullets = 12   # 원형 궤도를 구성할 탄막의 개수
+        self.rotationSpeed = 0.05   # 프레임당 회전 속도
+
+    def update(self, eProjs, pPos, ctx=None):
+        self.timer += 1
+        
+        # 1. 보스 본체의 부드러운 이동 (8자 곡선 형태)
+        self.pos.x = WIDTH // 2 + math.sin(self.timer * 0.03) * 150
+        self.pos.y = 150 + math.cos(self.timer * 0.02) * 50
+        self.rect.center = (self.pos.x, self.pos.y)
+
+        # 2. 전체 회전 각도 업데이트
+        self.orbitAngle += self.rotationSpeed
+
+        # 3. 궤도 탄막 상태 관리: 파괴되거나 발사된 탄막은 리스트에서 제외
+        self.orbitBullets = [b for b in self.orbitBullets if b in eProjs]
+
+        # 4. 탄막 보충: 궤도 탄막이 부족할 경우 일정 주기마다 생성
+        if len(self.orbitBullets) < self.numOrbitBullets:
+            if self.timer % 10 == 0: # 생성 간격을 두어 자연스럽게 배치
+                # 초기 위치는 보스로 설정하며, 궤도에 고정하기 위해 vel은 0으로 시작
+                newBullet = Projectile(self.pos.x, self.pos.y, pygame.Vector2(0, 0), CYAN, 10, 6)
+                self.orbitBullets.append(newBullet)
+                eProjs.append(newBullet)
+
+        # 5. 원형 궤도 유지 로직: 각 탄막의 위치를 보스 중심으로 강제 업데이트
+        for i, bullet in enumerate(self.orbitBullets):
+            # i번째 탄막이 원 위에 균등하게 위치하도록 개별 각도 계산
+            angle = self.orbitAngle + (i * (2 * math.pi / self.numOrbitBullets))
+            
+            # 삼각함수를 이용한 원형 좌표(x, y) 계산
+            bullet.pos.x = self.pos.x + math.cos(angle) * self.orbitRadius
+            bullet.pos.y = self.pos.y + math.sin(angle) * self.orbitRadius
+            
+            # 궤도 이동 중에는 Projectile의 자체 이동 로직이 작동하지 않도록 vel을 0으로 고정
+            bullet.vel = pygame.Vector2(0, 0)
+
+        # 6. 추가 공격: 약 1.5초마다 궤도 탄막 하나를 플레이어에게 조준 사격
+        if self.timer % 60 == 0 and self.orbitBullets:
+            firedBullet = self.orbitBullets.pop(0) # 궤도 리스트에서 제거하여 독립된 탄막으로 전환
+            
+            # 플레이어 방향으로 가속도 부여
+            targetDir = (pPos - firedBullet.pos).normalize()
+            firedBullet.vel = targetDir * 8
+            firedBullet.color = RED # 공격 상태임을 알리기 위해 색상 변경
+
+    def draw(self, surf):
+        # 체력바 렌더링
+        hpRatio = max(0, self.hp / self.maxHp)
+        pygame.draw.rect(surf, GRAY, (self.pos.x - 50, self.pos.y + 70, 100, 8))
+        pygame.draw.rect(surf, RED, (self.pos.x - 50, self.pos.y + 70, 100 * hpRatio, 8))
+        
+        # 보스 본체 중심부 연출
+        pulse = math.sin(pygame.time.get_ticks() * 0.01) * 10
+        pygame.draw.circle(surf, CYAN, (int(self.pos.x), int(self.pos.y)), 20 + int(pulse), 2)
+        pygame.draw.circle(surf, WHITE, (int(self.pos.x), int(self.pos.y)), 10)
+
+class BossZero1:
+    def __init__(self):
+        self.type = "ZERO"
+        self.pos = pygame.Vector2(WIDTH // 2, HEIGHT // 2)
+        self.hp = 3500
+        self.maxHp = 3500
+        self.timer = 0
+        self.rect = pygame.Rect(self.pos.x - 40, self.pos.y - 40, 80, 80)
+        
+        # 패턴 설정 변수
+        self.angleOffset = 0
+        self.cycleFrames = 10 * 37.5  # 10초 주기 수축
+
+    def update(self, eProjs, pPos, ctx=None):
+        self.timer += 1
+        self.angleOffset += 0.15  # 회전 속도 (높을수록 빠르게 회전)
+        
+        # 10초 주기로 반지름이 600에서 50까지 줄어듦
+        progress = (self.timer % self.cycleFrames) / self.cycleFrames
+        currentRadius = 600 - (550 * progress)
+        
+        # 3프레임마다 탄막 생성 (탄막 밀도 조절)
+        if self.timer % 3 == 0:
+            numBullets = 8  # 한 번에 생성되는 탄알 수
+            for i in range(numBullets):
+                # 원의 테두리 좌표 계산
+                angle = (i * (2 * math.pi / numBullets)) + self.angleOffset
+                spawnX = self.pos.x + math.cos(angle) * currentRadius
+                spawnY = self.pos.y + math.sin(angle) * currentRadius
+                
+                # 탄막이 생성된 지점에서 보스(중심)를 향해 이동하는 벡터 계산
+                direction = (self.pos - pygame.Vector2(spawnX, spawnY)).normalize()
+                vel = direction * 2.5  # 탄막이 중심으로 파고드는 속도
+                
+                # 시각 효과: 수축 정도에 따라 색상 변화 (Cyan -> Purple)
+                color = CYAN if progress < 0.6 else PURPLE
+                eProjs.append(Projectile(spawnX, spawnY, vel, color, 10, 5))
+
+    def draw(self, surf):
+        # 체력바 표시
+        hpRatio = max(0, self.hp / self.maxHp)
+        pygame.draw.rect(surf, GRAY, (self.pos.x - 50, self.pos.y + 60, 100, 8))
+        pygame.draw.rect(surf, RED, (self.pos.x - 50, self.pos.y + 60, 100 * hpRatio, 8))
+        
+        # 보스 중심부 연출
+        pulse = math.sin(self.timer * 0.1) * 10
+        pygame.draw.circle(surf, WHITE, (int(self.pos.x), int(self.pos.y)), 20 + int(pulse), 2)
+        pygame.draw.circle(surf, CYAN, (int(self.pos.x), int(self.pos.y)), 5)
+
+class BossZero0:
+    def __init__(self):
+        self.type = "ZERO"
+        self.pos = pygame.Vector2(WIDTH // 2, HEIGHT // 2) # 중앙에 위치하여 패턴 전개
+        self.hp = 3500
+        self.maxHp = 3500
+        self.timer = 0
+        self.patternCycle = 15 * 37.5 # 15초 주기 (FPS 37.5 기준)
+        self.rect = pygame.Rect(self.pos.x - 40, self.pos.y - 40, 80, 80)
+        self.angleOffset = 0 # 회전 효과를 위한 오프셋
+
+    def update(self, eProjs, pPos, ctx=None):
+        self.timer += 1
+        currentTime = self.timer % self.patternCycle
+        phase1End = 10 * 37.5 # 10초 지점
+        
+        # 보스 위치: 부드럽게 중앙 주변을 배회
+        self.pos.x = WIDTH // 2 + math.sin(self.timer * 0.02) * 50
+        self.pos.y = HEIGHT // 2 + math.cos(self.timer * 0.02) * 50
+        self.rect.center = (self.pos.x, self.pos.y)
+
+        # --- 패턴 1: 0~10초 - 회전하며 수축하는 원형 감옥 ---
+        if currentTime < phase1End:
+            # 반지름 계산: 600(화면 밖)에서 시작하여 120(플레이어 근처)까지 줄어듦
+            progress = currentTime / phase1End
+            currentRadius = 600 - (480 * progress)
+            
+            # 매 프레임마다 회전각 증가
+            self.angleOffset += 0.08 
+            
+            # 일정 간격으로 탄막 생성 (회전하는 원의 테두리)
+            if self.timer % 8 == 0:
+                numBullets = 10 # 한 번에 생성할 탄막 개수
+                for i in range(numBullets):
+                    # 원의 테두리 좌표 계산
+                    angle = (i * (2 * math.pi / numBullets)) + self.angleOffset
+                    spawnX = self.pos.x + math.cos(angle) * currentRadius
+                    spawnY = self.pos.y + math.sin(angle) * currentRadius
+                    
+                    # 탄막의 이동: 원의 형태를 유지하며 아주 천천히 중앙으로 수축
+                    # (완전히 멈춰있으면 피하기 너무 쉬우므로 약간의 속도를 부여)
+                    direction = (self.pos - pygame.Vector2(spawnX, spawnY)).normalize()
+                    vel = direction * 1.2 
+                    
+                    # 색상 연출: 수축할수록 붉은색에 가깝게 변함 (청록 -> 보라 -> 빨강)
+                    bulletColor = CYAN if progress < 0.5 else PURPLE
+                    eProjs.append(Projectile(spawnX, spawnY, vel, bulletColor, 10, 5))
+
+        # --- 패턴 2: 10~15초 - 지그재그 하강 탄막 (감옥 해제 후 기습) ---
+        else:
+            if self.timer % 4 == 0:
+                # 화면 상단 여러 지점에서 지그재그로 내려오는 탄막
+                for xGate in range(0, WIDTH + 1, 150):
+                    # sin 함수를 이용한 수평 흔들림
+                    zigzagX = math.sin(self.timer * 0.15 + xGate) * 5
+                    vel = pygame.Vector2(zigzagX, 7) # 빠른 하강 속도
+                    
+                    spawnX = xGate + math.cos(self.timer * 0.1) * 20
+                    eProjs.append(Projectile(spawnX, -20, vel, WHITE, 8, 4))
+
+        # 상시 방어 패턴: 보스 주변을 빠르게 회전하는 보호 탄막
+        if self.timer % 5 == 0:
+            rotVel = pygame.Vector2(6, 0).rotate(self.timer * 12)
+            eProjs.append(Projectile(self.pos.x, self.pos.y, rotVel, BLACK, 6, 3))
+
+    def draw(self, surf):
+        # 체력바 렌더링
+        hpRatio = max(0, self.hp / self.maxHp)
+        pygame.draw.rect(surf, GRAY, (self.pos.x - 50, self.pos.y + 60, 100, 8))
+        pygame.draw.rect(surf, RED, (self.pos.x - 50, self.pos.y + 60, 100 * hpRatio, 8))
+        
+        # 보스 본체 연출 (수축하는 에너지 구체 느낌)
+        pulse = math.sin(pygame.time.get_ticks() * 0.01) * 15
+        innerRadius = 30 + int(pulse * 0.5)
+        pygame.draw.circle(surf, PURPLE, (int(self.pos.x), int(self.pos.y)), innerRadius, 2)
+        pygame.draw.circle(surf, CYAN, (int(self.pos.x), int(self.pos.y)), 10)
 
 class Enemy:
     def __init__(self, eType="type1", offset=0):
