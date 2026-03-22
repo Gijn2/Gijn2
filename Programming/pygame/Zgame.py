@@ -1427,7 +1427,7 @@ while running:
                 if zeroTicket: boss = BossZero(); zeroTicket = False
                 elif currentStage == 1:
                     # boss = BossSwarm()
-                    boss = BossZero()
+                    boss = BossZero1()
                     # boss = BossRock()
                     # boss = BossChernobog()
                 elif currentStage == 2:
