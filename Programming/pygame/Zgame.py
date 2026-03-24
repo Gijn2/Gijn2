@@ -1049,28 +1049,21 @@ while running:
         tempSurf.blit(guide_txt, (150, 400))
         
     elif shopTab == "INVEST":
-        # camelCase 적용 및 UI 표시를 위한 key 데이터 통합 (DRY 원칙)
-        investTargets = [
-            {"id": "A", "name": "A구역: 지열 운송", "effect": "이동속도 증가", "cost": 500, "key": "Q"},
-            {"id": "B", "name": "B구역: 에너지 연구", "effect": "쿨타임 감소", "cost": 500, "key": "W"},
-            {"id": "C", "name": "C구역: 정밀 합금", "effect": "화력 및 할인율", "cost": 500, "key": "E"}
-        ]
-        
-        for i, target in enumerate(investTargets):
-            yPos = 150 + (i * 110)
-            pygame.draw.rect(tempSurf, (45, 45, 65), (50, yPos, 800, 90), border_radius=10)
-            
-            # 지분율 바 (Visual Bar)
-            barWidth = int(stocks[target["id"]] * 2) 
-            pygame.draw.rect(tempSurf, GOLD, (550, yPos + 35, barWidth, 20))
-            
-            # 텍스트 정보 표기
-            tempSurf.blit(fontM.render(f"{target['name']} ({stocks[target['id']]}%)", True, WHITE), (70, yPos + 15))
-            tempSurf.blit(fontS.render(f"효과: {target['effect']}", True, GRAY), (70, yPos + 50))
-            
-            # 버그 해결 지점: i+1 이 아닌, 딕셔너리에 정의된 실제 로직 키(Q, W, E)를 출력하도록 변경
-            tempSurf.blit(fontM.render(f"{target['cost']}G [Key:{target['key']}]", True, GOLD), (380, yPos + 30))
-
+            # 단축키(k)를 실제 입력 이벤트와 일치하도록 Q, W, E로 수정
+            investTargets = [
+                {"id": "A", "n": "구역 A: 지열 운송", "y": 150, "k": "Q"},
+                {"id": "B", "n": "구역 B: 에너지 연구", "y": 260, "k": "W"},
+                {"id": "C", "n": "구역 C: 정밀 합금", "y": 370, "k": "E"}
+            ]
+            for i, inv in enumerate(investTargets):
+                y = inv["y"]
+                pygame.draw.rect(tempSurf, (45, 45, 65), (50, y, 800, 90), border_radius=10)
+                barW = int(stocks[inv["id"]] * 2) 
+                pygame.draw.rect(tempSurf, GOLD, (550, y + 35, barW, 20))
+                tempSurf.blit(fontM.render(f"{inv['n']} ({stocks[inv['id']]}%)", True, WHITE), (70, y + 15))
+                # 수정: 배열 인덱스가 아닌 실제 할당된 'k' 값 출력
+                tempSurf.blit(fontM.render(f"500G [Key:{inv['k']}]", True, GOLD), (380, y + 30))
+                
     # 지분 하락에 따른 계급 등급 표시 [cite: 15, 16]
     avg_stock = sum(stocks.values()) / 3
     rank = "고등급(Noble)" if avg_stock > 80 else "저등급(Commoner)"
@@ -1089,8 +1082,10 @@ while running:
     for p in particles[:]:
         p.update()
         if p.life <= 0: particles.remove(p)
-
+    
     if gameState == 'PLAYING':
+        playerCenter = playerPos + pygame.Vector2(30, 30)
+
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT]: playerPos.x -= stats["speed"]
         if keys[pygame.K_RIGHT]: playerPos.x += stats["speed"]
@@ -1140,9 +1135,9 @@ while running:
                 elif currentStage == 1:
                     # boss = BossSwarm()
                     # boss = BossZero()
-                    boss = BossRock()
+                    # boss = BossRock()
                     # boss = BossChernobog()
-                    # boss = BossCrusher()
+                    boss = BossCrusher()
                     # boss = BossCrazy()
                 elif currentStage == 2:
                     boss = BossSwarm()
@@ -1183,8 +1178,6 @@ while running:
                 shopOptions = getShopItems()
 
 # --- [준비 단계] 공통 변수 계산 (DRY 원칙) ---
-        playerCenter = playerPos + pygame.Vector2(30, 30)
-        # hitboxRadius는 코드 상단에 10으로 정의되어 있어야 합니다.
 
         # --- 1. 적(Enemies) 업데이트 및 플레이어 충돌 판정 ---
         for e in enemies[:]:
@@ -1314,8 +1307,6 @@ while running:
         # --- 수정된 렌더링 코드 ---
         if invincibleTimer % 4 == 0: 
             tempSurf.blit(playerImg, playerPos)
-            
-            playerCenter = playerPos + pygame.Vector2(30, 30)
             hitboxRadius = 10 
 
             # 1. 원형 테두리 (이건 투명도가 필요 없으므로 그대로 유지)
@@ -1385,21 +1376,17 @@ while running:
         tempSurf.blit(fontM.render(f"등급: {rank} | GOLD: {stats['gold']}G", True, WHITE), (300, HEIGHT-50))
 
     # W 특수기 효과 (화면 반전)
+    # W 특수기 효과 (화면 반전)
     if specialEffectTimer > 0:
             overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-            # 타이머에 따라 투명도가 낮아지며 서서히 사라짐
             alpha = min(255, specialEffectTimer * 10) 
             overlay.fill((255, 255, 255, alpha))
             screen.blit(overlay, (0, 0))
-            specialEffectTimer -= 1 # 타이머 감소
-
+            specialEffectTimer -= 1 
+    
     # 배경 그리기
     screen.blit(bgImg, (0, 0))
-    # 흔들림이 적용된 도화지(tempSurf)를 실제 화면에 출력
-    screen.blit(tempSurf, render_offset)
         
-    # --- 배경에 덮이지 않도록 UI를 마지막에 렌더링 ---
-    
     # 1. 체력바 배경 현재 체력(초록색)
     # pygame.draw.rect(screen, RED, (10, 10, 200, 20)) 
     pygame.draw.rect(screen, GREEN, (10, 10, max(0, (playerHp/stats['maxHp'])*200), 20))
