@@ -367,81 +367,227 @@ class BossChernobog:
         global shakeTimer
         self.timer += 1
         self.rect.topleft = (self.pos.x - 60, self.pos.y - 60)
-        
         self.orbitBullets = [b for b in self.orbitBullets if b in eProjs]
         self.orbitAngle += 0.08
         
-        # 1페이즈: 궤도 탄막 응집 (Zero 패턴)
-        if self.timer % 300 < 200:
+        # 1페이즈: 궤도 탄막 응집 시간을 3배로 증가 (200 -> 600 프레임)
+        if self.timer % 900 < 600:
             self.currentImg = self.images["STAND"]
-            if self.timer % 5 == 0 and len(self.orbitBullets) < 40:
+            if self.timer % 5 == 0 and len(self.orbitBullets) < 120:
                 newBullet = Projectile(self.pos.x, self.pos.y, pygame.Vector2(0, 0), PURPLE, 15, 8)
                 self.orbitBullets.append(newBullet)
                 eProjs.append(newBullet)
                 
             for i, bullet in enumerate(self.orbitBullets):
-                angle = self.orbitAngle + (i * 0.3)
-                radius = 70 + (i * 3)
+                angle = self.orbitAngle + (i * 0.15)
+                radius = 70 + (i * 1.5)
                 bullet.pos.x = self.pos.x + math.cos(angle) * radius
                 bullet.pos.y = self.pos.y + math.sin(angle) * radius
                 bullet.vel = pygame.Vector2(0, 0)
                 
-        # 2페이즈: 화면 진동과 함께 카오스 분열 (Chaos 패턴)
-        elif self.timer % 300 == 200:
+        # 2페이즈: 혼돈 분열 시 일부 호밍 투사체 섞기
+        elif self.timer % 900 == 600:
             self.currentImg = self.images["ATTACK"]
             shakeTimer = 25 
             for bullet in self.orbitBullets:
                 chaoticAngle = random.uniform(0, math.pi * 2)
                 speed = random.uniform(3.0, 8.0)
-                bullet.vel = pygame.Vector2(math.cos(chaoticAngle), math.sin(chaoticAngle)) * speed
-                bullet.color = RED 
+                bulletVel = pygame.Vector2(math.cos(chaoticAngle), math.sin(chaoticAngle)) * speed
+                
+                # 15% 확률로 기존 탄막 대신 호밍 탄막 발사
+                if random.random() < 0.15:
+                    eProjs.append(HomingProjectile(bullet.pos.x, bullet.pos.y, bulletVel, GOLD, 15, 8))
+                    if bullet in eProjs: eProjs.remove(bullet)
+                else:
+                    bullet.vel = bulletVel
+                    bullet.color = RED 
             self.orbitBullets.clear()
 
     def draw(self, surf):
         surf.blit(self.currentImg, (self.pos.x - 75, self.pos.y - 75))
         hpRatio = max(0, self.hp / self.maxHp)
         pygame.draw.rect(surf, GREEN, (self.pos.x - 50, self.pos.y + 80, 100 * hpRatio, 8))
-            
+
+class BossCrazy:
+    def __init__(self):
+        self.type = "CRAZY"
+        self.pos = pygame.Vector2(WIDTH // 2, HEIGHT // 2)
+        self.hp = 15000
+        self.maxHp = 15000
+        self.timer = 0
+        self.rect = pygame.Rect(self.pos.x - 40, self.pos.y - 40, 80, 80)
+        self.orbitBullets = []
+        self.orbitAngle = 0
+        self.phase = 1
+
+    def update(self, eProjs, pPos, ctx=None):
+        self.timer += 1
+        
+        # 600프레임(약 16초) 주기로 Zero 1 -> 2 -> 3 -> 4 -> 최종 병합 페이즈로 전환
+        if self.timer < 600: self.phase = 1
+        elif self.timer < 1200: self.phase = 2
+        elif self.timer < 1800: self.phase = 3
+        elif self.timer < 2400: self.phase = 4
+        else: self.phase = 5
+
+        self.pos.x = WIDTH // 2 + math.sin(self.timer * 0.03) * 150
+        self.pos.y = 150 + math.cos(self.timer * 0.02) * 50
+        self.rect.center = (self.pos.x, self.pos.y)
+
+        if self.phase == 1:
+            # 패턴 1: 화면 밖에서 수축하는 원형 탄막
+            progress = (self.timer % 600) / 600.0
+            currentRadius = 600 - (480 * progress)
+            if self.timer % 6 == 0:
+                for i in range(10):
+                    angle = (i * (2 * math.pi / 10)) + (self.timer * 0.1)
+                    spawnX = self.pos.x + math.cos(angle) * currentRadius
+                    spawnY = self.pos.y + math.sin(angle) * currentRadius
+                    dirVec = (self.pos - pygame.Vector2(spawnX, spawnY)).normalize() * 1.5
+                    eProjs.append(Projectile(spawnX, spawnY, dirVec, CYAN, 10, 5))
+
+        elif self.phase == 2:
+            # 패턴 2: 궤도 고정 후 조준 사격
+            self.orbitAngle += 0.05
+            self.orbitBullets = [b for b in self.orbitBullets if b in eProjs]
+            if len(self.orbitBullets) < 12 and self.timer % 10 == 0:
+                newBullet = Projectile(self.pos.x, self.pos.y, pygame.Vector2(0, 0), CYAN, 10, 6)
+                self.orbitBullets.append(newBullet)
+                eProjs.append(newBullet)
+            for i, bullet in enumerate(self.orbitBullets):
+                angle = self.orbitAngle + (i * (2 * math.pi / 12))
+                bullet.pos.x = self.pos.x + math.cos(angle) * 150
+                bullet.pos.y = self.pos.y + math.sin(angle) * 150
+                bullet.vel = pygame.Vector2(0, 0)
+            if self.timer % 50 == 0 and self.orbitBullets:
+                firedBullet = self.orbitBullets.pop(0)
+                targetDir = (pPos - firedBullet.pos).normalize()
+                firedBullet.vel = targetDir * 8
+                firedBullet.color = RED
+
+        elif self.phase == 3:
+            # 패턴 3: 거대한 궤도에서 작아지는 탄막 소환
+            progress = (self.timer % 600) / 600.0
+            currentRadius = 2100 - (2075 * progress) 
+            if self.timer % 4 == 0:
+                for i in range(8):
+                    angle = (i * (2 * math.pi / 8)) + (self.timer * 0.15)
+                    spawnX = self.pos.x + math.cos(angle) * currentRadius
+                    spawnY = self.pos.y + math.sin(angle) * currentRadius
+                    dirVec = (self.pos - pygame.Vector2(spawnX, spawnY)).normalize() * 3.0
+                    eProjs.append(Projectile(spawnX, spawnY, dirVec, PURPLE, 10, 5))
+
+        elif self.phase == 4:
+            # 패턴 4: 거대한 궤도를 그리며 회전, 점점 좁혀지다 발사
+            self.orbitAngle += 0.05
+            progress = (self.timer % 600) / 600.0
+            currentRadius = 525 - (450 * progress) 
+            self.orbitBullets = [b for b in self.orbitBullets if b in eProjs]
+            if len(self.orbitBullets) < 16 and self.timer % 8 == 0:
+                newBullet = Projectile(self.pos.x, self.pos.y, pygame.Vector2(0, 0), CYAN, 10, 6)
+                self.orbitBullets.append(newBullet)
+                eProjs.append(newBullet)
+            for i, bullet in enumerate(self.orbitBullets):
+                angle = self.orbitAngle + (i * (2 * math.pi / 16))
+                bullet.pos.x = self.pos.x + math.cos(angle) * currentRadius
+                bullet.pos.y = self.pos.y + math.sin(angle) * currentRadius
+                bullet.vel = pygame.Vector2(0, 0)
+            if self.timer % 40 == 0 and self.orbitBullets:
+                firedBullet = self.orbitBullets.pop(0)
+                targetDir = (pPos - firedBullet.pos).normalize()
+                firedBullet.vel = targetDir * 9
+                firedBullet.color = RED
+
+        elif self.phase == 5:
+            # 패턴 5: 모든 속성을 합친 지옥의 탄막 아트
+            self.orbitAngle += 0.08
+            if self.timer % 12 == 0:
+                for i in range(6):
+                    angle = (i * (2 * math.pi / 6)) + self.orbitAngle
+                    spawnX = self.pos.x + math.cos(angle) * 200
+                    spawnY = self.pos.y + math.sin(angle) * 200
+                    dirVec = (self.pos - pygame.Vector2(spawnX, spawnY)).normalize() * 2.5
+                    eProjs.append(Projectile(spawnX, spawnY, dirVec, PURPLE, 10, 5))
+            if self.timer % 30 == 0:
+                for xGate in range(0, WIDTH + 1, 180):
+                    zigzagX = math.sin(self.timer * 0.15 + xGate) * 5
+                    vel = pygame.Vector2(zigzagX, 6)
+                    eProjs.append(Projectile(xGate, -20, vel, WHITE, 8, 4))
+            if self.timer % 90 == 0: 
+                eProjs.append(HomingProjectile(self.pos.x, self.pos.y, pygame.Vector2(0, -4), GOLD, 15, 8))
+
+    def draw(self, surf):
+        hpRatio = max(0, self.hp / self.maxHp)
+        pygame.draw.rect(surf, (100, 100, 100), (self.pos.x - 60, self.pos.y + 80, 120, 10))
+        pygame.draw.rect(surf, (255, 50, 50), (self.pos.x - 60, self.pos.y + 80, 120 * hpRatio, 10))
+        
+        color = [WHITE, CYAN, PURPLE, GOLD, RED, BLACK][min(self.phase, 5)]
+        pygame.draw.circle(surf, color, (int(self.pos.x), int(self.pos.y)), 25, 3)
+        pygame.draw.circle(surf, WHITE, (int(self.pos.x), int(self.pos.y)), 10)
+
 class BossCrusher:
     def __init__(self):
         self.type = "Crusher"
-        self.hp = 500; self.maxHp = 500
-        self.pos = pygame.Vector2(WIDTH//2, 50)
-        self.homePos = pygame.Vector2(WIDTH//2, 50)
+        self.hp = 800
+        self.maxHp = 800
+        self.pos = pygame.Vector2(WIDTH // 2, 100)
+        self.homePos = pygame.Vector2(WIDTH // 2, 100)
         self.mode = "IDLE"
         self.timer = 0
         self.hitboxRadius = 50 
         self.targetPos = None
+        self.trapAngle = 0
         self.spinAngle = 0
         self.images = BossAssetManager.get_images("bossCrusher")
         self.currentImg = self.images["STAND"]
 
     def update(self, eProjs, pPos): 
         self.timer += 1
-        # 9. 돌진 -> 정지 후 회전 사격 -> 부메랑 복귀 로직
+        
         if self.mode == "IDLE":
             if self.timer > 90:
+                self.mode = "TRAP_SHOOT"
+                self.timer = 0
+                
+        elif self.mode == "TRAP_SHOOT":
+            self.currentImg = self.images["ATTACK"]
+            self.trapAngle += 0.05
+            if self.timer % 15 == 0:
+                for i in range(12):
+                    angle = (i * (2 * math.pi / 12)) + self.trapAngle
+                    dirVec = pygame.Vector2(math.cos(angle), math.sin(angle)) * 3.5
+                    eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, CYAN, 8, 6))
+            if self.timer > 120:
                 self.mode = "DASH"
                 self.targetPos = pygame.Vector2(pPos.x, pPos.y)
                 self.timer = 0
+                
         elif self.mode == "DASH":
             self.currentImg = self.images["ATTACK"]
             dirVec = self.targetPos - self.pos
-            if dirVec.length() > 15:
-                self.pos += dirVec.normalize() * 15
+            if dirVec.length() > 20:
+                self.pos += dirVec.normalize() * 20
             else:
                 self.mode = "SPIN_SHOOT"
                 self.timer = 0
+                self.spinAngle = 0
+                
         elif self.mode == "SPIN_SHOOT":
             self.currentImg = self.images["ATTACK"]
-            self.spinAngle += 15
-            # 추후 거대한 투사체 이미지로 교체를 위한 Projectile 반경 15 설정
-            if self.timer % 8 == 0:
-                dirVec = pygame.Vector2(0, 6).rotate(self.spinAngle)
-                eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, RED, 10, 15))
-            if self.timer > 120: # 약 3~4초 유지
+            self.spinAngle += 0.1
+            # 화면을 가득 채우지만 매우 느리고 틈이 넓은 양방향 나선 탄막 아트
+            if self.timer % 6 == 0:
+                for i in range(4): 
+                    angle = (i * (math.pi / 2)) + self.spinAngle
+                    dirVec = pygame.Vector2(math.cos(angle), math.sin(angle)) * 2.0
+                    eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, GOLD, 10, 8))
+                    
+                    dirVecRev = pygame.Vector2(math.cos(-angle), math.sin(-angle)) * 2.0
+                    eProjs.append(Projectile(self.pos.x, self.pos.y, dirVecRev, RED, 10, 8))
+            if self.timer > 150:
                 self.mode = "RETURN"
                 self.timer = 0
+                
         elif self.mode == "RETURN":
             dirVec = self.homePos - self.pos
             self.currentImg = self.images["STAND"]
@@ -453,7 +599,6 @@ class BossCrusher:
 
     def draw(self, surf):
         surf.blit(self.currentImg, (self.pos.x - 75, self.pos.y - 75))
-        # 개별 체력바 표기
         hpRatio = max(0, self.hp / self.maxHp)
         pygame.draw.rect(surf, RED, (self.pos.x - 30, self.pos.y + 60, 60, 6))
         pygame.draw.rect(surf, GREEN, (self.pos.x - 30, self.pos.y + 60, 60 * hpRatio, 6))
@@ -537,7 +682,6 @@ class BossSwarm:
     def update(self, eProjs, pPos):
         self.stateTimer += 1
         
-        # 상태 전이 순서: SCATTER -> GATHER -> CONVERGE_SHOOT -> SCATTER
         if self.state == "SCATTER" and self.stateTimer > 200:
             self.state = "GATHER"
             self.stateTimer = 0
@@ -545,7 +689,7 @@ class BossSwarm:
             self.state = "CONVERGE_SHOOT"
             self.stateTimer = 0
             self.currentImg = self.images["ATTACK"]
-        elif self.state == "CONVERGE_SHOOT" and self.stateTimer > 90:
+        elif self.state == "CONVERGE_SHOOT" and self.stateTimer > 120:
             self.state = "SCATTER"
             self.stateTimer = 0
             self.weakIndex = random.randint(0, 7)
@@ -568,16 +712,25 @@ class BossSwarm:
                 orbitAngle = self.spinAngle + (i * 45)
                 rad = math.radians(orbitAngle)
                 targetPos = targetCenter + pygame.Vector2(math.cos(rad) * 120, math.sin(rad) * 120)
-                # 보간법(Lerp)을 사용하여 부드럽게 지정된 원형 대형으로 이동
                 self.centers[i] = self.centers[i].lerp(targetPos, 0.05)
                 
+            # 회전하며 십자 형태로 전방향 탄막 발사
+            if self.stateTimer % 15 == 0:
+                for i in range(8):
+                    for j in range(4): 
+                        angle = math.radians(self.spinAngle + (j * 90))
+                        dirVec = pygame.Vector2(math.cos(angle), math.sin(angle)) * 3.0
+                        eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, dirVec, CYAN, 5, 4))
+                
         elif self.state == "CONVERGE_SHOOT":
-            # 8개의 개체가 동시에 플레이어를 향해 조준 사격
-            if self.stateTimer % 30 == 0:
+            # 화려하게 겹치는 넓은 부채꼴 교차 탄막 (빈틈을 파고드는 난이도)
+            if self.stateTimer % 20 == 0:
                 for i in range(8):
                     diff = pPos - self.centers[i]
-                    dirVec = diff.normalize() * 6 if diff.length() > 0 else pygame.Vector2(0, 6)
-                    eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, dirVec, RED, 10, 6))
+                    baseDir = diff.normalize() * 5 if diff.length() > 0 else pygame.Vector2(0, 5)
+                    for offset in [-40, 0, 40]: 
+                        dirVec = baseDir.rotate(offset)
+                        eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, dirVec, RED, 10, 6))
 
     def draw(self, surf):
         for i, c in enumerate(self.centers):    
@@ -987,10 +1140,10 @@ while running:
                 elif currentStage == 1:
                     # boss = BossSwarm()
                     # boss = BossZero()
-                    # boss = BossRock()
+                    boss = BossRock()
                     # boss = BossChernobog()
-                    boss = BossCounter()
                     # boss = BossCrusher()
+                    # boss = BossCrazy()
                 elif currentStage == 2:
                     boss = BossSwarm()
                 elif currentStage == 3:
