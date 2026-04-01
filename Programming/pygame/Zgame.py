@@ -348,6 +348,45 @@ class Meteor:
         surf.blit(shadow_surf, (self.target.x - self.radius * 2, self.target.y - self.radius * 2))
         surf.blit(self.img, (self.pos.x - self.radius, self.pos.y - self.radius))
 
+import math
+
+class BossArc:
+    def __init__(self):
+        self.pos = [WIDTH // 2, 150]
+        self.angle = 0
+        self.phase = 1
+        self.timer = 0
+
+    def update(self, player_pos, bullets):
+        self.timer += 1
+        self.angle += 2  # 회전 속도 제어
+        
+        # 1프레임마다 발사하는 것이 아니라 간격을 둠
+        if self.timer % 5 == 0:
+            if self.phase == 1:
+                self.pattern_spiral(bullets)
+            elif self.phase == 2:
+                self.pattern_flower(bullets)
+
+    def pattern_spiral(self, bullets):
+        # 정석적인 나선형 탄막 (N-way 스파이럴)
+        num_streams = 6
+        for i in range(num_streams):
+            # 기본 각도에 스트림별 간격과 시간에 따른 회전각을 더함
+            rad = math.radians(self.angle + (i * (360 / num_streams)))
+            dx = math.cos(rad) * 3
+            dy = math.sin(rad) * 3
+            bullets.append({"pos": list(self.pos), "vel": [dx, dy], "color": (0, 255, 255)})
+
+    def pattern_flower(self, bullets):
+        # 시계 방향과 반시계 방향이 교차하는 패턴
+        for i in range(12):
+            rad = math.radians(i * 30 + self.angle)
+            inv_rad = math.radians(i * 30 - self.angle)
+            # 바깥으로 퍼지는 속도 조절
+            bullets.append({"pos": list(self.pos), "vel": [math.cos(rad)*2, math.sin(rad)*2]})
+            bullets.append({"pos": list(self.pos), "vel": [math.cos(inv_rad)*2, math.sin(inv_rad)*2]})
+
 class BossChernobog:
     def __init__(self):
         self.type = "CHERNOBOG"
