@@ -13,6 +13,7 @@ pygame.init()
 WIDTH, HEIGHT = 900, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Topdown Shooting Pygame: Limited Edition")
+
 clock = pygame.time.Clock()
 
 # --- 2. 에셋 로드 (화면 설정 후 로드해야 함) --
@@ -141,20 +142,6 @@ def loadHighscore():
 
 highScore = loadHighscore()
 
-# --- [신규] 보안 및 다국어 시스템 ---
-def saveGameSecure(data, filename="save.dat"):
-    data_str = json.dumps(data, sort_keys=True)
-    signature = hashlib.sha256((data_str + secretSalt).encode()).hexdigest()
-    with open(filename, "w") as f:
-        json.dump({"payload": data, "signature": signature}, f)
-
-LANG_DB = {
-    "ko": {"shop_title": "시스템 업그레이드", "core_warn": "코어 감지됨", "start": "전투 개시"},
-    "en": {"shop_title": "SYSTEM UPGRADE", "core_warn": "CORE DETECTED", "start": "START BATTLE"}
-}
-current_lang = "ko"
-def _t(key): return LANG_DB[current_lang].get(key, key)
-
 # 해킹을 막기 위한 함수
 def saveHighscoreSecure(scoreValue):
     # 점수와 비밀키를 합쳐 해시값(Checksum) 생성
@@ -184,12 +171,6 @@ def loadHighscoreSecure():
         except Exception:
             return 0
     return 0
-
-def saveHighscore(s):
-    try:
-        with open("highscore.txt", "w") as f:
-            f.write(str(s))
-    except Exception: pass
 
 def getShopItems():
     return [{"data": item, "sold": False} for item in random.sample(UPGRADE_POOL, 4)]
@@ -334,8 +315,8 @@ class Meteor:
         if self.pos.distance_to(playerPos + pygame.Vector2(30, 30)) < self.radius + 10:
             return True # 충돌 발생 신호
             
-        # 목표 지점에 도달하면 폭발
-        if (self.target - self.pos).length() < 10:
+        # 목표 지점에 도달하거나 화면을 완전히 벗어나면 폭발 및 소멸 처리 (안전장치 추가)
+        if (self.target - self.pos).length() < 10 or self.pos.y > HEIGHT + 100:
             self.alive = False
         return False
 
@@ -1072,15 +1053,6 @@ while running:
     rank = "고등급(Noble)" if avg_stock > 80 else "저등급(Commoner)"
     tempSurf.blit(fontM.render(f"현재 시민 등급: {rank}", True, GOLD), (WIDTH-300, HEIGHT-50))
 
-    if event.type == pygame.MOUSEBUTTONDOWN and gameState == 'SHOP':
-        for opt in shopOptions:
-            idx = shopOptions.index(opt)
-            rect = pygame.Rect(30 + idx * 215, 150, 200, 320)
-            if rect.collidepoint(mouse_pos) and not opt["sold"] and stats["gold"] >= opt["data"]["price"]:
-                stats["gold"] -= opt["data"]["price"]
-                applyUpgrade(opt["data"])
-                opt["sold"] = True
-
     # [2] Logic Update (비즈니스 로직)
     for p in particles[:]:
         p.update()
@@ -1154,7 +1126,7 @@ while running:
                 enemyType = getRandomEnemy(currentStage)
                 enemies.append(Enemy(enemyType, random.randint(0, 1000)))
         else:
-            if boss.type == "swarm":
+            if boss.type == "SWARM":
                 if len(enemies) < 5: 
                     # 너무 자주 스폰되지 않도록 낮은 확률 부여
                     if random.random() < 0.25:
