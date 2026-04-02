@@ -663,7 +663,27 @@ class BossRock:
             if not self.meteors and self.timer > 60:
                 self.state = "IDLE"
                 self.timer = 0
+
+    def draw(self, surf):
+            # 1. 보스가 소환하여 관리 중인 메테오들을 먼저 그립니다.
+            for meteor in self.meteors:
+                meteor.draw(surf)
                 
+            # 2. 보스 본체 이미지를 그립니다. 
+            # BossAssetManager에서 별도 크기 지정이 없으므로 기본값(100x100) 기준 중앙 정렬(-50)합니다.
+            surf.blit(self.currentImg, (self.pos.x - 50, self.pos.y - 50))
+            
+            # 3. 체력바 표시 (다른 보스들과 규격 및 색상 통일)
+            hpRatio = max(0, self.hp / self.maxHp)
+            bar_width = 100
+            bar_height = 8
+            bar_x = self.pos.x - (bar_width // 2)
+            bar_y = self.pos.y + 65 # 보스 이미지 하단에 위치
+            
+            # 체력바 배경 (RED) 및 현재 체력 (GREEN)
+            pygame.draw.rect(surf, RED, (bar_x, bar_y, bar_width, bar_height))
+            pygame.draw.rect(surf, GREEN, (bar_x, bar_y, bar_width * hpRatio, bar_height))
+
 class BossSwarm:
     def __init__(self):
         self.type = "SWARM"
@@ -723,14 +743,14 @@ class BossSwarm:
                         eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, dirVec, CYAN, 5, 4))
                 
         elif self.state == "CONVERGE_SHOOT":
-            # 화려하게 겹치는 넓은 부채꼴 교차 탄막 (빈틈을 파고드는 난이도)
-            if self.stateTimer % 20 == 0:
+            # 화려하게 겹치며 빈틈을 파고드는 그물망(Net) 탄막 아트
+            if self.stateTimer % 10 == 0:
+                self.spinAngle += 5 # 회전 각도 증가
                 for i in range(8):
-                    diff = pPos - self.centers[i]
-                    baseDir = diff.normalize() * 5 if diff.length() > 0 else pygame.Vector2(0, 5)
-                    for offset in [-40, 0, 40]: 
-                        dirVec = baseDir.rotate(offset)
-                        eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, dirVec, RED, 10, 6))
+                    # 각 노드(centers)에서 약간씩 틀어진 각도로 발사하여 기하학적 패턴 형성
+                    angle = math.radians(self.spinAngle + (i * 45))
+                    dirVec = pygame.Vector2(math.cos(angle), math.sin(angle)) * 3.5
+                    eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, dirVec, GOLD, 8, 4))
 
     def draw(self, surf):
         for i, c in enumerate(self.centers):    
@@ -764,47 +784,30 @@ class BossZero:
     def update(self, eProjs, pPos, ctx=None):
         self.timer += 1
         
-        # 1. 보스 본체 이동 (8자 기동)
-        self.pos.x = WIDTH // 2 + math.sin(self.timer * 0.03) * 150
-        self.pos.y = 150 + math.cos(self.timer * 0.02) * 50
+        # 1. 보스 본체 이동 (부드러운 8자 기동)
+        self.pos.x = WIDTH // 2 + math.sin(self.timer * 0.02) * 150
+        self.pos.y = 200 + math.sin(self.timer * 0.04) * 50
         self.rect.center = (self.pos.x, self.pos.y)
 
-        # 2. 회전 및 반경 업데이트
-        self.orbitAngle += self.rotationSpeed
-        if self.currentRadius > self.targetRadius:
-            self.currentRadius -= (self.currentRadius - self.targetRadius) * self.shrinkSpeed
+        # 2. 교차하는 이중 나선 (Double Helix) 탄막 아트
+        if self.timer % 5 == 0:
+            for i in range(3):
+                # 시계 방향 탄막
+                angle1 = self.timer * 0.1 + (i * 2 * math.pi / 3)
+                dir1 = pygame.Vector2(math.cos(angle1), math.sin(angle1)) * 4
+                eProjs.append(Projectile(self.pos.x, self.pos.y, dir1, CYAN, 8, 5))
+                
+                # 반시계 방향 탄막
+                angle2 = -self.timer * 0.1 + (i * 2 * math.pi / 3)
+                dir2 = pygame.Vector2(math.cos(angle2), math.sin(angle2)) * 4
+                eProjs.append(Projectile(self.pos.x, self.pos.y, dir2, PURPLE, 8, 5))
 
-        # 3. 궤도 탄막 관리 (리스트 정리)
-        self.orbitBullets = [b for b in self.orbitBullets if b in eProjs]
-
-        # 4. 탄막 순차적 생성 (한 번에 240개를 만들면 끊길 수 있으므로 매 프레임 4개씩 보충)
-        if len(self.orbitBullets) < self.numOrbitBullets:
-            for _ in range(4): 
-                if len(self.orbitBullets) < self.numOrbitBullets:
-                    # 초기 위치는 보스 위치, 색상은 화려함을 위해 타이머에 따라 가변
-                    newBullet = Projectile(self.pos.x, self.pos.y, pygame.Vector2(0, 0), CYAN, 8, 5)
-                    self.orbitBullets.append(newBullet)
-                    eProjs.append(newBullet)
-
-        # 5. 대량 탄막 배치 (고밀도 원형/소용돌이 로직)
-        for i, bullet in enumerate(self.orbitBullets):
-            # i값에 따라 각도를 분배하여 촘촘한 원 생성
-            angle = self.orbitAngle + (i * (2 * math.pi / self.numOrbitBullets))
-            
-            # 중심에서 밖으로 퍼졌다가 다시 안으로 모이는 시각적 효과
-            bullet.pos.x = self.pos.x + math.cos(angle) * self.currentRadius
-            bullet.pos.y = self.pos.y + math.sin(angle) * self.currentRadius
-            bullet.vel = pygame.Vector2(0, 0)
-
-        # 6. 공격 로직: 촘촘한 탄막 중 무작위로 발사 (비처럼 쏟아지는 효과)
-        if self.timer % 3 == 0 and self.orbitBullets:
-            # 궤도 탄막 중 랜덤하게 하나를 골라 플레이어에게 발사
-            target_idx = random.randint(0, len(self.orbitBullets) - 1)
-            firedBullet = self.orbitBullets.pop(target_idx)
-            
-            targetDir = (pPos - firedBullet.pos).normalize()
-            firedBullet.vel = targetDir * 7
-            firedBullet.color = (255, 100, 100) # 발사되는 탄막은 붉은색 계열로 변경
+        # 3. 주기적인 원형 폭발 (Burst)
+        if self.timer % 120 == 0:
+            for i in range(24):
+                angle = i * (math.pi / 12)
+                dirVec = pygame.Vector2(math.cos(angle), math.sin(angle)) * 6
+                eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, RED, 12, 6))
 
     def draw(self, surf):
         # 보스 체력바 및 본체 렌더링
@@ -1133,11 +1136,11 @@ while running:
             if stageTimer <= 0:
                 if zeroTicket: boss = BossZero(); zeroTicket = False
                 elif currentStage == 1:
-                    # boss = BossSwarm()
+                    boss = BossSwarm()
                     # boss = BossZero()
                     # boss = BossRock()
                     # boss = BossChernobog()
-                    boss = BossCrusher()
+                    # boss = BossCrusher()
                     # boss = BossCrazy()
                 elif currentStage == 2:
                     boss = BossSwarm()
@@ -1288,7 +1291,6 @@ while running:
     # --- 최종 렌더링 부 ---
     # 배경 영상 처리
     screen.fill(BLACK)
-    screen.blit(bgImg, (0, 0))
 
     # 투명도 지원 서피스 (모든 오브젝트는 여기에 그림)
     tempSurf = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
@@ -1375,21 +1377,20 @@ while running:
         rank = "Noble" if avg_s > 85 else "Commoner" 
         tempSurf.blit(fontM.render(f"등급: {rank} | GOLD: {stats['gold']}G", True, WHITE), (300, HEIGHT-50))
 
-    # W 특수기 효과 (화면 반전)
+   # W 특수기 효과 (화면 반전)
     if specialEffectTimer > 0:
-            overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-            alpha = min(255, specialEffectTimer * 10) 
-            overlay.fill((255, 255, 255, alpha))
-            screen.blit(overlay, (0, 0))
-            specialEffectTimer -= 1 
+        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        alpha = min(255, specialEffectTimer * 10) 
+        overlay.fill((255, 255, 255, alpha))
+        screen.blit(overlay, (0, 0))
+        specialEffectTimer -= 1 
     
     # 배경 그리기
     screen.blit(bgImg, (0, 0))
+    screen.blit(tempSurf, (0, 0))
         
     # 1. 체력바 배경 현재 체력(초록색)
-    # pygame.draw.rect(screen, RED, (10, 10, 200, 20)) 
-    pygame.draw.rect(screen, GREEN, (10, 10, max(0, (playerHp/stats['maxHp'])*200), 20))
-    # 직관성을 위한 체력 수치 텍스트 표기 추가
+    pygame.draw.rect(screen, GREEN, (10, 10, max(0, (playerHp/stats['maxHp'])*200), 20))    
     screen.blit(fontS.render(f"{int(playerHp)} / {stats['maxHp']}", True, BLACK), (80, 10))
     
     # 2. 정보 텍스트 (점수, 최고점수, 스테이지 정보 그룹화)
