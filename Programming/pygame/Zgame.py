@@ -734,11 +734,29 @@ class BossSwarm:
                     eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, dirVec, GOLD, 8, 4))
 
     def draw(self, surf):
-        for i, c in enumerate(self.centers):    
-            if i == self.weakIndex:
-                pulse = math.sin(pygame.time.get_ticks() * 0.01) * 5
-                pygame.draw.circle(surf, (255, 140, 0, 150), (int(c.x), int(c.y)), int(30 + pulse))
-            surf.blit(self.currentImg, (c.x - 50, c.y - 50))
+        # 1. 모든 스웜 개체(드론) 그리기
+        # 루프 내부에서는 이미지만 그리며, 체력바는 그리지 않습니다.
+        for p in self.centers:
+            # 개체 크기에 맞춰 중앙 정렬 (약 50x50 이미지 기준 -25)
+            surf.blit(self.currentImg, (p.x - 25, p.y - 25))
+
+        # 2. 전체 개체의 중앙 좌표 계산 (체력바를 표시할 '본체'의 중심)
+        if self.centers:
+            avg_x = sum(c.x for c in self.centers) / len(self.centers)
+            avg_y = sum(c.y for c in self.centers) / len(self.centers)
+
+            # 3. 본체 통합 체력바 그리기
+            hpRatio = max(0, self.hp / self.maxHp)
+            bar_width = 120  # 본체용이므로 조금 더 넓게 설정
+            bar_height = 10
+            
+            # 중앙 위치 기준 위쪽에 표시
+            bar_x = avg_x - (bar_width // 2)
+            bar_y = avg_y - 70 
+
+            # 체력바 배경(RED) 및 현재 체력(GREEN)
+            pygame.draw.rect(surf, RED, (bar_x, bar_y, bar_width, bar_height))
+            pygame.draw.rect(surf, GREEN, (bar_x, bar_y, bar_width * hpRatio, bar_height))
 
 class BossZero:
     def __init__(self):
