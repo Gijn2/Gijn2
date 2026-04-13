@@ -707,7 +707,6 @@ class BossSwarm:
                     self.fireTimers[i] = random.randint(60, 150)
 
 
-
         elif self.state == "GATHER":
             targetCenter = pygame.Vector2(WIDTH//2, 150)
             self.spinAngle += 4 
