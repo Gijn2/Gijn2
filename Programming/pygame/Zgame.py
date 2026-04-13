@@ -588,8 +588,8 @@ class BossRock:
     def __init__(self):
         self.type = "ROCK"
         self.pos = pygame.Vector2(WIDTH // 2, 120)
-        self.hp = 15000
-        self.maxHp = 15000
+        self.hp = 18000 # 덩치가 큰 보스이므로 맷집 극대화
+        self.maxHp = 18000
         self.timer = 0
         self.meteors = []
         self.images = BossAssetManager.get_images("bossRock")
@@ -599,55 +599,92 @@ class BossRock:
     def _spawn_meteor(self, targetPos):
         self.meteors.append(Meteor(targetPos))
 
-    def _explode_meteor(self, meteor, eProjs, piece_count=8):
-        # 메테오 폭발 시 사방으로 파편(Projectile) 방출
+    def _explode_meteor(self, meteor, eProjs, piece_count=12, homing_count=0):
+        # 메테오 폭발 시 파편(탄막) 사방으로 방출 (Danmaku 스타일)
         for angle in range(0, 360, int(360/piece_count)):
-            dirVec = pygame.Vector2(0, 4).rotate(angle)
-            eProjs.append(Projectile(meteor.target.x, meteor.target.y, dirVec, RED, 10, 6))
+            dirVec = pygame.Vector2(0, random.uniform(3, 6)).rotate(angle)
+            eProjs.append(Projectile(meteor.target.x, meteor.target.y, dirVec, RED, 8, 6))
+        # 특정 페이즈에서는 폭발 시 유도 파편 추가 발생
+        for _ in range(homing_count):
+            eProjs.append(HomingProjectile(meteor.target.x, meteor.target.y, pygame.Vector2(random.uniform(-3,3), -3), GOLD, 10, 8))
 
     def update(self, eProjs, playerPos):
         self.timer += 1
         global playerHp, shakeTimer, invincibleTimer
 
-        if self.timer < 1800: self.phase = 1
-        elif self.timer < 3600: self.phase = 2
-        elif self.timer < 5400: self.phase = 3
+        if self.timer < 1125: self.phase = 1
+        elif self.timer < 2250: self.phase = 2
+        elif self.timer < 3375: self.phase = 3
         else: self.phase = 4
 
-        self.pos.x = WIDTH // 2 + math.sin(self.timer * 0.005) * 50 # 아주 느리게 흔들림
+        # 대지의 중압감을 표현하는 묵직한 좌우 이동
+        self.pos.x = WIDTH // 2 + math.sin(self.timer * 0.01) * 200 
 
         if self.phase == 1:
-            # [기] METEOR SHOWER: 플레이어 근처 무작위 운석 낙하
-            if self.timer % 60 == 0:
-                offset = pygame.Vector2(random.randint(-150, 150), random.randint(-150, 150))
-                target = pygame.Vector2(max(50, min(WIDTH-50, playerPos.x + offset.x)), max(50, min(HEIGHT-50, playerPos.y + offset.y)))
-                self._spawn_meteor(target)
+            # [기] 무차별 낙하: 운석우 + 보스의 기본 산탄
+            # 패턴 1: 무작위 지역에 끊임없는 메테오
+            if self.timer % 25 == 0:
+                self._spawn_meteor(pygame.Vector2(random.randint(50, WIDTH-50), random.randint(100, HEIGHT-50)))
+            # 패턴 2: 보스 본체에서 발사되는 묵직한 5갈래 부채꼴 산탄
+            if self.timer % 40 == 0:
+                for angle in [-40, -20, 0, 20, 40]:
+                    dirVec = pygame.Vector2(0, 5).rotate(angle)
+                    eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, GOLD, 15, 6))
+            # 패턴 3: 주기적인 바닥 지진 (아래에서 위로 올라오는 탄막)
+            if self.timer % 120 == 0:
+                for x in range(50, WIDTH, 80):
+                    eProjs.append(Projectile(x, HEIGHT, pygame.Vector2(0, -4), WHITE, 10, 5))
 
         elif self.phase == 2:
-            # [승] EARTHQUAKE: 운석 낙하 + 본체에서 느린 진동(원형 탄막) 발사
+            # [승] 정밀 타격과 화산 폭발
+            # 패턴 1: 플레이어를 끈질기게 노리는 메테오
+            if self.timer % 30 == 0:
+                self._spawn_meteor(pygame.Vector2(playerPos.x, playerPos.y))
+            # 패턴 2: 보스를 중심으로 회전하며 떨어지는 화산재 (나선탄)
+            if self.timer % 5 == 0:
+                angle = self.timer * 0.1
+                eProjs.append(Projectile(self.pos.x, self.pos.y, pygame.Vector2(math.cos(angle), math.sin(angle)) * 4, PURPLE, 10, 5))
+            # 패턴 3: 십자형 파편을 남기는 대형 폭발탄 (본체에서 발사)
             if self.timer % 80 == 0:
-                self._spawn_meteor(pygame.Vector2(playerPos.x, playerPos.y)) # 플레이어 직접 조준
-            if self.timer % 150 == 0:
-                for i in range(16):
-                    angle = i * (math.pi / 8)
-                    eProjs.append(Projectile(self.pos.x, self.pos.y, pygame.Vector2(math.cos(angle), math.sin(angle)) * 2, GOLD, 15, 8))
+                eProjs.append(Projectile(self.pos.x, self.pos.y, (playerPos - self.pos).normalize() * 7, CYAN, 20, 8))
 
         elif self.phase == 3:
-            # [전] TARGETED STRIKE: 메테오 빈도 증가 + 폭발 파편 강화
-            if self.timer % 40 == 0:
-                target = pygame.Vector2(random.randint(100, WIDTH-100), random.randint(100, HEIGHT-100))
-                self._spawn_meteor(target)
+            # [전] 메테오 트랩: 갇힌 공간에서의 회피
+            # 패턴 1: 플레이어 주변을 포위하듯 떨어지는 3개의 메테오
+            if self.timer % 50 == 0:
+                for angle in [0, 120, 240]:
+                    offset = pygame.Vector2(0, 120).rotate(angle + self.timer)
+                    target = playerPos + offset
+                    target.x = max(50, min(WIDTH-50, target.x))
+                    target.y = max(50, min(HEIGHT-50, target.y))
+                    self._spawn_meteor(target)
+            # 패턴 2: 보스의 거대한 산탄 총 (일직선 융단 폭격)
+            if self.timer % 60 == 0:
+                for x_offset in range(-100, 101, 25):
+                    eProjs.append(Projectile(self.pos.x + x_offset, self.pos.y, pygame.Vector2(0, 6), RED, 8, 6))
+            # 패턴 3: 화면 양쪽에서 날아오는 교차 탄막
+            if self.timer % 20 == 0:
+                eProjs.append(Projectile(0, random.randint(100, HEIGHT), pygame.Vector2(5, 0), GOLD, 8, 5))
+                eProjs.append(Projectile(WIDTH, random.randint(100, HEIGHT), pygame.Vector2(-5, 0), GOLD, 8, 5))
 
         elif self.phase == 4:
-            # [결] CATACLYSM: 화면 전체 운석 폭격 + 분열하는 메테오 조각(유도탄)
+            # [결] 카타클리즘(대재앙): 화면 전체를 뒤덮는 메테오와 파편, 유도탄의 축제
             self.currentImg = self.images["ATTACK"]
-            if self.timer % 25 == 0:
-                target = pygame.Vector2(random.randint(50, WIDTH-50), random.randint(50, HEIGHT-50))
-                self._spawn_meteor(target)
-            if self.timer % 100 == 0:
-                eProjs.append(HomingProjectile(self.pos.x, self.pos.y, pygame.Vector2(0, 5), RED, 20, 12))
+            # 패턴 1: 초고속 랜덤 메테오 폭격
+            if self.timer % 15 == 0:
+                self._spawn_meteor(pygame.Vector2(random.randint(20, WIDTH-20), random.randint(50, HEIGHT-20)))
+            # 패턴 2: 보스 본체의 16방향 지속 발사
+            if self.timer % 15 == 0:
+                for i in range(16):
+                    angle = i * (math.pi / 8) + (self.timer * 0.05)
+                    eProjs.append(Projectile(self.pos.x, self.pos.y, pygame.Vector2(math.cos(angle), math.sin(angle)) * 5, CYAN, 7, 5))
+            # 패턴 3: 초대형 메테오 덩어리 (같은 자리에 여러 개 동시 투하하여 폭발 파편 극대화)
+            if self.timer % 90 == 0:
+                target = playerPos + pygame.Vector2(random.randint(-50,50), random.randint(-50,50))
+                for _ in range(3): # 3연속 낙하
+                    self._spawn_meteor(target)
 
-        # 공통 메테오 업데이트 로직
+        # 공통 메테오 충돌 및 폭발 로직
         for meteor in self.meteors[:]:
             hitPlayer = meteor.update(playerPos)
             if hitPlayer and invincibleTimer <= 0:
@@ -657,8 +694,10 @@ class BossRock:
                 meteor.alive = False
 
             if not meteor.alive:
-                # 페이즈가 높을수록 메테오 폭발 파편 개수가 많아짐
-                self._explode_meteor(meteor, eProjs, piece_count=(6 + self.phase * 2))
+                # 페이즈가 오를수록 파편 개수가 증가하고 유도 파편이 추가됨
+                frag_count = 12 + (self.phase * 4) # 4페이즈엔 폭발당 28개의 파편
+                homing = 2 if self.phase >= 3 else 0 # 3, 4페이즈엔 유도 파편 발생
+                self._explode_meteor(meteor, eProjs, piece_count=frag_count, homing_count=homing)
                 self.meteors.remove(meteor)
 
     def draw(self, surf):
@@ -667,17 +706,16 @@ class BossRock:
         surf.blit(self.currentImg, (self.pos.x - 50, self.pos.y - 50))
         
         hpRatio = max(0, self.hp / self.maxHp)
-        pygame.draw.rect(surf, RED, (self.pos.x - 60, self.pos.y + 65, 120, 10))
-        pygame.draw.rect(surf, GREEN, (self.pos.x - 60, self.pos.y + 65, 120 * hpRatio, 10))
-        
+        pygame.draw.rect(surf, RED, (self.pos.x - 60, self.pos.y + 65, 120, 8))
+        pygame.draw.rect(surf, GREEN, (self.pos.x - 60, self.pos.y + 65, 120 * hpRatio, 8))
+
 class BossSwarm:
     def __init__(self):
         self.type = "SWARM"
-        self.hp = 8000
-        self.maxHp = 8000
+        self.hp = 10000 # 탄막이 화려해진 만큼 체력 소폭 상향
+        self.maxHp = 10000
         self.centers = [pygame.Vector2(random.randint(100,800), random.randint(50,200)) for _ in range(8)]
         self.timer = 0
-        self.hitboxRadius = 25
         self.spinAngle = 0
         self.images = BossAssetManager.get_images("bossSwarm")
         self.currentImg = self.images["STAND"]
@@ -686,60 +724,93 @@ class BossSwarm:
     def update(self, eProjs, pPos):
         self.timer += 1
         
-        # 기승전결 페이즈 관리 (1800프레임 = 약 48초마다 변경)
-        if self.timer < 1800: self.phase = 1      # 기: 산개 사격
-        elif self.timer < 3600: self.phase = 2    # 승: 회전 그물망
-        elif self.timer < 5400: self.phase = 3    # 전: 일렬 강하 폭격
-        else: self.phase = 4                      # 결: 군단 발악 (유도탄)
+        # 기승전결 2분 컷 (페이즈당 약 30초 = 1125프레임)
+        if self.timer < 1125: self.phase = 1      
+        elif self.timer < 2250: self.phase = 2    
+        elif self.timer < 3375: self.phase = 3    
+        else: self.phase = 4                      
 
-        self.currentImg = self.images["ATTACK"] if self.timer % 60 < 30 else self.images["STAND"]
+        self.currentImg = self.images["ATTACK"] if self.timer % 20 < 10 else self.images["STAND"]
+        self.spinAngle += 2
 
         if self.phase == 1:
-            # [기] SCATTER: 불규칙한 위치에서 플레이어를 조준
+            # [기] 군단의 개화: 8각 진형 회전 + 다중 나선탄 + 정밀 저격
+            targetCenter = pygame.Vector2(WIDTH//2, 150)
             for i in range(8):
-                self.centers[i].x += math.sin(self.timer * 0.05 + i) * 3
-                if self.timer % 120 == i * 15: # 순차적 발사
-                    dirVec = (pPos - self.centers[i]).normalize() * 4
-                    eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, dirVec, PURPLE, 7, 5))
+                rad = math.radians(self.spinAngle * 0.5 + i * 45)
+                self.centers[i] = self.centers[i].lerp(targetCenter + pygame.Vector2(math.cos(rad)*150, math.sin(rad)*150), 0.1)
+                
+                # 패턴 1: 끊임없이 피어나는 나선 탄막
+                if self.timer % 10 == 0:
+                    dirVec = pygame.Vector2(math.cos(rad*2), math.sin(rad*2)) * 4
+                    eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, dirVec, PURPLE, 6, 5))
+                # 패턴 2: 엇박자 플레이어 조준탄
+                if self.timer % 90 == i * 11:
+                    dirVec = (pPos - self.centers[i]).normalize() * 6
+                    eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, dirVec, RED, 8, 5))
+                # 패턴 3: 중앙 집중 폭발탄
+                if self.timer % 150 == 0:
+                    eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, (targetCenter - self.centers[i]).normalize() * 3, CYAN, 12, 6))
 
         elif self.phase == 2:
-            # [승] GATHER & SPIN: 중앙을 기준으로 크게 회전하며 탄막 흩뿌리기
-            targetCenter = pygame.Vector2(WIDTH//2, 200)
-            self.spinAngle += 1.5
+            # [승] 분단과 교차: 좌우 4기씩 분열하여 X자 교차 탄막 형성
             for i in range(8):
-                orbitAngle = self.spinAngle + (i * 45)
-                rad = math.radians(orbitAngle)
-                targetPos = targetCenter + pygame.Vector2(math.cos(rad) * 200, math.sin(rad) * 200)
-                self.centers[i] = self.centers[i].lerp(targetPos, 0.05)
-                
-            if self.timer % 30 == 0:
-                for i in range(8):
-                    dirVec = pygame.Vector2(math.cos(math.radians(self.spinAngle + i*45)), math.sin(math.radians(self.spinAngle + i*45))) * 5
-                    eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, dirVec, CYAN, 7, 5))
+                side_x = 100 if i < 4 else WIDTH - 100
+                targetY = 100 + (i % 4) * 100 + math.sin(self.timer * 0.1) * 30
+                self.centers[i] = self.centers[i].lerp(pygame.Vector2(side_x, targetY), 0.05)
+
+                # 패턴 1: 화면을 가로지르는 격자형 탄막망
+                if self.timer % 15 == 0:
+                    dir_x = 5 if i < 4 else -5
+                    eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, pygame.Vector2(dir_x, 0), CYAN, 7, 5))
+                # 패턴 2: 대각선 교차 지향탄
+                if self.timer % 40 == 0:
+                    dirVec = pygame.Vector2(1 if i < 4 else -1, 1).normalize() * 4
+                    eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, dirVec, GOLD, 9, 6))
+                # 패턴 3: 주기적인 유도탄 압박
+                if self.timer % 120 == i * 15:
+                    eProjs.append(HomingProjectile(self.centers[i].x, self.centers[i].y, pygame.Vector2(0, 3), PURPLE, 10, 7))
 
         elif self.phase == 3:
-            # [전] SWEEP: 화면 상단에 일렬로 늘어서서 아래로 융단 폭격
+            # [전] 춤추는 탄막의 강: 위아래로 물결치며 쏟아지는 탄막의 비
             for i in range(8):
                 targetX = 100 + i * (WIDTH - 200) / 7
-                targetY = 100 + math.sin(self.timer * 0.1 + i) * 50
-                self.centers[i] = self.centers[i].lerp(pygame.Vector2(targetX, targetY), 0.05)
+                targetY = 150 + math.sin(self.timer * 0.05 + i) * 100
+                self.centers[i] = self.centers[i].lerp(pygame.Vector2(targetX, targetY), 0.1)
                 
-                if self.timer % 40 == 0:
-                    eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, pygame.Vector2(0, 6), RED, 10, 6))
+                # 패턴 1: 물결 형태의 곡선 궤적 탄막
+                if self.timer % 8 == 0:
+                    eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, pygame.Vector2(math.sin(self.timer*0.1), 5), WHITE, 6, 5))
+                # 패턴 2: 부채꼴 확산탄
+                if self.timer % 60 == 0 and i % 2 == 0:
+                    for angle in [-20, 0, 20]:
+                        dirVec = pygame.Vector2(0, 6).rotate(angle)
+                        eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, dirVec, RED, 8, 6))
+                # 패턴 3: 무작위 산탄
+                if self.timer % 20 == 0:
+                    rand_dir = pygame.Vector2(random.uniform(-3, 3), random.uniform(2, 6))
+                    eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, rand_dir, CYAN, 5, 5))
 
         elif self.phase == 4:
-            # [결] OVERDRIVE: 극도의 속도로 움직이며 유도탄 방출
+            # [결] 군단 오버드라이브: 초고속 기동과 함께 만개하는 탄막의 꽃
             for i in range(8):
-                self.centers[i].x += math.sin(self.timer * 0.2 + i) * 8
-                self.centers[i].y += math.cos(self.timer * 0.15 + i) * 5
-                
-                # 화면 밖으로 나가지 않도록 보정
+                self.centers[i].x += math.sin(self.timer * 0.3 + i) * 12
+                self.centers[i].y += math.cos(self.timer * 0.2 + i) * 8
                 self.centers[i].x = max(50, min(WIDTH-50, self.centers[i].x))
                 self.centers[i].y = max(50, min(HEIGHT//2, self.centers[i].y))
 
-                # HomingProjectile 적극 활용
-                if self.timer % 150 == i * 15: 
-                    eProjs.append(HomingProjectile(self.centers[i].x, self.centers[i].y, pygame.Vector2(0, 3), GOLD, 10, 7))
+                # 패턴 1: 탄막의 꽃 (초고속 전방위 발사)
+                if self.timer % 6 == 0:
+                    fire_rad = math.radians(self.spinAngle * 3 + i * 45)
+                    eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, pygame.Vector2(math.cos(fire_rad), math.sin(fire_rad)) * 6, GOLD, 8, 5))
+                # 패턴 2: 플레이어 포위형 링 생성
+                if self.timer % 90 == 0 and i == 0:
+                    for a in range(0, 360, 30):
+                        dirVec = pygame.Vector2(0, 4).rotate(a)
+                        eProjs.append(Projectile(self.centers[i].x, self.centers[i].y, dirVec, PURPLE, 10, 6))
+                # 패턴 3: 끝없는 유도탄
+                if self.timer % 60 == i * 7:
+                    eProjs.append(HomingProjectile(self.centers[i].x, self.centers[i].y, pygame.Vector2(0, -2), RED, 12, 7))
 
     def draw(self, surf):
         for p in self.centers:
@@ -748,15 +819,15 @@ class BossSwarm:
             avg_x = sum(c.x for c in self.centers) / len(self.centers)
             avg_y = sum(c.y for c in self.centers) / len(self.centers)
             hpRatio = max(0, self.hp / self.maxHp)
-            pygame.draw.rect(surf, RED, (avg_x - 60, avg_y - 70, 120, 10))
-            pygame.draw.rect(surf, GREEN, (avg_x - 60, avg_y - 70, 120 * hpRatio, 10))
+            pygame.draw.rect(surf, RED, (avg_x - 60, avg_y - 70, 120, 8))
+            pygame.draw.rect(surf, GREEN, (avg_x - 60, avg_y - 70, 120 * hpRatio, 8))
 
 class BossZero:
     def __init__(self):
         self.type = "ZERO"
         self.pos = pygame.Vector2(WIDTH // 2, 200)
-        self.hp = 12000
-        self.maxHp = 12000
+        self.hp = 14000
+        self.maxHp = 14000
         self.timer = 0
         self.rect = pygame.Rect(self.pos.x - 40, self.pos.y - 40, 80, 80)
         self.orbitAngle = 0
@@ -765,64 +836,98 @@ class BossZero:
     def update(self, eProjs, pPos, ctx=None):
         self.timer += 1
         
-        if self.timer < 1800: self.phase = 1
-        elif self.timer < 3600: self.phase = 2
-        elif self.timer < 5400: self.phase = 3
+        if self.timer < 1125: self.phase = 1
+        elif self.timer < 2250: self.phase = 2
+        elif self.timer < 3375: self.phase = 3
         else: self.phase = 4
 
-        # 8자 기동 (천천히 이동)
-        self.pos.x = WIDTH // 2 + math.sin(self.timer * 0.01) * 150
-        self.pos.y = 200 + math.sin(self.timer * 0.02) * 50
+        self.pos.x = WIDTH // 2 + math.sin(self.timer * 0.02) * 100
+        self.pos.y = 150 + math.cos(self.timer * 0.03) * 50
         self.rect.center = (self.pos.x, self.pos.y)
+        self.orbitAngle += 0.05
 
         if self.phase == 1:
-            # [기] BINARY PULSE: 기본적인 이중 나선 교차 탄막
-            if self.timer % 6 == 0:
-                for i in range(2):
-                    angle = self.timer * 0.15 + (i * math.pi)
-                    eProjs.append(Projectile(self.pos.x, self.pos.y, pygame.Vector2(math.cos(angle), math.sin(angle)) * 5, CYAN, 8, 5))
-                    angle_rev = -self.timer * 0.15 + (i * math.pi)
-                    eProjs.append(Projectile(self.pos.x, self.pos.y, pygame.Vector2(math.cos(angle_rev), math.sin(angle_rev)) * 5, PURPLE, 8, 5))
-
-        elif self.phase == 2:
-            # [승] GEOMETRIC BURST: 정지된 탄막을 깔아두고 일제히 발사
-            if self.timer % 120 == 0:
-                for i in range(20):
-                    angle = i * (math.pi / 10)
-                    eProjs.append(Projectile(self.pos.x, self.pos.y, pygame.Vector2(math.cos(angle), math.sin(angle)) * 3, RED, 10, 6))
-            if self.timer % 120 == 60: # 엇박자로 느린 탄막 생성
-                for i in range(10):
-                    angle = i * (math.pi / 5) + 0.1
-                    eProjs.append(Projectile(self.pos.x, self.pos.y, pygame.Vector2(math.cos(angle), math.sin(angle)) * 1.5, WHITE, 15, 8))
-
-        elif self.phase == 3:
-            # [전] ABSOLUTE FREEZE: 화면을 회전하는 거대한 십자형 벽
-            self.orbitAngle += 0.02
-            if self.timer % 3 == 0:
-                for i in range(4): # 4방향 십자
-                    angle = self.orbitAngle + (i * math.pi / 2)
-                    dirVec = pygame.Vector2(math.cos(angle), math.sin(angle)) * 7
-                    eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, CYAN, 12, 5))
-
-        elif self.phase == 4:
-            # [결] ZERO POINT ENERGY: 나선 탄막 + 플레이어 압박 유도탄
-            self.orbitAngle += 0.1
+            # [기] 육각성(Hexagram) 펄스
+            # 패턴 1: 3중 나선 교차 (시계/반시계 동시 회전)
             if self.timer % 4 == 0:
                 for i in range(3):
-                    angle = self.orbitAngle + (i * 2 * math.pi / 3)
-                    dirVec = pygame.Vector2(math.cos(angle), math.sin(angle)) * 4
-                    eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, PURPLE, 10, 5))
-            # 2초마다 강력한 유도탄 발사
-            if self.timer % 75 == 0:
-                eProjs.append(HomingProjectile(self.pos.x, self.pos.y, pygame.Vector2(0, -3), GOLD, 20, 10))
+                    angle1 = self.orbitAngle * 2 + (i * 2 * math.pi / 3)
+                    angle2 = -self.orbitAngle * 2 + (i * 2 * math.pi / 3)
+                    eProjs.append(Projectile(self.pos.x, self.pos.y, pygame.Vector2(math.cos(angle1), math.sin(angle1)) * 5, CYAN, 8, 5))
+                    eProjs.append(Projectile(self.pos.x, self.pos.y, pygame.Vector2(math.cos(angle2), math.sin(angle2)) * 5, WHITE, 8, 5))
+            # 패턴 2: 주기적인 12방향 확산탄
+            if self.timer % 60 == 0:
+                for i in range(12):
+                    angle = i * (math.pi / 6)
+                    eProjs.append(Projectile(self.pos.x, self.pos.y, pygame.Vector2(math.cos(angle), math.sin(angle)) * 3, PURPLE, 12, 6))
+            # 패턴 3: 빠른 직선 저격탄
+            if self.timer % 45 == 0:
+                dirVec = (pPos - self.pos).normalize() * 8
+                eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, RED, 10, 5))
+
+        elif self.phase == 2:
+            # [승] 통제된 회전: 풍차 모양의 거대한 레이저 탄막
+            # 패턴 1: 4가닥의 촘촘한 회전 빔 (풍차)
+            if self.timer % 3 == 0:
+                for i in range(4):
+                    angle = self.orbitAngle + (i * math.pi / 2)
+                    eProjs.append(Projectile(self.pos.x, self.pos.y, pygame.Vector2(math.cos(angle), math.sin(angle)) * 6, GOLD, 10, 5))
+            # 패턴 2: 바깥에서 안으로 좁혀오는 역방향 탄막 (압박용)
+            if self.timer % 90 == 0:
+                for i in range(16):
+                    angle = i * (math.pi / 8)
+                    spawn_pos = self.pos + pygame.Vector2(math.cos(angle), math.sin(angle)) * 400
+                    eProjs.append(Projectile(spawn_pos.x, spawn_pos.y, (self.pos - spawn_pos).normalize() * 3, CYAN, 8, 6))
+            # 패턴 3: 플레이어 위치를 향한 샷건 
+            if self.timer % 70 == 0:
+                base_dir = (pPos - self.pos).normalize()
+                for a in [-15, -5, 5, 15]:
+                    eProjs.append(Projectile(self.pos.x, self.pos.y, base_dir.rotate(a) * 7, RED, 7, 5))
+
+        elif self.phase == 3:
+            # [전] 체크보드와 파도: 플레이어의 무빙을 강제하는 체스판 패턴
+            # 패턴 1: 상하좌우로 이동하며 쏘는 격자형 탄막
+            if self.timer % 15 == 0:
+                eProjs.append(Projectile(self.pos.x - 100, self.pos.y, pygame.Vector2(0, 5), WHITE, 10, 6))
+                eProjs.append(Projectile(self.pos.x + 100, self.pos.y, pygame.Vector2(0, 5), WHITE, 10, 6))
+                eProjs.append(Projectile(self.pos.x, self.pos.y - 100, pygame.Vector2(-5, 0), WHITE, 10, 6))
+                eProjs.append(Projectile(self.pos.x, self.pos.y + 100, pygame.Vector2(5, 0), WHITE, 10, 6))
+            # 패턴 2: S자 곡선을 그리며 떨어지는 탄막
+            if self.timer % 10 == 0:
+                wave_x = math.sin(self.timer * 0.1) * 3
+                eProjs.append(Projectile(self.pos.x, self.pos.y, pygame.Vector2(wave_x, 4), PURPLE, 8, 5))
+            # 패턴 3: 강력한 양방향 유도탄
+            if self.timer % 100 == 0:
+                eProjs.append(HomingProjectile(self.pos.x - 50, self.pos.y, pygame.Vector2(-2, 2), CYAN, 15, 8))
+                eProjs.append(HomingProjectile(self.pos.x + 50, self.pos.y, pygame.Vector2(2, 2), CYAN, 15, 8))
+
+        elif self.phase == 4:
+            # [결] 절대 영도 만다라: 극한의 밀도와 아름다움을 지닌 최종 패턴
+            # 패턴 1: 7방향 초고속 회전 나선 (일정 주기마다 회전 방향 반전)
+            direction = 1 if (self.timer // 150) % 2 == 0 else -1
+            if self.timer % 3 == 0:
+                for i in range(7):
+                    angle = self.orbitAngle * 3 * direction + (i * 2 * math.pi / 7)
+                    eProjs.append(Projectile(self.pos.x, self.pos.y, pygame.Vector2(math.cos(angle), math.sin(angle)) * 5, RED, 9, 5))
+            # 패턴 2: 조밀하게 팽창하는 링
+            if self.timer % 40 == 0:
+                for i in range(24):
+                    angle = i * (math.pi / 12) + (self.orbitAngle)
+                    eProjs.append(Projectile(self.pos.x, self.pos.y, pygame.Vector2(math.cos(angle), math.sin(angle)) * 4, GOLD, 10, 6))
+            # 패턴 3: 최후의 유도탄 쇄도
+            if self.timer % 45 == 0:
+                eProjs.append(HomingProjectile(self.pos.x, self.pos.y, pygame.Vector2(0, 0), WHITE, 12, 10))
 
     def draw(self, surf):
         hpRatio = max(0, self.hp / self.maxHp)
-        pygame.draw.rect(surf, (50, 50, 50), (self.pos.x - 60, self.pos.y + 80, 120, 10))
-        pygame.draw.rect(surf, (200, 0, 255), (self.pos.x - 60, self.pos.y + 80, 120 * hpRatio, 10))
-        # Zero의 코어 시각화 (페이즈가 올라갈수록 코어가 커짐)
-        pygame.draw.circle(surf, WHITE, (int(self.pos.x), int(self.pos.y)), 15 + self.phase * 3)
-
+        pygame.draw.rect(surf, (50, 50, 50), (self.pos.x - 60, self.pos.y + 60, 120, 8))
+        pygame.draw.rect(surf, (200, 0, 255), (self.pos.x - 60, self.pos.y + 60, 120 * hpRatio, 8))
+        # Zero 코어 이펙트 (회전하는 사각형)
+        core_surf = pygame.Surface((40, 40), pygame.SRCALPHA)
+        pygame.draw.rect(core_surf, WHITE, (0,0,40,40), 4)
+        rotated_core = pygame.transform.rotate(core_surf, math.degrees(self.orbitAngle * 10))
+        surf.blit(rotated_core, rotated_core.get_rect(center=(self.pos.x, self.pos.y)))
+        
 class Enemy:
     def __init__(self, eType="type1", offset=0):
         self.eType = eType
@@ -1132,9 +1237,9 @@ while running:
             if stageTimer <= 0:
                 if zeroTicket: boss = BossZero(); zeroTicket = False
                 elif currentStage == 1:
-                    boss = BossSwarm()
+                    # boss = BossSwarm()
                     # boss = BossZero()
-                    # boss = BossRock()
+                    boss = BossRock()
                     # boss = BossChernobog()
                     # boss = BossCrusher()
                     # boss = BossCrazy()
