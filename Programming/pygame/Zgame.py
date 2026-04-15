@@ -630,11 +630,7 @@ class BossRock:
                 for angle in [-40, -20, 0, 20, 40]:
                     dirVec = pygame.Vector2(0, 5).rotate(angle)
                     eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, GOLD, 15, 6))
-            # 패턴 3: 주기적인 바닥 지진 (아래에서 위로 올라오는 탄막)
-            if self.timer % 120 == 0:
-                for x in range(50, WIDTH, 80):
-                    eProjs.append(Projectile(x, HEIGHT, pygame.Vector2(0, -4), WHITE, 10, 5))
-
+            
         elif self.phase == 2:
             # [승] 정밀 타격과 화산 폭발
             # 패턴 1: 플레이어를 끈질기게 노리는 메테오
@@ -662,11 +658,7 @@ class BossRock:
             if self.timer % 60 == 0:
                 for x_offset in range(-100, 101, 25):
                     eProjs.append(Projectile(self.pos.x + x_offset, self.pos.y, pygame.Vector2(0, 6), RED, 8, 6))
-            # 패턴 3: 화면 양쪽에서 날아오는 교차 탄막
-            if self.timer % 20 == 0:
-                eProjs.append(Projectile(0, random.randint(100, HEIGHT), pygame.Vector2(5, 0), GOLD, 8, 5))
-                eProjs.append(Projectile(WIDTH, random.randint(100, HEIGHT), pygame.Vector2(-5, 0), GOLD, 8, 5))
-
+            
         elif self.phase == 4:
             # [결] 카타클리즘(대재앙): 화면 전체를 뒤덮는 메테오와 파편, 유도탄의 축제
             self.currentImg = self.images["ATTACK"]
@@ -1410,7 +1402,7 @@ while running:
         # --- 수정된 렌더링 코드 ---
         if invincibleTimer % 4 == 0: 
             tempSurf.blit(playerImg, playerPos)
-            hitboxRadius = 10 
+            hitboxRadius = 5
 
             # 1. 원형 테두리 (이건 투명도가 필요 없으므로 그대로 유지)
             pygame.draw.circle(tempSurf, CYAN, playerCenter, hitboxRadius, 2)
