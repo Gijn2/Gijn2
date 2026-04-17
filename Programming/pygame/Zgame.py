@@ -389,7 +389,7 @@ class BossChernobog:
         hpRatio = max(0, self.hp / self.maxHp)
         pygame.draw.rect(surf, GREEN, (self.pos.x - 50, self.pos.y + 80, 100 * hpRatio, 8))
 
-class BossCrazy:
+class BossStorm:
     def __init__(self):
         self.type = "CRAZY"
         self.pos = pygame.Vector2(WIDTH // 2, HEIGHT // 2)
