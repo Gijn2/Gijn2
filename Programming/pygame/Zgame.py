@@ -64,8 +64,10 @@ except:
     fontM = pygame.font.Font(None, 32)
     fontL = pygame.font.Font(None, 50)
 
-# --- 3. 게임 상태 관리 변수 ---
-stats = {"damage": 10, "speed": 5, "gold": 1000, "maxHp": 100, "pierce": False, "specialAmmo": 3}
+# --- 게임 상태 관리 변수 ---
+base_stats = {"damage": 10, "speed": 5, "maxHp": 100, "pierce": False, "specialAmmo": 3}
+stats = base_stats.copy()
+stats["gold"] = 1000
 playerHp = 100
 score = 0
 gameState = 'PLAYING'
@@ -82,19 +84,33 @@ particles = []
 highScore = 0    
 hitboxRadius = 10
 
-shopTab = "ITEM"
-stocks = {"A": 100, "B": 100, "C": 100}
-bankBalance = 0
-    
-# 상점 아이템 리스트
-UPGRADE_POOL = [
-    {"name": "공격력 강화", "desc": "데미지 +1.5", "effect": "dmg", "price": 1200},
-    {"name": "기동성 강화", "desc": "이동속도 +2", "effect": "speed", "price": 720},
-    {"name": "긴급 수리", "desc": "체력 50 회복", "effect": "heal", "price": 960},
-    {"name": "레일건", "desc": "탄환 관통 부여", "effect": "pierce", "price": 1920},
-    {"name": "장갑 강화", "desc": "최대 체력 +40", "effect": "maxhp", "price": 1440},
-    {"name": "특수기 보급", "desc": "W 횟수 +2회", "effect": "ammo", "price": 1080},
-    {"name": "고대 무전기", "desc": "크러셔 소환권", "effect": "call_crusher", "price": 4000},
+# --- 덱 빌딩 & 시너지 시스템 변수 ---
+inventory = []       # 최대 9개 장착 가능
+pendingItem = None   # 인벤토리가 꽉 찼을 때 교체 대기 중인 아이템
+shopOptions = []
+
+SYNERGY_DATA = {
+    "WEAPON": {
+        2: {"name": "무기(2): 데미지 +5", "effect": {"damage": 5}},
+        4: {"name": "무기(4): 데미지 +10, 관통", "effect": {"damage": 10, "pierce": True}}
+    },
+    "TECH": {
+        2: {"name": "기술(2): 이동속도 +3", "effect": {"speed": 3}},
+        4: {"name": "기술(4): 특수기 +3", "effect": {"specialAmmo": 3}}
+    },
+    "ARMOR": {
+        2: {"name": "장갑(2): 최대체력 +50", "effect": {"maxHp": 50}},
+        4: {"name": "장갑(4): 최대체력 +100", "effect": {"maxHp": 100}}
+    }
+}
+
+ITEM_POOL = [
+    {"id": "w1", "name": "화염 방사기", "tags": ["WEAPON", "TECH"], "price": 500, "desc": "무기, 기술"},
+    {"id": "w2", "name": "초합금 검", "tags": ["WEAPON"], "price": 300, "desc": "무기"},
+    {"id": "a1", "name": "나노 슈트", "tags": ["TECH", "ARMOR"], "price": 600, "desc": "기술, 장갑"},
+    {"id": "a2", "name": "강철 방패", "tags": ["ARMOR"], "price": 400, "desc": "장갑"},
+    {"id": "w3", "name": "플라즈마 캐논", "tags": ["WEAPON", "TECH"], "price": 700, "desc": "무기, 기술"},
+    {"id": "a3", "name": "반응형 장갑", "tags": ["ARMOR", "WEAPON"], "price": 500, "desc": "장갑, 무기"},
 ]
 
 ENEMY_CONFIG = {
@@ -126,11 +142,6 @@ def getRandomEnemy(current_stage):
     weights = [e["weight"] for e in available]
     return random.choices(types, weights=weights)[0]
 
-# 지분에 따른 할인율 계산 함수
-def getDiscountRatio():
-    ratio = 2.0 - (stocks["C"] / 100.0) #(C구역: 정밀 합금 기업이 물가 담당)
-    return max(0.5, min(2.0, ratio))
-
 def loadHighscore():
     if os.path.exists("highscore.txt"):
         try:
@@ -139,7 +150,6 @@ def loadHighscore():
         except Exception:
             return 0
     return 0
-
 highScore = loadHighscore()
 
 # 해킹을 막기 위한 함수
@@ -172,8 +182,6 @@ def loadHighscoreSecure():
             return 0
     return 0
 
-def getShopItems():
-    return [{"data": item, "sold": False} for item in random.sample(UPGRADE_POOL, 4)]
 
 def applyUpgrade(itemData):
     global playerHp, boss
@@ -184,6 +192,41 @@ def applyUpgrade(itemData):
     elif eff == "pierce": stats["pierce"] = True
     elif eff == "maxhp": stats["maxHp"] += 40; playerHp += 40
     elif eff == "ammo": stats["specialAmmo"] += 2
+
+# 스탯 재계산 로직 (DRY 원칙 적용)
+def calculate_stats():
+    global stats, playerHp
+    current_gold = stats.get("gold", 0)
+    
+    # 기본 스탯으로 초기화
+    stats.clear()
+    stats.update(base_stats)
+    stats["gold"] = current_gold
+    
+    # 시너지 태그 카운트
+    synergy_counts = {}
+    for item in inventory:
+        for tag in item["tags"]:
+            synergy_counts[tag] = synergy_counts.get(tag, 0) + 1
+            
+    # 시너지 효과 적용
+    for tag, count in synergy_counts.items():
+        if tag in SYNERGY_DATA:
+            # 요구 조건을 오름차순으로 정렬하여 모두 적용
+            for req, data in sorted(SYNERGY_DATA[tag].items()):
+                if count >= req:
+                    for k, v in data["effect"].items():
+                        if type(v) == bool:
+                            stats[k] = v
+                        else:
+                            stats[k] += v
+
+    # 최대 체력 변동에 따른 현재 체력 보정
+    if playerHp > stats["maxHp"]:
+        playerHp = stats["maxHp"]
+
+def getShopItems():
+    return [{"data": item, "sold": False} for item in random.sample(ITEM_POOL, 3)]
 
 
 
@@ -1055,33 +1098,6 @@ while running:
         
         if event.type == pygame.KEYDOWN:
             if gameState == 'SHOP':
-                # 탭 전환
-                if event.key in (pygame.K_1, pygame.K_F1): shopTab = "ITEM"
-                if event.key in (pygame.K_2, pygame.K_F2): shopTab = "BANK"
-                if event.key in (pygame.K_3, pygame.K_F3): shopTab = "INVEST"
-                
-                # 은행 탭 기능 연동 (D: 입금, F: 출금)
-                if shopTab == "BANK":
-                    if event.key == pygame.K_d and stats["gold"] > 0: 
-                        bankBalance += stats["gold"]
-                        stats["gold"] = 0
-                    if event.key == pygame.K_f and bankBalance > 0: 
-                        stats["gold"] += int(bankBalance * 0.95) # 5% 수수료
-                        bankBalance = 0
-                
-                # 투자 탭 기능 연동 (1, 2, 3 키)
-                if shopTab == "INVEST":
-                    keys = {pygame.K_q: "A", pygame.K_w: "B", pygame.K_e: "C"}
-                    if event.key in keys:
-                        sid = keys[event.key]
-                        if stats["gold"] >= 500:
-                            stats["gold"] -= 500
-                            stocks[sid] += 10 
-                            # C 투자 시 상점 물가 할인율이 자동 적용됨 (getDiscountRatio 함수 연동)
-                            if sid == "A": stats["speed"] += 0.5
-                            if sid == "B": shootCooldown -= 1 # B 투자 시 쿨타임 감소 효과 추가
-                            if sid == "C": stats["damage"] += 1
-
                 # 다음 스테이지로 진행 (S키)
                 if event.key == pygame.K_s:
                     bankBalance = int(bankBalance * 1.1) # 배당금 10% 추가
@@ -1093,88 +1109,38 @@ while running:
         if event.type == pygame.MOUSEBUTTONDOWN and gameState == 'SHOP':
             mousePos = pygame.mouse.get_pos()
             
-            # 탭 영역 클릭 판정 (AABB 충돌)
-            if pygame.Rect(50, 20, 180, 50).collidepoint(mousePos): shopTab = "ITEM"
-            if pygame.Rect(250, 20, 180, 50).collidepoint(mousePos): shopTab = "BANK"
-            if pygame.Rect(450, 20, 180, 50).collidepoint(mousePos): shopTab = "INVEST"
-            
-            # 아이템 구매 클릭 로직
-            if shopTab == "ITEM":
+            # 1. 인벤토리가 꽉 차서 교체 대기 중일 때 인벤토리 클릭 처리
+            if pendingItem is not None:
+                for i in range(len(inventory)):
+                    row = i // 3
+                    col = i % 3
+                    slotRect = pygame.Rect(550 + col * 100, 100 + row * 100, 90, 90)
+                    if slotRect.collidepoint(mousePos):
+                        inventory[i] = pendingItem["data"] # 기존 아이템 대체
+                        pendingItem["sold"] = True
+                        pendingItem = None
+                        calculate_stats()
+                        break
+            else:
+                # 2. 상점 아이템 구매 클릭 처리
                 for i, opt in enumerate(shopOptions):
-                    rect = pygame.Rect(30 + i * 215, 150, 200, 320)
-                    discount = getDiscountRatio()
-                    displayPrice = int(opt["data"]["price"] * discount)
-                    if rect.collidepoint(mouse_pos) and not opt["sold"] and stats["gold"] >= displayPrice:
-                        stats["gold"] -= displayPrice
-                        applyUpgrade(opt["data"])
-                        opt["sold"] = True
+                    card_rect = pygame.Rect(50 + i * 160, 100, 150, 200)
+                    if card_rect.collidepoint(mousePos) and not opt["sold"] and stats["gold"] >= opt["data"]["price"]:
+                        stats["gold"] -= opt["data"]["price"]
+                        
+                        if len(inventory) < 9:
+                            # 자리 여유 시 즉시 장착
+                            inventory.append(opt["data"])
+                            opt["sold"] = True
+                            calculate_stats()
+                        else:
+                            # 9칸 꽉 찼을 경우 교체 대기 상태 진입
+                            pendingItem = opt
                     
     # --- 1. 배경 및 탭 UI ---
     tempSurf.fill((20, 20, 30))
-    # 탭 버튼 (A: 아이템, B: 은행, C: 투자)
-    tabs = [("ITEM", 50), ("BANK", 250), ("INVEST", 450)]
-    for name, x in tabs:
-        color = GOLD if shopTab == name else GRAY
-        pygame.draw.rect(tempSurf, color, (x, 20, 180, 50), border_radius=5)
-        tempSurf.blit(fontM.render(name, True, BLACK), (x+50, 30))
 
-    # --- 2. 탭별 내용 ---
-    if shopTab == "ITEM":
-        discount = getDiscountRatio()
-        for i, opt in enumerate(shopOptions):
-            card_rect = pygame.Rect(30 + i * 215, 150, 200, 320)
-            # 할인율이 적용된 실제 가격 계산
-            display_price = int(opt["data"]["price"] * discount)
-            
-            # 카드 렌더링 (기존 로직 유지하되 가격만 변동)
-            c = (40, 40, 40) if opt["sold"] else (30, 30, 50)
-            pygame.draw.rect(tempSurf, c, card_rect, border_radius=10)
-            
-            if not opt["sold"]:
-                name_text = fontM.render(opt['data']['name'], True, WHITE)
-                tempSurf.blit(name_text, (card_rect.x + 20, card_rect.y + 40))
-                
-                # 지분 상태에 따른 가격 색상 변경
-                p_color = GOLD if stats["gold"] >= display_price else RED
-                price_text = fontM.render(f"{display_price} G", True, p_color)
-                tempSurf.blit(price_text, (card_rect.x + 60, card_rect.y + 260))
-
-    elif shopTab == "BANK":
-        # UI 배경
-        pygame.draw.rect(tempSurf, (20, 30, 40), (100, 150, 700, 300), border_radius=15)
-        
-        # 예치 정보
-        balance_txt = fontL.render(f"예치 잔액: {bankBalance} G", True, CYAN)
-        interest_txt = fontM.render("예상 다음 배당 이율: +10%", True, GREEN)
-        tempSurf.blit(balance_txt, (150, 200))
-        tempSurf.blit(interest_txt, (150, 280))
-        
-        # 안내 문구
-        guide_txt = fontS.render("[D] 전액 입금  |  [F] 전액 인출 (수수료 5% 발생)", True, WHITE)
-        tempSurf.blit(guide_txt, (150, 400))
-        
-    elif shopTab == "INVEST":
-            # 단축키(k)를 실제 입력 이벤트와 일치하도록 Q, W, E로 수정
-            investTargets = [
-                {"id": "A", "n": "구역 A: 지열 운송", "y": 150, "k": "Q"},
-                {"id": "B", "n": "구역 B: 에너지 연구", "y": 260, "k": "W"},
-                {"id": "C", "n": "구역 C: 정밀 합금", "y": 370, "k": "E"}
-            ]
-            for i, inv in enumerate(investTargets):
-                y = inv["y"]
-                pygame.draw.rect(tempSurf, (45, 45, 65), (50, y, 800, 90), border_radius=10)
-                barW = int(stocks[inv["id"]] * 2) 
-                pygame.draw.rect(tempSurf, GOLD, (550, y + 35, barW, 20))
-                tempSurf.blit(fontM.render(f"{inv['n']} ({stocks[inv['id']]}%)", True, WHITE), (70, y + 15))
-                # 수정: 배열 인덱스가 아닌 실제 할당된 'k' 값 출력
-                tempSurf.blit(fontM.render(f"500G [Key:{inv['k']}]", True, GOLD), (380, y + 30))
-                
-    # 지분 하락에 따른 계급 등급 표시 [cite: 15, 16]
-    avg_stock = sum(stocks.values()) / 3
-    rank = "고등급(Noble)" if avg_stock > 80 else "저등급(Commoner)"
-    tempSurf.blit(fontM.render(f"현재 시민 등급: {rank}", True, GOLD), (WIDTH-300, HEIGHT-50))
-
-    # [2] Logic Update (비즈니스 로직)
+    # --- 2. 게임 상태별 업데이트 및 렌더링 ---
     for p in particles[:]:
         p.update()
         if p.life <= 0: particles.remove(p)
@@ -1234,7 +1200,7 @@ while running:
                     # boss = BossRock()
                     # boss = BossChernobog()
                     # boss = BossCrusher()
-                    # boss = BossCrazy()
+                    # boss = BossStorm()
                 elif currentStage == 2:
                     boss = BossSwarm()
                 elif currentStage == 3:
@@ -1419,57 +1385,71 @@ while running:
 
     elif gameState == 'SHOP':
         tempSurf.fill((20, 20, 30))
-        tabs = [("ITEM", 50), ("BANK", 250), ("INVEST", 450)]
-        for name, x in tabs:
-            color = GOLD if shopTab == name else (60, 60, 70)
-            pygame.draw.rect(tempSurf, color, (x, 20, 180, 50), border_radius=5)
-            tempSurf.blit(fontM.render(name, True, BLACK if shopTab == name else WHITE), (x+50, 30))
+        
+        # 상단 타이틀
+        tempSurf.blit(fontL.render("SYNERGY SHOP", True, GOLD), (50, 20))
+        tempSurf.blit(fontM.render(f"보유 골드: {stats['gold']} G", True, WHITE), (50, 60))
+        tempSurf.blit(fontM.render("다음 스테이지 진행: [S] 키", True, CYAN), (50, HEIGHT - 50))
 
-        if shopTab == "ITEM":
-            discount = getDiscountRatio()
-            tempSurf.blit(fontM.render(f"합금 지분 물가 보정: x{discount:.2f}", True, CYAN), (50, 100))
-            for i, opt in enumerate(shopOptions):
-                cardRect = pygame.Rect(30 + i * 215, 150, 200, 320)
-                displayPrice = int(opt["data"]["price"] * discount)
-                c = (40, 40, 40) if opt["sold"] else (30, 30, 50)
-                pygame.draw.rect(tempSurf, c, cardRect, border_radius=10)
-                if not opt["sold"]:
-                    tempSurf.blit(fontM.render(opt['data']['name'], True, WHITE), (cardRect.x + 20, cardRect.y + 30))
-                    # 버그 3 해결: 아이템 설명 문구(desc) 정상 노출
-                    tempSurf.blit(fontS.render(opt['data']['desc'], True, GRAY), (cardRect.x + 20, cardRect.y + 80))
-                    pColor = GOLD if stats["gold"] >= displayPrice else RED
-                    tempSurf.blit(fontM.render(f"{displayPrice} G", True, pColor), (cardRect.x + 60, cardRect.y + 260))
+        if pendingItem:
+            tempSurf.blit(fontM.render("교체할 인벤토리 아이템을 클릭하세요!", True, RED), (500, 50))
 
-        elif shopTab == "BANK":
-            pygame.draw.rect(tempSurf, (30, 40, 60), (100, 150, 700, 300), border_radius=15)
-            tempSurf.blit(fontL.render(f"예치금: {bankBalance} G", True, CYAN), (150, 200))
-            tempSurf.blit(fontM.render(f"다음 스테이지 배당금: +10%", True, GREEN), (150, 280))
-            tempSurf.blit(fontS.render("[D] 전액 입금  |  [F] 전액 인출 (수수료 5%)", True, WHITE), (150, 400))
+        # 1. 상점 판매 슬롯 (좌측)
+        for i, opt in enumerate(shopOptions):
+            cardRect = pygame.Rect(50 + i * 160, 100, 150, 200)
+            c = (40, 40, 40) if opt["sold"] else (30, 30, 50)
+            borderColor = RED if pendingItem == opt else GRAY
+            
+            pygame.draw.rect(tempSurf, c, cardRect, border_radius=10)
+            pygame.draw.rect(tempSurf, borderColor, cardRect, 2, border_radius=10)
+            
+            if not opt["sold"]:
+                tempSurf.blit(fontM.render(opt['data']['name'], True, WHITE), (cardRect.x + 10, cardRect.y + 20))
+                tempSurf.blit(fontS.render(opt['data']['desc'], True, CYAN), (cardRect.x + 10, cardRect.y + 60))
+                pColor = GOLD if stats["gold"] >= opt['data']['price'] else RED
+                tempSurf.blit(fontM.render(f"{opt['data']['price']} G", True, pColor), (cardRect.x + 10, cardRect.y + 160))
 
-        elif shopTab == "INVEST":
-            investTargets = [
-                {"id": "A", "n": "구역 A: 지열 운송", "y": 150, "k": "1"},
-                {"id": "B", "n": "구역 B: 에너지 연구", "y": 260, "k": "2"},
-                {"id": "C", "n": "구역 C: 정밀 합금", "y": 370, "k": "3"}
-            ]
-            for i, inv in enumerate(investTargets):
-                y = inv["y"]
-                pygame.draw.rect(tempSurf, (45, 45, 65), (50, y, 800, 90), border_radius=10)
-                barW = int(stocks[inv["id"]] * 2) 
-                pygame.draw.rect(tempSurf, GOLD, (550, y + 35, barW, 20))
-                tempSurf.blit(fontM.render(f"{inv['n']} ({stocks[inv['id']]}%)", True, WHITE), (70, y + 15))
-                # 번호 키 매핑 안내 수정
-                tempSurf.blit(fontM.render(f"500G [Key:{i+1}]", True, GOLD), (380, y + 30))
+        # 2. 인벤토리 3x3 그리드 (우측 상단)
+        tempSurf.blit(fontM.render(f"인벤토리 ({len(inventory)}/9)", True, WHITE), (550, 60))
+        for i in range(9):
+            row = i // 3
+            col = i % 3
+            slotRect = pygame.Rect(550 + col * 100, 100 + row * 100, 90, 90)
+            pygame.draw.rect(tempSurf, (45, 45, 65), slotRect, border_radius=5)
+            pygame.draw.rect(tempSurf, GRAY, slotRect, 2, border_radius=5)
+            
+            if i < len(inventory):
+                item = inventory[i]
+                # 아이템 이름 출력 (너무 길면 잘림 방지)
+                name_txt = fontS.render(item["name"][:5], True, WHITE)
+                tempSurf.blit(name_txt, (slotRect.x + 10, slotRect.y + 35))
 
-        avgS = sum(stocks.values()) / 3
-        rank = "Noble" if avgS > 85 else "Commoner" 
-        tempSurf.blit(fontM.render(f"등급: {rank} | GOLD: {stats['gold']}G", True, WHITE), (300, HEIGHT-50))
+        # 3. 활성화된 시너지 및 현재 스탯 요약 (하단)
+        pygame.draw.rect(tempSurf, (30, 30, 40), (50, 330, 800, 150), border_radius=10)
+        tempSurf.blit(fontM.render("- 활성화된 시너지 효과 -", True, GOLD), (70, 340))
+        
+        # 현재 태그 개수 계산
+        synergy_counts = {}
+        for item in inventory:
+            for tag in item["tags"]:
+                synergy_counts[tag] = synergy_counts.get(tag, 0) + 1
+                
+        syn_y = 380
+        syn_x = 70
+        for tag, count in synergy_counts.items():
+            if tag in SYNERGY_DATA:
+                for req, data in sorted(SYNERGY_DATA[tag].items()):
+                    if count >= req:
+                        tempSurf.blit(fontS.render(data["name"], True, CYAN), (syn_x, syn_y))
+                        syn_y += 25
+                        if syn_y > 450:
+                            syn_y = 380
+                            syn_x += 250
 
-        # 하단 상태 정보
-        avg_s = sum(stocks.values()) / 3
-        rank = "Noble" if avg_s > 85 else "Commoner" 
-        tempSurf.blit(fontM.render(f"등급: {rank} | GOLD: {stats['gold']}G", True, WHITE), (300, HEIGHT-50))
-
+        # 스탯 렌더링
+        stat_text = f"DMG: {stats['damage']} | SPD: {stats['speed']} | MAX_HP: {stats['maxHp']} | 관통: {'ON' if stats['pierce'] else 'OFF'} | W: {stats['specialAmmo']}"
+        tempSurf.blit(fontS.render(stat_text, True, WHITE), (300, HEIGHT - 30))
+        
    # W 특수기 효과 (화면 반전)
     if specialEffectTimer > 0:
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
