@@ -329,65 +329,65 @@ class Meteor:
         surf.blit(shadow_surf, (self.target.x - self.radius * 2, self.target.y - self.radius * 2))
         surf.blit(self.img, (self.pos.x - self.radius, self.pos.y - self.radius))
 
-# class BossChernobog:
-#     def __init__(self):
-#         self.type = "CHERNOBOG"
-#         self.pos = pygame.Vector2(WIDTH // 2, 150)
-#         self.hp = 3000
-#         self.maxHp = 3000
-#         self.timer = 0
-#         self.hitboxRadius = 60
-#         self.rect = pygame.Rect(self.pos.x - 60, self.pos.y - 60, 120, 120)
-#         self.images = BossAssetManager.get_images("bossChernobog")
-#         self.currentImg = self.images["STAND"]
+class BossChernobog:
+    def __init__(self):
+        self.type = "CHERNOBOG"
+        self.pos = pygame.Vector2(WIDTH // 2, 150)
+        self.hp = 3000
+        self.maxHp = 3000
+        self.timer = 0
+        self.hitboxRadius = 60
+        self.rect = pygame.Rect(self.pos.x - 60, self.pos.y - 60, 120, 120)
+        self.images = BossAssetManager.get_images("bossChernobog")
+        self.currentImg = self.images["STAND"]
         
-#         self.orbitBullets = []
-#         self.orbitAngle = 0
+        self.orbitBullets = []
+        self.orbitAngle = 0
 
-#     def update(self, eProjs, pPos):
-#         global shakeTimer
-#         self.timer += 1
-#         self.rect.topleft = (self.pos.x - 60, self.pos.y - 60)
-#         self.orbitBullets = [b for b in self.orbitBullets if b in eProjs]
-#         self.orbitAngle += 0.08
+    def update(self, eProjs, pPos):
+        global shakeTimer
+        self.timer += 1
+        self.rect.topleft = (self.pos.x - 60, self.pos.y - 60)
+        self.orbitBullets = [b for b in self.orbitBullets if b in eProjs]
+        self.orbitAngle += 0.08
         
-#         # 1페이즈: 궤도 탄막 응집 시간을 3배로 증가 (200 -> 600 프레임)
-#         if self.timer % 900 < 600:
-#             self.currentImg = self.images["STAND"]
-#             if self.timer % 5 == 0 and len(self.orbitBullets) < 120:
-#                 newBullet = Projectile(self.pos.x, self.pos.y, pygame.Vector2(0, 0), PURPLE, 15, 8)
-#                 self.orbitBullets.append(newBullet)
-#                 eProjs.append(newBullet)
+        # 1페이즈: 궤도 탄막 응집 시간을 3배로 증가 (200 -> 600 프레임)
+        if self.timer % 900 < 600:
+            self.currentImg = self.images["STAND"]
+            if self.timer % 5 == 0 and len(self.orbitBullets) < 120:
+                newBullet = Projectile(self.pos.x, self.pos.y, pygame.Vector2(0, 0), PURPLE, 15, 8)
+                self.orbitBullets.append(newBullet)
+                eProjs.append(newBullet)
                 
-#             for i, bullet in enumerate(self.orbitBullets):
-#                 angle = self.orbitAngle + (i * 0.15)
-#                 radius = 70 + (i * 1.5)
-#                 bullet.pos.x = self.pos.x + math.cos(angle) * radius
-#                 bullet.pos.y = self.pos.y + math.sin(angle) * radius
-#                 bullet.vel = pygame.Vector2(0, 0)
+            for i, bullet in enumerate(self.orbitBullets):
+                angle = self.orbitAngle + (i * 0.15)
+                radius = 70 + (i * 1.5)
+                bullet.pos.x = self.pos.x + math.cos(angle) * radius
+                bullet.pos.y = self.pos.y + math.sin(angle) * radius
+                bullet.vel = pygame.Vector2(0, 0)
                 
-#         # 2페이즈: 혼돈 분열 시 일부 호밍 투사체 섞기
-#         elif self.timer % 900 == 600:
-#             self.currentImg = self.images["ATTACK"]
-#             shakeTimer = 25 
-#             for bullet in self.orbitBullets:
-#                 chaoticAngle = random.uniform(0, math.pi * 2)
-#                 speed = random.uniform(3.0, 8.0)
-#                 bulletVel = pygame.Vector2(math.cos(chaoticAngle), math.sin(chaoticAngle)) * speed
+        # 2페이즈: 혼돈 분열 시 일부 호밍 투사체 섞기
+        elif self.timer % 900 == 600:
+            self.currentImg = self.images["ATTACK"]
+            shakeTimer = 25 
+            for bullet in self.orbitBullets:
+                chaoticAngle = random.uniform(0, math.pi * 2)
+                speed = random.uniform(3.0, 8.0)
+                bulletVel = pygame.Vector2(math.cos(chaoticAngle), math.sin(chaoticAngle)) * speed
                 
-#                 # 15% 확률로 기존 탄막 대신 호밍 탄막 발사
-#                 if random.random() < 0.15:
-#                     eProjs.append(HomingProjectile(bullet.pos.x, bullet.pos.y, bulletVel, GOLD, 15, 8))
-#                     if bullet in eProjs: eProjs.remove(bullet)
-#                 else:
-#                     bullet.vel = bulletVel
-#                     bullet.color = RED 
-#             self.orbitBullets.clear()
+                # 15% 확률로 기존 탄막 대신 호밍 탄막 발사
+                if random.random() < 0.15:
+                    eProjs.append(HomingProjectile(bullet.pos.x, bullet.pos.y, bulletVel, GOLD, 15, 8))
+                    if bullet in eProjs: eProjs.remove(bullet)
+                else:
+                    bullet.vel = bulletVel
+                    bullet.color = RED 
+            self.orbitBullets.clear()
 
-#     def draw(self, surf):
-#         surf.blit(self.currentImg, (self.pos.x - 75, self.pos.y - 75))
-#         hpRatio = max(0, self.hp / self.maxHp)
-#         pygame.draw.rect(surf, GREEN, (self.pos.x - 50, self.pos.y + 80, 100 * hpRatio, 8))
+    def draw(self, surf):
+        surf.blit(self.currentImg, (self.pos.x - 75, self.pos.y - 75))
+        hpRatio = max(0, self.hp / self.maxHp)
+        pygame.draw.rect(surf, GREEN, (self.pos.x - 50, self.pos.y + 80, 100 * hpRatio, 8))
 
 class BossStorm:
     def __init__(self):
