@@ -83,6 +83,8 @@ invincibleTimer = 0
 particles = []    
 highScore = 0    
 hitboxRadius = 10
+bankBalance = 0
+shopTab = "MARKET" # 현재 상점 탭 ("MARKET" 또는 "BANK")
 
 # --- 덱 빌딩 & 시너지 시스템 변수 ---
 inventory = []       # 최대 9개 장착 가능
@@ -182,17 +184,6 @@ def loadHighscoreSecure():
             return 0
     return 0
 
-
-def applyUpgrade(itemData):
-    global playerHp, boss
-    eff = itemData['effect']
-    if eff == "dmg": stats["damage"] += 1.5
-    elif eff == "speed": stats["speed"] += 2
-    elif eff == "heal": playerHp = min(stats["maxHp"], playerHp + 50)
-    elif eff == "pierce": stats["pierce"] = True
-    elif eff == "maxhp": stats["maxHp"] += 40; playerHp += 40
-    elif eff == "ammo": stats["specialAmmo"] += 2
-
 # 스탯 재계산 로직 (DRY 원칙 적용)
 def calculate_stats():
     global stats, playerHp
@@ -228,7 +219,11 @@ def calculate_stats():
 def getShopItems():
     return [{"data": item, "sold": False} for item in random.sample(ITEM_POOL, 3)]
 
-
+# 스테이지 클리어 시 이자 계산 (기존 gameState = 'SHOP' 변경 직전에 배치)
+def apply_interest():
+    global bankBalance
+    interest = int(bankBalance * 0.15)
+    bankBalance += interest
 
 # --- 5. 클래스 정의 ---
 class BossAssetManager:
@@ -432,123 +427,6 @@ class BossChernobog:
         hpRatio = max(0, self.hp / self.maxHp)
         pygame.draw.rect(surf, GREEN, (self.pos.x - 50, self.pos.y + 80, 100 * hpRatio, 8))
 
-class BossStorm:
-    def __init__(self):
-        self.type = "CRAZY"
-        self.pos = pygame.Vector2(WIDTH // 2, HEIGHT // 2)
-        self.hp = 15000
-        self.maxHp = 15000
-        self.timer = 0
-        self.rect = pygame.Rect(self.pos.x - 40, self.pos.y - 40, 80, 80)
-        self.orbitBullets = []
-        self.orbitAngle = 0
-        self.phase = 1
-
-    def update(self, eProjs, pPos, ctx=None):
-        self.timer += 1
-        
-        # 600프레임(약 16초) 주기로 Zero 1 -> 2 -> 3 -> 4 -> 최종 병합 페이즈로 전환
-        if self.timer < 600: self.phase = 1
-        elif self.timer < 1200: self.phase = 2
-        elif self.timer < 1800: self.phase = 3
-        elif self.timer < 2400: self.phase = 4
-        else: self.phase = 5
-
-        self.pos.x = WIDTH // 2 + math.sin(self.timer * 0.03) * 150
-        self.pos.y = 150 + math.cos(self.timer * 0.02) * 50
-        self.rect.center = (self.pos.x, self.pos.y)
-
-        if self.phase == 1:
-            # 패턴 1: 화면 밖에서 수축하는 원형 탄막
-            progress = (self.timer % 600) / 600.0
-            currentRadius = 600 - (480 * progress)
-            if self.timer % 6 == 0:
-                for i in range(10):
-                    angle = (i * (2 * math.pi / 10)) + (self.timer * 0.1)
-                    spawnX = self.pos.x + math.cos(angle) * currentRadius
-                    spawnY = self.pos.y + math.sin(angle) * currentRadius
-                    dirVec = (self.pos - pygame.Vector2(spawnX, spawnY)).normalize() * 1.5
-                    eProjs.append(Projectile(spawnX, spawnY, dirVec, CYAN, 10, 5))
-
-        elif self.phase == 2:
-            # 패턴 2: 궤도 고정 후 조준 사격
-            self.orbitAngle += 0.05
-            self.orbitBullets = [b for b in self.orbitBullets if b in eProjs]
-            if len(self.orbitBullets) < 12 and self.timer % 10 == 0:
-                newBullet = Projectile(self.pos.x, self.pos.y, pygame.Vector2(0, 0), CYAN, 10, 6)
-                self.orbitBullets.append(newBullet)
-                eProjs.append(newBullet)
-            for i, bullet in enumerate(self.orbitBullets):
-                angle = self.orbitAngle + (i * (2 * math.pi / 12))
-                bullet.pos.x = self.pos.x + math.cos(angle) * 150
-                bullet.pos.y = self.pos.y + math.sin(angle) * 150
-                bullet.vel = pygame.Vector2(0, 0)
-            if self.timer % 50 == 0 and self.orbitBullets:
-                firedBullet = self.orbitBullets.pop(0)
-                targetDir = (pPos - firedBullet.pos).normalize()
-                firedBullet.vel = targetDir * 8
-                firedBullet.color = RED
-
-        elif self.phase == 3:
-            # 패턴 3: 거대한 궤도에서 작아지는 탄막 소환
-            progress = (self.timer % 600) / 600.0
-            currentRadius = 2100 - (2075 * progress) 
-            if self.timer % 4 == 0:
-                for i in range(8):
-                    angle = (i * (2 * math.pi / 8)) + (self.timer * 0.15)
-                    spawnX = self.pos.x + math.cos(angle) * currentRadius
-                    spawnY = self.pos.y + math.sin(angle) * currentRadius
-                    dirVec = (self.pos - pygame.Vector2(spawnX, spawnY)).normalize() * 3.0
-                    eProjs.append(Projectile(spawnX, spawnY, dirVec, PURPLE, 10, 5))
-
-        elif self.phase == 4:
-            # 패턴 4: 거대한 궤도를 그리며 회전, 점점 좁혀지다 발사
-            self.orbitAngle += 0.05
-            progress = (self.timer % 600) / 600.0
-            currentRadius = 525 - (450 * progress) 
-            self.orbitBullets = [b for b in self.orbitBullets if b in eProjs]
-            if len(self.orbitBullets) < 16 and self.timer % 8 == 0:
-                newBullet = Projectile(self.pos.x, self.pos.y, pygame.Vector2(0, 0), CYAN, 10, 6)
-                self.orbitBullets.append(newBullet)
-                eProjs.append(newBullet)
-            for i, bullet in enumerate(self.orbitBullets):
-                angle = self.orbitAngle + (i * (2 * math.pi / 16))
-                bullet.pos.x = self.pos.x + math.cos(angle) * currentRadius
-                bullet.pos.y = self.pos.y + math.sin(angle) * currentRadius
-                bullet.vel = pygame.Vector2(0, 0)
-            if self.timer % 40 == 0 and self.orbitBullets:
-                firedBullet = self.orbitBullets.pop(0)
-                targetDir = (pPos - firedBullet.pos).normalize()
-                firedBullet.vel = targetDir * 9
-                firedBullet.color = RED
-
-        elif self.phase == 5:
-            # 패턴 5: 모든 속성을 합친 지옥의 탄막 아트
-            self.orbitAngle += 0.08
-            if self.timer % 12 == 0:
-                for i in range(6):
-                    angle = (i * (2 * math.pi / 6)) + self.orbitAngle
-                    spawnX = self.pos.x + math.cos(angle) * 200
-                    spawnY = self.pos.y + math.sin(angle) * 200
-                    dirVec = (self.pos - pygame.Vector2(spawnX, spawnY)).normalize() * 2.5
-                    eProjs.append(Projectile(spawnX, spawnY, dirVec, PURPLE, 10, 5))
-            if self.timer % 30 == 0:
-                for xGate in range(0, WIDTH + 1, 180):
-                    zigzagX = math.sin(self.timer * 0.15 + xGate) * 5
-                    vel = pygame.Vector2(zigzagX, 6)
-                    eProjs.append(Projectile(xGate, -20, vel, WHITE, 8, 4))
-            if self.timer % 90 == 0: 
-                eProjs.append(HomingProjectile(self.pos.x, self.pos.y, pygame.Vector2(0, -4), GOLD, 15, 8))
-
-    def draw(self, surf):
-        hpRatio = max(0, self.hp / self.maxHp)
-        pygame.draw.rect(surf, (100, 100, 100), (self.pos.x - 60, self.pos.y + 80, 120, 10))
-        pygame.draw.rect(surf, (255, 50, 50), (self.pos.x - 60, self.pos.y + 80, 120 * hpRatio, 10))
-        
-        color = [WHITE, CYAN, PURPLE, GOLD, RED, BLACK][min(self.phase, 5)]
-        pygame.draw.circle(surf, color, (int(self.pos.x), int(self.pos.y)), 25, 3)
-        pygame.draw.circle(surf, WHITE, (int(self.pos.x), int(self.pos.y)), 10)
-
 class BossCrusher:
     def __init__(self):
         self.type = "Crusher"
@@ -631,7 +509,7 @@ class BossRock:
     def __init__(self):
         self.type = "ROCK"
         self.pos = pygame.Vector2(WIDTH // 2, 120)
-        self.hp = 18000 # 덩치가 큰 보스이므로 맷집 극대화
+        self.hp = 18
         self.maxHp = 18000
         self.timer = 0
         self.meteors = []
@@ -963,6 +841,123 @@ class BossZero:
         rotated_core = pygame.transform.rotate(core_surf, math.degrees(self.orbitAngle * 10))
         surf.blit(rotated_core, rotated_core.get_rect(center=(self.pos.x, self.pos.y)))
         
+class BossZombie:
+    def __init__(self):
+        self.type = "CRAZY"
+        self.pos = pygame.Vector2(WIDTH // 2, HEIGHT // 2)
+        self.hp = 15000
+        self.maxHp = 15000
+        self.timer = 0
+        self.rect = pygame.Rect(self.pos.x - 40, self.pos.y - 40, 80, 80)
+        self.orbitBullets = []
+        self.orbitAngle = 0
+        self.phase = 1
+
+    def update(self, eProjs, pPos, ctx=None):
+        self.timer += 1
+        
+        # 600프레임(약 16초) 주기로 Zero 1 -> 2 -> 3 -> 4 -> 최종 병합 페이즈로 전환
+        if self.timer < 600: self.phase = 1
+        elif self.timer < 1200: self.phase = 2
+        elif self.timer < 1800: self.phase = 3
+        elif self.timer < 2400: self.phase = 4
+        else: self.phase = 5
+
+        self.pos.x = WIDTH // 2 + math.sin(self.timer * 0.03) * 150
+        self.pos.y = 150 + math.cos(self.timer * 0.02) * 50
+        self.rect.center = (self.pos.x, self.pos.y)
+
+        if self.phase == 1:
+            # 패턴 1: 화면 밖에서 수축하는 원형 탄막
+            progress = (self.timer % 600) / 600.0
+            currentRadius = 600 - (480 * progress)
+            if self.timer % 6 == 0:
+                for i in range(10):
+                    angle = (i * (2 * math.pi / 10)) + (self.timer * 0.1)
+                    spawnX = self.pos.x + math.cos(angle) * currentRadius
+                    spawnY = self.pos.y + math.sin(angle) * currentRadius
+                    dirVec = (self.pos - pygame.Vector2(spawnX, spawnY)).normalize() * 1.5
+                    eProjs.append(Projectile(spawnX, spawnY, dirVec, CYAN, 10, 5))
+
+        elif self.phase == 2:
+            # 패턴 2: 궤도 고정 후 조준 사격
+            self.orbitAngle += 0.05
+            self.orbitBullets = [b for b in self.orbitBullets if b in eProjs]
+            if len(self.orbitBullets) < 12 and self.timer % 10 == 0:
+                newBullet = Projectile(self.pos.x, self.pos.y, pygame.Vector2(0, 0), CYAN, 10, 6)
+                self.orbitBullets.append(newBullet)
+                eProjs.append(newBullet)
+            for i, bullet in enumerate(self.orbitBullets):
+                angle = self.orbitAngle + (i * (2 * math.pi / 12))
+                bullet.pos.x = self.pos.x + math.cos(angle) * 150
+                bullet.pos.y = self.pos.y + math.sin(angle) * 150
+                bullet.vel = pygame.Vector2(0, 0)
+            if self.timer % 50 == 0 and self.orbitBullets:
+                firedBullet = self.orbitBullets.pop(0)
+                targetDir = (pPos - firedBullet.pos).normalize()
+                firedBullet.vel = targetDir * 8
+                firedBullet.color = RED
+
+        elif self.phase == 3:
+            # 패턴 3: 거대한 궤도에서 작아지는 탄막 소환
+            progress = (self.timer % 600) / 600.0
+            currentRadius = 2100 - (2075 * progress) 
+            if self.timer % 4 == 0:
+                for i in range(8):
+                    angle = (i * (2 * math.pi / 8)) + (self.timer * 0.15)
+                    spawnX = self.pos.x + math.cos(angle) * currentRadius
+                    spawnY = self.pos.y + math.sin(angle) * currentRadius
+                    dirVec = (self.pos - pygame.Vector2(spawnX, spawnY)).normalize() * 3.0
+                    eProjs.append(Projectile(spawnX, spawnY, dirVec, PURPLE, 10, 5))
+
+        elif self.phase == 4:
+            # 패턴 4: 거대한 궤도를 그리며 회전, 점점 좁혀지다 발사
+            self.orbitAngle += 0.05
+            progress = (self.timer % 600) / 600.0
+            currentRadius = 525 - (450 * progress) 
+            self.orbitBullets = [b for b in self.orbitBullets if b in eProjs]
+            if len(self.orbitBullets) < 16 and self.timer % 8 == 0:
+                newBullet = Projectile(self.pos.x, self.pos.y, pygame.Vector2(0, 0), CYAN, 10, 6)
+                self.orbitBullets.append(newBullet)
+                eProjs.append(newBullet)
+            for i, bullet in enumerate(self.orbitBullets):
+                angle = self.orbitAngle + (i * (2 * math.pi / 16))
+                bullet.pos.x = self.pos.x + math.cos(angle) * currentRadius
+                bullet.pos.y = self.pos.y + math.sin(angle) * currentRadius
+                bullet.vel = pygame.Vector2(0, 0)
+            if self.timer % 40 == 0 and self.orbitBullets:
+                firedBullet = self.orbitBullets.pop(0)
+                targetDir = (pPos - firedBullet.pos).normalize()
+                firedBullet.vel = targetDir * 9
+                firedBullet.color = RED
+
+        elif self.phase == 5:
+            # 패턴 5: 모든 속성을 합친 지옥의 탄막 아트
+            self.orbitAngle += 0.08
+            if self.timer % 12 == 0:
+                for i in range(6):
+                    angle = (i * (2 * math.pi / 6)) + self.orbitAngle
+                    spawnX = self.pos.x + math.cos(angle) * 200
+                    spawnY = self.pos.y + math.sin(angle) * 200
+                    dirVec = (self.pos - pygame.Vector2(spawnX, spawnY)).normalize() * 2.5
+                    eProjs.append(Projectile(spawnX, spawnY, dirVec, PURPLE, 10, 5))
+            if self.timer % 30 == 0:
+                for xGate in range(0, WIDTH + 1, 180):
+                    zigzagX = math.sin(self.timer * 0.15 + xGate) * 5
+                    vel = pygame.Vector2(zigzagX, 6)
+                    eProjs.append(Projectile(xGate, -20, vel, WHITE, 8, 4))
+            if self.timer % 90 == 0: 
+                eProjs.append(HomingProjectile(self.pos.x, self.pos.y, pygame.Vector2(0, -4), GOLD, 15, 8))
+
+    def draw(self, surf):
+        hpRatio = max(0, self.hp / self.maxHp)
+        pygame.draw.rect(surf, (100, 100, 100), (self.pos.x - 60, self.pos.y + 80, 120, 10))
+        pygame.draw.rect(surf, (255, 50, 50), (self.pos.x - 60, self.pos.y + 80, 120 * hpRatio, 10))
+        
+        color = [WHITE, CYAN, PURPLE, GOLD, RED, BLACK][min(self.phase, 5)]
+        pygame.draw.circle(surf, color, (int(self.pos.x), int(self.pos.y)), 25, 3)
+        pygame.draw.circle(surf, WHITE, (int(self.pos.x), int(self.pos.y)), 10)
+
 class Enemy:
     def __init__(self, eType="type1", offset=0):
         self.eType = eType
@@ -1098,9 +1093,8 @@ while running:
         
         if event.type == pygame.KEYDOWN:
             if gameState == 'SHOP':
-                # 다음 스테이지로 진행 (S키)
                 if event.key == pygame.K_s:
-                    bankBalance = int(bankBalance * 1.1) # 배당금 10% 추가
+                    apply_interest()
                     gameState = 'PLAYING'
                     currentStage += 1
                     stageTimer = STAGE_DURATION
@@ -1137,10 +1131,7 @@ while running:
                             # 9칸 꽉 찼을 경우 교체 대기 상태 진입
                             pendingItem = opt
                     
-    # --- 1. 배경 및 탭 UI ---
-    tempSurf.fill((20, 20, 30))
-
-    # --- 2. 게임 상태별 업데이트 및 렌더링 ---
+    # --- 게임 상태별 업데이트 및 렌더링 ---
     for p in particles[:]:
         p.update()
         if p.life <= 0: particles.remove(p)
@@ -1196,11 +1187,11 @@ while running:
                 if zeroTicket: boss = BossZero(); zeroTicket = False
                 elif currentStage == 1:
                     # boss = BossSwarm()
-                    boss = BossZero()
-                    # boss = BossRock()
+                    # boss = BossZero()
+                    boss = BossRock()
                     # boss = BossChernobog()
                     # boss = BossCrusher()
-                    # boss = BossStorm()
+                    # boss = BossZombie()
                 elif currentStage == 2:
                     boss = BossSwarm()
                 elif currentStage == 3:
@@ -1286,12 +1277,12 @@ while running:
             elif p.pos.y > HEIGHT: 
                 if p in eProjs: eProjs.remove(p)
 
-        # --- 3. 플레이어 투사체(pProjs) 업데이트 및 적/보스 피격 판정 ---
+        # --- 플레이어 투사체(pProjs) 업데이트 및 적/보스 피격 판정 ---
         for p in pProjs[:]:
             p.update()
             hitThisFrame = False
 
-            # 3-1. 보스 피격 판정
+            # 보스 피격 판정
             if boss:
                 hit = False
                 hitSwarmWeak = False 
@@ -1317,7 +1308,7 @@ while running:
                     if sndHit: sndHit.play() 
                     for _ in range(5): particles.append(Particle(p.pos.x, p.pos.y, (255, 200, 50)))
 
-            # 3-2. 일반 적 피격 판정 (보스를 맞추지 않았을 때만 체크하거나 관통 시 체크)
+            # 일반 적 피격 판정 (보스를 맞추지 않았을 때만 체크하거나 관통 시 체크)
             if not hitThisFrame:
                 for e in enemies[:]:
                     eCenter = pygame.Vector2(e.pos.x + 15, e.pos.y + 15)
@@ -1383,74 +1374,110 @@ while running:
                 tempSurf.blit(fontL.render("-!!! WARNING !!!-", True, RED), (WIDTH//2-250, HEIGHT//2-50))
                 bossAlertTimer -= 1
 
-    elif gameState == 'SHOP':
-        tempSurf.fill((20, 20, 30))
+    # --- 메인 루프 내부 그리기 영역 ---
+
+    if gameState == 'SHOP':
+        tempSurf.fill((15, 15, 25)) # 배경색 변경
         
-        # 상단 타이틀
-        tempSurf.blit(fontL.render("SYNERGY SHOP", True, GOLD), (50, 20))
-        tempSurf.blit(fontM.render(f"보유 골드: {stats['gold']} G", True, WHITE), (50, 60))
-        tempSurf.blit(fontM.render("다음 스테이지 진행: [S] 키", True, CYAN), (50, HEIGHT - 50))
+        # 상단 정보 (이름 변경 및 특수 스킬 횟수 추가)
+        tempSurf.blit(fontL.render("SUPPLY MARKET", True, GOLD), (50, 20))
+        info_text = f"보유 골드: {stats['gold']} G | 예금: {bankBalance} G | 특수기: {stats['specialAmmo']}회"
+        tempSurf.blit(fontM.render(info_text, True, WHITE), (50, 65))
 
-        if pendingItem:
-            tempSurf.blit(fontM.render("교체할 인벤토리 아이템을 클릭하세요!", True, RED), (500, 50))
+        # 탭 메뉴 (MARKET / BANK)
+        # [M] Market, [B] Bank 키 입력 등으로 전환 가능하게 구현
 
-        # 1. 상점 판매 슬롯 (좌측)
-        for i, opt in enumerate(shopOptions):
-            cardRect = pygame.Rect(50 + i * 160, 100, 150, 200)
-            c = (40, 40, 40) if opt["sold"] else (30, 30, 50)
-            borderColor = RED if pendingItem == opt else GRAY
-            
-            pygame.draw.rect(tempSurf, c, cardRect, border_radius=10)
-            pygame.draw.rect(tempSurf, borderColor, cardRect, 2, border_radius=10)
-            
-            if not opt["sold"]:
-                tempSurf.blit(fontM.render(opt['data']['name'], True, WHITE), (cardRect.x + 10, cardRect.y + 20))
-                tempSurf.blit(fontS.render(opt['data']['desc'], True, CYAN), (cardRect.x + 10, cardRect.y + 60))
-                pColor = GOLD if stats["gold"] >= opt['data']['price'] else RED
-                tempSurf.blit(fontM.render(f"{opt['data']['price']} G", True, pColor), (cardRect.x + 10, cardRect.y + 160))
+        if shopTab == "MARKET":
+            # 1. 왼쪽: 시너지 창 (크기 축소 및 왼쪽 배치)
+            syn_rect = pygame.Rect(30, 120, 220, 350)
+            pygame.draw.rect(tempSurf, (30, 30, 45), syn_rect, border_radius=10)
+            tempSurf.blit(fontS.render("활성 시너지", True, GOLD), (45, 130))
+            # 시너지 아이콘/텍스트 출력 로직 (생략)
 
-        # 2. 인벤토리 3x3 그리드 (우측 상단)
-        tempSurf.blit(fontM.render(f"인벤토리 ({len(inventory)}/9)", True, WHITE), (550, 60))
-        for i in range(9):
-            row = i // 3
-            col = i % 3
-            slotRect = pygame.Rect(550 + col * 100, 100 + row * 100, 90, 90)
-            pygame.draw.rect(tempSurf, (45, 45, 65), slotRect, border_radius=5)
-            pygame.draw.rect(tempSurf, GRAY, slotRect, 2, border_radius=5)
-            
-            if i < len(inventory):
-                item = inventory[i]
-                # 아이템 이름 출력 (너무 길면 잘림 방지)
-                name_txt = fontS.render(item["name"][:5], True, WHITE)
-                tempSurf.blit(name_txt, (slotRect.x + 10, slotRect.y + 35))
+            # 2. 중앙: 판매 아이템
+            for i, opt in enumerate(shopOptions):
+                card_rect = pygame.Rect(270 + i * 160, 120, 140, 220)
+                # 아이템 카드 그리기...
 
-        # 3. 활성화된 시너지 및 현재 스탯 요약 (하단)
-        pygame.draw.rect(tempSurf, (30, 30, 40), (50, 330, 800, 150), border_radius=10)
-        tempSurf.blit(fontM.render("- 활성화된 시너지 효과 -", True, GOLD), (70, 340))
-        
-        # 현재 태그 개수 계산
-        synergy_counts = {}
-        for item in inventory:
-            for tag in item["tags"]:
-                synergy_counts[tag] = synergy_counts.get(tag, 0) + 1
+            # 3. 오른쪽: 인벤토리 (위치 고정)
+            inv_start_x = 760
+            tempSurf.blit(fontS.render(f"INV ({len(inventory)}/9)", True, WHITE), (inv_start_x, 100))
+            for i in range(9):
+                r, c = i // 3, i % 3
+                slot = pygame.Rect(inv_start_x + c * 45, 120 + r * 45, 40, 40)
+                pygame.draw.rect(tempSurf, (50, 50, 70), slot)
+
+        elif shopTab == "BANK":
+            # 은행 UI: 입금/출금 버튼 및 이율 정보 표시
+            tempSurf.blit(fontM.render("중앙 은행 (이율 15%)", True, CYAN), (350, 200))
+            tempSurf.blit(fontS.render(f"현재 예금: {bankBalance} G", True, WHITE), (380, 250))
+            tempSurf.blit(fontS.render("[D] 100G 입금 | [W] 전액 출금", True, GRAY), (350, 300))
+
+
+            if pendingItem:
+                tempSurf.blit(fontM.render("교체할 인벤토리 아이템을 클릭하세요!", True, RED), (500, 50))
+
+            # 1. 상점 판매 슬롯 (좌측)
+            for i, opt in enumerate(shopOptions):
+                cardRect = pygame.Rect(50 + i * 160, 100, 150, 200)
+                c = (40, 40, 40) if opt["sold"] else (30, 30, 50)
+                borderColor = RED if pendingItem == opt else GRAY
                 
-        syn_y = 380
-        syn_x = 70
-        for tag, count in synergy_counts.items():
-            if tag in SYNERGY_DATA:
-                for req, data in sorted(SYNERGY_DATA[tag].items()):
-                    if count >= req:
-                        tempSurf.blit(fontS.render(data["name"], True, CYAN), (syn_x, syn_y))
-                        syn_y += 25
-                        if syn_y > 450:
-                            syn_y = 380
-                            syn_x += 250
+                pygame.draw.rect(tempSurf, c, cardRect, border_radius=10)
+                pygame.draw.rect(tempSurf, borderColor, cardRect, 2, border_radius=10)
+                
+                if not opt["sold"]:
+                    tempSurf.blit(fontM.render(opt['data']['name'], True, WHITE), (cardRect.x + 10, cardRect.y + 20))
+                    tempSurf.blit(fontS.render(opt['data']['desc'], True, CYAN), (cardRect.x + 10, cardRect.y + 60))
+                    pColor = GOLD if stats["gold"] >= opt['data']['price'] else RED
+                    tempSurf.blit(fontM.render(f"{opt['data']['price']} G", True, pColor), (cardRect.x + 10, cardRect.y + 160))
 
-        # 스탯 렌더링
-        stat_text = f"DMG: {stats['damage']} | SPD: {stats['speed']} | MAX_HP: {stats['maxHp']} | 관통: {'ON' if stats['pierce'] else 'OFF'} | W: {stats['specialAmmo']}"
-        tempSurf.blit(fontS.render(stat_text, True, WHITE), (300, HEIGHT - 30))
+            # 2. 인벤토리 3x3 그리드 (우측 상단)
+            tempSurf.blit(fontM.render(f"인벤토리 ({len(inventory)}/9)", True, WHITE), (550, 60))
+            for i in range(9):
+                row = i // 3
+                col = i % 3
+                slotRect = pygame.Rect(550 + col * 100, 100 + row * 100, 90, 90)
+                pygame.draw.rect(tempSurf, (45, 45, 65), slotRect, border_radius=5)
+                pygame.draw.rect(tempSurf, GRAY, slotRect, 2, border_radius=5)
+                
+                if i < len(inventory):
+                    item = inventory[i]
+                    # 아이템 이름 출력 (너무 길면 잘림 방지)
+                    name_txt = fontS.render(item["name"][:5], True, WHITE)
+                    tempSurf.blit(name_txt, (slotRect.x + 10, slotRect.y + 35))
+
+            # 3. 활성화된 시너지 및 현재 스탯 요약 (하단)
+            pygame.draw.rect(tempSurf, (30, 30, 40), (50, 330, 800, 150), border_radius=10)
+            tempSurf.blit(fontM.render("- 활성화된 시너지 효과 -", True, GOLD), (70, 340))
+            
+            # 현재 태그 개수 계산
+            synergy_counts = {}
+            for item in inventory:
+                for tag in item["tags"]:
+                    synergy_counts[tag] = synergy_counts.get(tag, 0) + 1
+                    
+            syn_y = 380
+            syn_x = 70
+            for tag, count in synergy_counts.items():
+                if tag in SYNERGY_DATA:
+                    for req, data in sorted(SYNERGY_DATA[tag].items()):
+                        if count >= req:
+                            tempSurf.blit(fontS.render(data["name"], True, CYAN), (syn_x, syn_y))
+                            syn_y += 25
+                            if syn_y > 450:
+                                syn_y = 380
+                                syn_x += 250
+
+            # 스탯 렌더링
+            stat_text = f"DMG: {stats['damage']} | SPD: {stats['speed']} | MAX_HP: {stats['maxHp']} | 관통: {'ON' if stats['pierce'] else 'OFF'} | W: {stats['specialAmmo']}"
+            tempSurf.blit(fontS.render(stat_text, True, WHITE), (300, HEIGHT - 30))
+    
+    # 1. 가장 밑바닥에 배경 먼저 그리기
+    screen.blit(bgImg, (0, 0))
+    screen.blit(tempSurf, (0, 0))
         
-   # W 특수기 효과 (화면 반전)
+    # 3. W 특수기 효과 (화면 반전) - 배경 위에 그려야 효과가 보임!
     if specialEffectTimer > 0:
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         alpha = min(255, specialEffectTimer * 10) 
@@ -1458,25 +1485,24 @@ while running:
         screen.blit(overlay, (0, 0))
         specialEffectTimer -= 1 
     
-    # 배경 그리기
-    screen.blit(bgImg, (0, 0))
-    screen.blit(tempSurf, (0, 0))
+    # 4. 전투 시에만 보이는 UI (상점에서는 숨김 처리)
+    if gameState != 'SHOP':
+        # 체력바 배경 현재 체력(초록색)
+        pygame.draw.rect(screen, GREEN, (10, 10, max(0, (playerHp/stats['maxHp'])*200), 20))    
+        screen.blit(fontS.render(f"{int(playerHp)} / {stats['maxHp']}", True, BLACK), (80, 10))
         
-    # 1. 체력바 배경 현재 체력(초록색)
-    pygame.draw.rect(screen, GREEN, (10, 10, max(0, (playerHp/stats['maxHp'])*200), 20))    
-    screen.blit(fontS.render(f"{int(playerHp)} / {stats['maxHp']}", True, BLACK), (80, 10))
-    
-    # 2. 정보 텍스트 (점수, 최고점수, 스테이지 정보 그룹화)
-    infoTxt1 = fontS.render(f"SCORE: {score} | HI-SCORE: {highScore} | STAGE: {currentStage}", True, WHITE)
-    screen.blit(infoTxt1, (10, 35))
-    
-    # 3. 재화 및 특수기 개수 표기 (눈에 띄도록 골드 색상 강조)
-    infoTxt2 = fontS.render(f"GOLD: {stats['gold']} G | SPECIAL (W): {stats['specialAmmo']} 개", True, GOLD)
-    screen.blit(infoTxt2, (10, 55))
-    
-    # 4. 제로 티켓 활성화 상태 (UI가 겹치지 않게 y좌표 75로 하향 조정)
-    if zeroTicket: 
-        screen.blit(fontS.render("★ ZERO TICKET ACTIVE ★", True, CYAN), (10, 75))
+        # 정보 텍스트 (점수, 최고점수, 스테이지 정보 그룹화)
+        infoTxt1 = fontS.render(f"SCORE: {score} | HI-SCORE: {highScore} | STAGE: {currentStage}", True, WHITE)
+        screen.blit(infoTxt1, (10, 35))
+        
+        # 재화 및 특수기 개수 표기 (눈에 띄도록 골드 색상 강조)
+        infoTxt2 = fontS.render(f"GOLD: {stats['gold']} G | SPECIAL (W): {stats['specialAmmo']} 개", True, GOLD)
+        screen.blit(infoTxt2, (10, 55))
+        
+        # 제로 티켓 활성화 상태
+        if zeroTicket: 
+            screen.blit(fontS.render("★ ZERO TICKET ACTIVE ★", True, CYAN), (10, 75))
+            
     # UI 업데이트 및 프레임 제한
     pygame.display.flip()
 
