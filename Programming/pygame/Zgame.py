@@ -85,11 +85,11 @@ highScore = 0
 hitboxRadius = 10
 bankBalance = 0        # 은행 잔고 초기화
 shopTab = "MARKET"     # 기본 상점 탭 설정
-pendingItem = None     # 아이템 교체 대기 변수
 pendingItem = None   # 인벤토리가 꽉 찼을 때 교체 대기 중인 아이템
 inventory = []       # 최대 9개 장착 가능
 shopOptions = []
-
+screenShakeTimer = 0 # 화면 흔들림 카운터
+homingActive = False # 호밍 모드 상태
 
 SYNERGY_DATA = {
     "WEAPON": {
@@ -230,6 +230,26 @@ def apply_interest():
         stats["gold"] += interest
 
 # --- 5. 클래스 정의 ---
+class Bullet:
+    def __init__(self, x, y, angle, isHoming=False):
+        self.pos = [x, y]
+        self.angle = angle
+        self.speed = 10
+        self.radius = 5
+        self.isHoming = isHoming # 호밍 여부 저장
+        
+    def update(self, enemies):
+        if self.isHoming and enemies:
+            # 가장 가까운 적 찾기
+            target = min(enemies, key=lambda e: math.dist(self.pos, e.pos))
+            target_angle = math.atan2(target.pos[1] - self.pos[1], target.pos[0] - self.pos[0])
+            # 서서히 각도 조절 (유도 성능 조절)
+            angle_diff = (target_angle - self.angle + math.pi) % (2 * math.pi) - math.pi
+            self.angle += angle_diff * 0.1 
+
+        self.pos[0] += math.cos(self.angle) * self.speed
+        self.pos[1] += math.sin(self.angle) * self.speed
+
 class BossAssetManager:
     _cache = {}
 
@@ -1030,8 +1050,14 @@ while running:
         if event.type == pygame.QUIT: running = False
         
         if event.type == pygame.KEYDOWN:
+
+            if gameState == 'PLAYING':
+                # pygame.key.get_mods()를 사용하여 SHIFT 키 조합 확인
+                if event.key == pygame.K_q and (pygame.key.get_mods() & pygame.KMOD_SHIFT):
+                    homingActive = not homingActive
+                    print(f"Homing Mode: {'ON' if homingActive else 'OFF'}")
+
             if gameState == 'SHOP':
-                # Z키 하나로 상점/은행 전환 (Toggle)
                 if event.key == pygame.K_z:
                     shopTab = "BANK" if shopTab == "MARKET" else "MARKET"
                 
@@ -1046,11 +1072,10 @@ while running:
                     if event.key == pygame.K_d and stats["gold"] >= 100:
                         stats["gold"] -= 100
                         bankBalance += 100
-                    elif event.key == pygame.K_w and bankBalance >= 100:
+                    elif event.key == pygame.K_a and bankBalance >= 100:
                         stats["gold"] += 100
                         bankBalance -= 100
 
-        # 마우스 클릭 처리 (UI 분리 및 로직 통합)
         # 마우스 클릭 처리 (UI 분리 및 로직 통합)
         if event.type == pygame.MOUSEBUTTONDOWN and gameState == 'SHOP':
             mousePos = pygame.mouse.get_pos()
@@ -1090,7 +1115,6 @@ while running:
     
     if gameState == 'PLAYING':
         playerCenter = playerPos + pygame.Vector2(30, 30)
-
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT]: playerPos.x -= stats["speed"]
         if keys[pygame.K_RIGHT]: playerPos.x += stats["speed"]
@@ -1100,9 +1124,11 @@ while running:
         if playerPos.x < -30: playerPos.x = WIDTH
         elif playerPos.x > WIDTH: playerPos.x = -30
         playerPos.y = max(0, min(HEIGHT-40, playerPos.y))
-
+          
         if keys[pygame.K_q] and shootCooldown <= 0:
-            pProjs.append(Projectile(playerPos.x+20, playerPos.y, pygame.Vector2(0,-10), GREEN, stats["damage"]))
+            proj = Projectile(playerPos.x+20, playerPos.y, pygame.Vector2(0,-10), GREEN, stats["damage"])
+            proj.isHoming = homingActive
+            pProjs.append(proj)
             shootCooldown = 10
         shootCooldown = max(0, shootCooldown - 1)
         if invincibleTimer > 0: invincibleTimer -= 1
@@ -1231,6 +1257,13 @@ while running:
 
         # --- 플레이어 투사체(pProjs) 업데이트 및 적/보스 피격 판정 ---
         for p in pProjs[:]:
+            # [추가된 호밍 유도 로직]
+            if getattr(p, 'isHoming', False) and enemies:
+                target = min(enemies, key=lambda e: p.pos.distance_to(pygame.Vector2(e.pos.x+15, e.pos.y+15)))
+                target_dir = pygame.Vector2(target.pos.x+15, target.pos.y+15) - p.pos
+                if target_dir.length() > 0:
+                    p.vel = p.vel.lerp(target_dir.normalize() * 12, 0.15) # 부드럽게 유도됨
+
             p.update()
             hitThisFrame = False
 
@@ -1270,9 +1303,13 @@ while running:
                         if e.hp <= 0:
                             if getattr(e, 'eType', None) == "elite": zeroTicket = True
                             if e in enemies: enemies.remove(e)
-                            stats["gold"] += 35; score += 100
+                            stats["gold"] += 35
+                            
+                            earned_score = 40 if getattr(p, 'isHoming', False) else 100
+                            score += earned_score
+                            
                             for _ in range(10): particles.append(Particle(eCenter.x, eCenter.y, (255, 50, 50)))
-                        break # 한 발당 적 하나(관통 없을 시)
+                        break
 
             # 투사체 소멸 처리 (관통 업그레이드 여부 확인)
             if hitThisFrame and not stats.get("pierce", False):
@@ -1333,48 +1370,47 @@ while running:
 
         # 0. 상단 공통 타이틀 및 안내
         tempSurf.blit(fontL.render("STRATEGY STATION", True, GOLD), (30, 20))
-        tab_hint = "[B] 마켓 보기 | [M] 은행 업무 | [S] 스테이지 시작"
+        tab_hint = "[Z]:마켓/은행 전환 | [A]:입금 [D]:출금 | [S]:스테이지 시작"
         tempSurf.blit(fontS.render(tab_hint, True, WHITE), (30, 70))
         
         # --- [좌측 영역: 상점 및 시너지 (0 ~ 450px)] ---
         if shopTab == "MARKET":
-            # [좌측 상단: 상점 아이템]
             tempSurf.blit(fontM.render("MARKET ITEMS", True, CYAN), (30, 120))
             for i, opt in enumerate(shopOptions):
-                cardRect = pygame.Rect(30 + (i % 3) * 130, 160, 120, 170)
-                pygame.draw.rect(tempSurf, (40, 40, 60), cardRect, border_radius=10)
+                cardRect = pygame.Rect(30 + i * 135, 170, 125, 180)
+                color = (40, 40, 50) if not opt["sold"] else (20, 20, 20)
+                pygame.draw.rect(tempSurf, color, cardRect, border_radius=10)
                 if not opt["sold"]:
-                    item_name = opt['data']['name'][:8]
-                    tempSurf.blit(fontS.render(item_name, True, WHITE), (cardRect.x+10, cardRect.y+15))
-                    tempSurf.blit(fontS.render(f"{opt['data']['price']}G", True, GOLD), (cardRect.x+10, cardRect.y+140))
-                    # 설명 (간략히)
-                    tempSurf.blit(fontS.render("Click to Buy", True, GRAY), (cardRect.x+10, cardRect.y+50))
+                    tempSurf.blit(fontS.render(opt['data']['name'][:8], True, WHITE), (cardRect.x+10, cardRect.y+15))
+                    tempSurf.blit(fontS.render(f"{opt['data']['price']}G", True, GOLD), (cardRect.x+10, cardRect.y+150))
 
-        elif shopTab == "BANK":
-            # [좌측 상단: 은행 인터페이스]
-            bank_rect = pygame.Rect(30, 150, 380, 180)
-            pygame.draw.rect(tempSurf, (30, 40, 50), bank_rect, border_radius=15)
-            tempSurf.blit(fontM.render("CITY BANK", True, GOLD), (50, 170))
-            tempSurf.blit(fontL.render(f"{bankBalance} G", True, WHITE), (120, 210))
-            tempSurf.blit(fontS.render("[D] 100G 입금 | [W] 100G 출금", True, CYAN), (70, 290))
-
-        # [좌측 하단: 시너지 현황]
+        # [좌측 하단: 시너지 이원화 표시]
         pygame.draw.line(tempSurf, GRAY, (20, 350), (CENTER_X - 20, 350), 2)
-        tempSurf.blit(fontM.render("ACTIVE SYNERGIES", True, GOLD), (30, 370))
+        # 왼쪽 칸: 보유 현황
+        tempSurf.blit(fontS.render("[ 보유 시너지 ]", True, GOLD), (30, 365))
+        # 오른쪽 칸: 발동 효과
+        tempSurf.blit(fontS.render("[ 발동 효과 ]", True, GREEN), (CENTER_X // 2 + 30, 365))
+        
         synergy_counts = {}
         for item in inventory:
             for tag in item["tags"]:
                 synergy_counts[tag] = synergy_counts.get(tag, 0) + 1
         
-        y_pos = 410
+        y_pos = 400
         for tag, count in synergy_counts.items():
+            # 왼쪽 출력
+            tempSurf.blit(fontS.render(f"{tag}: {count}개", True, WHITE), (30, y_pos))
+            # 오른쪽 출력 (발동된 경우만)
             if tag in SYNERGY_DATA:
-                txt = f"• {tag}: {count}개 보유"
-                tempSurf.blit(fontS.render(txt, True, WHITE), (40, y_pos))
-                y_pos += 25
+                for req, data in sorted(SYNERGY_DATA[tag].items()):
+                    if count >= req:
+                        eff_txt = f"{tag}({req}): {data['name']}"
+                        tempSurf.blit(fontS.render(eff_txt, True, CYAN), (CENTER_X // 2 + 30, y_pos))
+                        y_pos += 25
+            y_pos += 5
 
         # --- [우측 영역: 인벤토리 9칸 (450 ~ 900px)] ---
-        tempSurf.blit(fontM.render("INVENTORY (3x3)", True, WHITE), (CENTER_X + 40, 120))
+        tempSurf.blit(fontM.render("INVENTORY", True, WHITE), (CENTER_X + 40, 120))
         for i in range(9):
             row, col = i // 3, i % 3
             slotRect = pygame.Rect(CENTER_X + 50 + col * 110, 160 + row * 110, 100, 100)
@@ -1386,24 +1422,6 @@ while running:
                 item_txt = fontS.render(inventory[i]["name"][:6], True, CYAN)
                 tempSurf.blit(item_txt, (slotRect.x + 10, slotRect.y + 40))
 
-        # 현재 태그 개수 계산
-        synergy_counts = {}
-        for item in inventory:
-            for tag in item["tags"]:
-                synergy_counts[tag] = synergy_counts.get(tag, 0) + 1
-                
-        syn_y = 380
-        syn_x = 70
-        for tag, count in synergy_counts.items():
-            if tag in SYNERGY_DATA:
-                for req, data in sorted(SYNERGY_DATA[tag].items()):
-                    if count >= req:
-                        tempSurf.blit(fontS.render(data["name"], True, CYAN), (syn_x, syn_y))
-                        syn_y += 25
-                        if syn_y > 450:
-                            syn_y = 380
-                            syn_x += 250
-
         # 스탯 렌더링
         stat_text = f"DMG: {stats['damage']} | SPD: {stats['speed']} | MAX_HP: {stats['maxHp']} | 관통: {'ON' if stats['pierce'] else 'OFF'} | W: {stats['specialAmmo']}"
         tempSurf.blit(fontS.render(stat_text, True, WHITE), (300, HEIGHT - 30))
@@ -1412,7 +1430,7 @@ while running:
     screen.blit(bgImg, (0, 0))
     screen.blit(tempSurf, (0, 0))
         
-    # W 특수기 효과 (시각적 개선)
+    # W 특수기 효과
     if specialEffectTimer > 0:
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         alpha = min(140, specialEffectTimer * 4) 
@@ -1421,7 +1439,7 @@ while running:
         pygame.draw.rect(screen, CYAN, (0, 0, WIDTH, HEIGHT), specialEffectTimer // 2)
         specialEffectTimer -= 1
     
-    # 4. 전투 시에만 보이는 UI (상점에서는 숨김 처리)
+    # 4. 전투 시에만 보이는 UI
     if gameState != 'SHOP':
         # 체력바 배경 현재 체력(초록색)
         pygame.draw.rect(screen, GREEN, (10, 10, max(0, (playerHp/stats['maxHp'])*200), 20))    
