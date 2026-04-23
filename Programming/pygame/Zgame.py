@@ -64,7 +64,7 @@ except:
     fontM = pygame.font.Font(None, 32)
     fontL = pygame.font.Font(None, 50)
 
-# --- 게임 상태 관리 변수 ---
+# --- 3. 게임 상태 관리 변수 ---
 base_stats = {"damage": 10, "speed": 5, "maxHp": 100, "pierce": False, "specialAmmo": 3}
 stats = base_stats.copy()
 stats["gold"] = 1000
@@ -80,16 +80,16 @@ stageTimer = STAGE_DURATION
 bossAlertTimer = 0
 currentStage = 1
 invincibleTimer = 0
-particles = []    
+particles = []
 highScore = 0    
 hitboxRadius = 10
-bankBalance = 0
-shopTab = "MARKET" # 현재 상점 탭 ("MARKET" 또는 "BANK")
-
-# --- 덱 빌딩 & 시너지 시스템 변수 ---
-inventory = []       # 최대 9개 장착 가능
+bankBalance = 0        # 은행 잔고 초기화
+shopTab = "MARKET"     # 기본 상점 탭 설정
+pendingItem = None     # 아이템 교체 대기 변수
 pendingItem = None   # 인벤토리가 꽉 찼을 때 교체 대기 중인 아이템
+inventory = []       # 최대 9개 장착 가능
 shopOptions = []
+
 
 SYNERGY_DATA = {
     "WEAPON": {
@@ -184,6 +184,9 @@ def loadHighscoreSecure():
             return 0
     return 0
 
+# --- 유틸리티 함수 ---
+# (기존 getRandomEnemy 등은 유지)
+
 # 스탯 재계산 로직 (DRY 원칙 적용)
 def calculate_stats():
     global stats, playerHp
@@ -221,9 +224,10 @@ def getShopItems():
 
 # 스테이지 클리어 시 이자 계산 (기존 gameState = 'SHOP' 변경 직전에 배치)
 def apply_interest():
-    global bankBalance
-    interest = int(bankBalance * 0.15)
-    bankBalance += interest
+    global bankBalance, stats  # global 키워드로 전역 변수임을 명시
+    if bankBalance > 0:
+        interest = int(bankBalance * 0.15)
+        stats["gold"] += interest
 
 # --- 5. 클래스 정의 ---
 class BossAssetManager:
@@ -1027,30 +1031,28 @@ while running:
         
         if event.type == pygame.KEYDOWN:
             if gameState == 'SHOP':
-                if event.key == pygame.K_s:
+                # Z키 하나로 상점/은행 전환 (Toggle)
+                if event.key == pygame.K_z:
+                    shopTab = "BANK" if shopTab == "MARKET" else "MARKET"
+                
+                # S키로 스테이지 시작
+                elif event.key == pygame.K_s:
                     apply_interest()
                     gameState = 'PLAYING'
                     currentStage += 1
-                    stageTimer = STAGE_DURATION
-                # [개선안 1] 탭 전환 및 상점 기능 단축키 추가
-                elif event.key == pygame.K_m: 
-                    shopTab = "MARKET"
-                elif event.key == pygame.K_b: 
-                    shopTab = "BANK"
-                # [개선안 2] 리롤(새로고침) 기능: 50G 소모
-                elif event.key == pygame.K_r and shopTab == "MARKET" and stats["gold"] >= 50:
-                    stats["gold"] -= 50
-                    shopOptions = getShopItems()
-                # [개선안 3] 은행 입출금 로직
-                elif event.key == pygame.K_d and shopTab == "BANK" and stats["gold"] >= 100:
-                    stats["gold"] -= 100
-                    bankBalance += 100
-                elif event.key == pygame.K_w and shopTab == "BANK" and bankBalance > 0:
-                    stats["gold"] += bankBalance
-                    bankBalance = 0
+                
+                # 은행 입출금 기능 (은행 탭일 때만 작동)
+                if shopTab == "BANK":
+                    if event.key == pygame.K_d and stats["gold"] >= 100:
+                        stats["gold"] -= 100
+                        bankBalance += 100
+                    elif event.key == pygame.K_w and bankBalance >= 100:
+                        stats["gold"] += 100
+                        bankBalance -= 100
 
         # 마우스 클릭 처리 (UI 분리 및 로직 통합)
-        if event.type == pygame.MOUSEBUTTONDOWN and gameState == 'SHOP' and shopTab == 'MARKET':
+        # 마우스 클릭 처리 (UI 분리 및 로직 통합)
+        if event.type == pygame.MOUSEBUTTONDOWN and gameState == 'SHOP':
             mousePos = pygame.mouse.get_pos()
             
             # 1. 인벤토리가 꽉 차서 교체 대기 중일 때 인벤토리 클릭 처리
@@ -1239,11 +1241,10 @@ while running:
                 
                 if boss.type == "CHERNOBOG" and boss.rect.collidepoint(p.pos): hit = True
                 elif boss.type == "SWARM":
-                    for i, c in enumerate(boss.centers):
-                        if p.pos.distance_to(c) < 25: 
-                            hit = True
-                            if i == getattr(boss, 'weakIndex', -1): hitSwarmWeak = True
-                            break
+                    if hasattr(boss, 'swarms'):
+                        for i, s in enumerate(boss.swarms):
+                            # s.pos 또는 s.rect.center 등을 사용
+                            pass
                 elif boss.type == "ZERO" and p.pos.distance_to(boss.pos + pygame.Vector2(25,25)) < 40: hit = True
                 elif boss.type == "ROCK" and p.pos.distance_to(boss.pos) < 60: hit = True # 판정 범위 상향
                 elif boss.type == "Crusher" and p.pos.distance_to(boss.pos) < 60: hit = True
@@ -1327,69 +1328,72 @@ while running:
     # --- 메인 루프 내부 그리기 영역 ---
 
     if gameState == 'SHOP':
-        tempSurf.fill((15, 15, 25))
-        
-        # --- [1] 공통 UI: 상단 정보 및 탭 안내 ---
-        tempSurf.blit(fontL.render("SUPPLY MARKET", True, GOLD), (50, 20))
-        info_text = f"보유 골드: {stats['gold']} G | 예금: {bankBalance} G | 특수기: {stats['specialAmmo']}회"
-        tempSurf.blit(fontM.render(info_text, True, WHITE), (50, 65))
-        
-        tab_text = "[M] 마켓 탭  |  [B] 은행 탭  |  [S] 다음 스테이지"
-        tempSurf.blit(fontS.render(tab_text, True, CYAN), (50, HEIGHT - 30))
+        tempSurf.fill((15, 15, 25)) 
+        CENTER_X = WIDTH // 2  # 450px
 
-        # --- [2] 탭 전용 UI (MARKET vs BANK) ---
+        # 0. 상단 공통 타이틀 및 안내
+        tempSurf.blit(fontL.render("STRATEGY STATION", True, GOLD), (30, 20))
+        tab_hint = "[B] 마켓 보기 | [M] 은행 업무 | [S] 스테이지 시작"
+        tempSurf.blit(fontS.render(tab_hint, True, WHITE), (30, 70))
+        
+        # --- [좌측 영역: 상점 및 시너지 (0 ~ 450px)] ---
         if shopTab == "MARKET":
-            tempSurf.blit(fontS.render("[R] 키로 50G를 소모하여 상품 새로고침", True, RED), (270, 80))
-            if pendingItem:
-                tempSurf.blit(fontM.render("교체할 인벤토리 아이템을 클릭하세요!", True, RED), (500, 50))
-
-            # 상점 판매 슬롯 (좌측)
+            # [좌측 상단: 상점 아이템]
+            tempSurf.blit(fontM.render("MARKET ITEMS", True, CYAN), (30, 120))
             for i, opt in enumerate(shopOptions):
-                cardRect = pygame.Rect(50 + i * 160, 100, 150, 200)
-                c = (40, 40, 40) if opt["sold"] else (30, 30, 50)
-                borderColor = RED if pendingItem == opt else GRAY
-                
-                pygame.draw.rect(tempSurf, c, cardRect, border_radius=10)
-                pygame.draw.rect(tempSurf, borderColor, cardRect, 2, border_radius=10)
-                
+                cardRect = pygame.Rect(30 + (i % 3) * 130, 160, 120, 170)
+                pygame.draw.rect(tempSurf, (40, 40, 60), cardRect, border_radius=10)
                 if not opt["sold"]:
-                    tempSurf.blit(fontM.render(opt['data']['name'], True, WHITE), (cardRect.x + 10, cardRect.y + 20))
-                    tempSurf.blit(fontS.render(opt['data']['desc'], True, CYAN), (cardRect.x + 10, cardRect.y + 60))
-                    pColor = GOLD if stats["gold"] >= opt['data']['price'] else RED
-                    tempSurf.blit(fontM.render(f"{opt['data']['price']} G", True, pColor), (cardRect.x + 10, cardRect.y + 160))
+                    item_name = opt['data']['name'][:8]
+                    tempSurf.blit(fontS.render(item_name, True, WHITE), (cardRect.x+10, cardRect.y+15))
+                    tempSurf.blit(fontS.render(f"{opt['data']['price']}G", True, GOLD), (cardRect.x+10, cardRect.y+140))
+                    # 설명 (간략히)
+                    tempSurf.blit(fontS.render("Click to Buy", True, GRAY), (cardRect.x+10, cardRect.y+50))
 
         elif shopTab == "BANK":
-            # 은행 창 UI (좌측 중앙)
-            pygame.draw.rect(tempSurf, (30, 30, 45), (100, 100, 350, 200), border_radius=15)
-            tempSurf.blit(fontM.render("중앙 은행 (스테이지 당 이율 15%)", True, CYAN), (120, 120))
-            tempSurf.blit(fontL.render(f"현재 예금: {bankBalance} G", True, GOLD), (140, 170))
-            tempSurf.blit(fontS.render("[D] 100G 입금  |  [W] 전액 출금", True, WHITE), (160, 250))
+            # [좌측 상단: 은행 인터페이스]
+            bank_rect = pygame.Rect(30, 150, 380, 180)
+            pygame.draw.rect(tempSurf, (30, 40, 50), bank_rect, border_radius=15)
+            tempSurf.blit(fontM.render("CITY BANK", True, GOLD), (50, 170))
+            tempSurf.blit(fontL.render(f"{bankBalance} G", True, WHITE), (120, 210))
+            tempSurf.blit(fontS.render("[D] 100G 입금 | [W] 100G 출금", True, CYAN), (70, 290))
 
-        # --- [3] 공통 UI: 우측 인벤토리 및 하단 시너지 ---
-        # 인벤토리 3x3 그리드
-        tempSurf.blit(fontM.render(f"인벤토리 ({len(inventory)}/9)", True, WHITE), (550, 60))
+        # [좌측 하단: 시너지 현황]
+        pygame.draw.line(tempSurf, GRAY, (20, 350), (CENTER_X - 20, 350), 2)
+        tempSurf.blit(fontM.render("ACTIVE SYNERGIES", True, GOLD), (30, 370))
+        synergy_counts = {}
+        for item in inventory:
+            for tag in item["tags"]:
+                synergy_counts[tag] = synergy_counts.get(tag, 0) + 1
+        
+        y_pos = 410
+        for tag, count in synergy_counts.items():
+            if tag in SYNERGY_DATA:
+                txt = f"• {tag}: {count}개 보유"
+                tempSurf.blit(fontS.render(txt, True, WHITE), (40, y_pos))
+                y_pos += 25
+
+        # --- [우측 영역: 인벤토리 9칸 (450 ~ 900px)] ---
+        tempSurf.blit(fontM.render("INVENTORY (3x3)", True, WHITE), (CENTER_X + 40, 120))
         for i in range(9):
-            row = i // 3
-            col = i % 3
-            slotRect = pygame.Rect(550 + col * 100, 100 + row * 100, 90, 90)
-            pygame.draw.rect(tempSurf, (45, 45, 65), slotRect, border_radius=5)
+            row, col = i // 3, i % 3
+            slotRect = pygame.Rect(CENTER_X + 50 + col * 110, 160 + row * 110, 100, 100)
+            pygame.draw.rect(tempSurf, (25, 25, 35), slotRect, border_radius=5)
             pygame.draw.rect(tempSurf, GRAY, slotRect, 2, border_radius=5)
             
             if i < len(inventory):
-                item = inventory[i]
-                name_txt = fontS.render(item["name"][:5], True, WHITE)
-                tempSurf.blit(name_txt, (slotRect.x + 10, slotRect.y + 35))
+                # 아이템 장착 시 표시
+                item_txt = fontS.render(inventory[i]["name"][:6], True, CYAN)
+                tempSurf.blit(item_txt, (slotRect.x + 10, slotRect.y + 40))
 
-        # 활성화된 시너지 요약
-        pygame.draw.rect(tempSurf, (30, 30, 40), (50, 330, 800, 150), border_radius=10)
-        tempSurf.blit(fontM.render("- 활성화된 시너지 효과 -", True, GOLD), (70, 340))
-        
+        # 현재 태그 개수 계산
         synergy_counts = {}
         for item in inventory:
             for tag in item["tags"]:
                 synergy_counts[tag] = synergy_counts.get(tag, 0) + 1
                 
-        syn_y, syn_x = 380, 70
+        syn_y = 380
+        syn_x = 70
         for tag, count in synergy_counts.items():
             if tag in SYNERGY_DATA:
                 for req, data in sorted(SYNERGY_DATA[tag].items()):
@@ -1408,13 +1412,14 @@ while running:
     screen.blit(bgImg, (0, 0))
     screen.blit(tempSurf, (0, 0))
         
-    # 3. W 특수기 효과 (화면 반전) - 배경 위에 그려야 효과가 보임!
+    # W 특수기 효과 (시각적 개선)
     if specialEffectTimer > 0:
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        alpha = min(255, specialEffectTimer * 10) 
-        overlay.fill((255, 255, 255, alpha))
+        alpha = min(140, specialEffectTimer * 4) 
+        overlay.fill((10, 30, 60, alpha)) # 어두운 청색
         screen.blit(overlay, (0, 0))
-        specialEffectTimer -= 1 
+        pygame.draw.rect(screen, CYAN, (0, 0, WIDTH, HEIGHT), specialEffectTimer // 2)
+        specialEffectTimer -= 1
     
     # 4. 전투 시에만 보이는 UI (상점에서는 숨김 처리)
     if gameState != 'SHOP':
