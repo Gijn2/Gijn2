@@ -65,18 +65,15 @@ except:
 base_stats = {"damage": 10, "speed": 5, "maxHp": 100, "pierce": False, "specialAmmo": 3}
 stats = base_stats.copy()
 stats['gold'] = 1000
-playerHp = 100
 score = 0
 gameState = 'PLAYING'
 shootCooldown = 0
 specialEffectTimer = 0
-shakeTimer = 0
 zeroTicket = False 
 STAGE_DURATION = 50 
 stageTimer = STAGE_DURATION
 bossAlertTimer = 0
 currentStage = 1
-invincibleTimer = 0
 particles = []
 highScore = 0    
 hitboxRadius = 10
@@ -87,6 +84,12 @@ inventory = []       # 최대 9개 장착 가능
 shopOptions = []
 screenShakeTimer = 0 # 화면 흔들림 카운터
 
+global playerHp
+playerHp = 100
+global shakeTimer
+shakeTimer = 0
+global invincibleTimer
+invincibleTimer = 0
 
 SYNERGY_DATA = {
     "WEAPON": {
@@ -291,6 +294,7 @@ class Particle:
         self.vel = [random.uniform(-3, 3), random.uniform(-3, 3)]
         self.life = 255  # 투명도 및 수명
         self.color = color
+        self.isHoming = False
 
     def update(self):
         self.pos[0] += self.vel[0]
@@ -310,7 +314,7 @@ class Projectile:
         self.color = color
         self.dmg = dmg
         self.radius = radius
-        self.isHoming = isHoming
+        self.isHoming = False
 
     def update(self): 
         self.pos += self.vel
@@ -1171,7 +1175,7 @@ while running:
                 elif currentStage == 2:
                     boss = BossSwarm()
                 elif currentStage == 3:
-                    boss = boss = BossZero()
+                    boss = BossZero()
                 else:
                     # 모든 지정된 스테이지 이후에는 무작위 혹은 기본 보스
                     boss = random.choice([BossSwarm(), BossCrusher()])
@@ -1367,7 +1371,7 @@ while running:
         CENTER_X = WIDTH // 2  # 450px
 
         # 0. 상단 공통 타이틀 및 안내
-        tempSurf.blit(fontM.render(f"보유 골드: {playerGold}G", True, GOLD), (30, 30))
+        tempSurf.blit(fontM.render(f"보유 골드: {stats['gold']}G", True, GOLD), (30, 30))
         tempSurf.blit(fontS.render("[Z] 전환 | [S] 시작", True, WHITE), (30, 70))
 
         # --- [좌측 영역: 상점 및 시너지 (0 ~ 450px)] ---
