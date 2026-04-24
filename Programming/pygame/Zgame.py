@@ -1107,8 +1107,10 @@ while running:
                     # 일반 상점 아이템 클릭 체크
                     if shopSubState == "NORMAL":
                         for opt in shopOptions:
-                            # 아이템 카드 영역 체크 (기존 Rect 좌표 사용)
-                            card_rect = pygame.Rect(...) # 기존에 작성하신 카드 위치
+                            # 아이템 카드 영역 체크 
+                            card_index = shopOptions.index(opt)
+                            card_rect = pygame.Rect(50 + card_index * 160, 100, 150, 200)
+
                             if card_rect.collidepoint(mousePos) and not opt["sold"]:
                                 item = opt["data"]
                                 if stats['gold'] >= item['price']:
@@ -1156,14 +1158,13 @@ while running:
                                 # 1. 돈 차감
                                 stats['gold'] -= pendingItem["data"]["price"]
                                 
-                                # 2. 아이템 교체 (기존 삭제 후 신규 추가)
-                                inventory.pop(i)
-                                inventory.append(pendingItem["data"])
-                                
-                                # 3. 상점 내 품절 처리
+                                # 2. 아이템 교체 및 상점 내 품절 처리
+                                stats['gold'] -= pendingItem["data"]["price"]
+                                inventory.pop(i) # 선택한 기존 아이템 제거
+                                inventory.append(pendingItem["data"]) # 새 아이템 추가
                                 pendingItem["sold"] = True
-                                
-                                # 4. 상태 초기화 및 스탯 재적용
+
+                                # 3. 상태 초기화 및 스탯 재적용
                                 shopSubState = "NORMAL"
                                 pendingItem = None
                                 calculate_stats()
