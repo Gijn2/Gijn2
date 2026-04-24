@@ -252,17 +252,6 @@ def calculate_stats():
 def getShopItems():
     return [{"data": item, "sold": False} for item in random.sample(ITEM_POOL, 3)]
 
-def buy_item(item):
-    global playerGold, playerHp, specialAmmo
-    # 1. 소모품 처리
-    if item.get("type") == "CONSUMABLE":
-        if item["id"] == "cons_1": 
-            playerHp = min(stats['maxHp'], playerHp + 50)
-        elif item["id"] == "cons_2": 
-            stats['specialAmmo'] += 1
-        playerGold -= item["price"]
-        return True # 소모품은 인벤토리에 들어가지 않음
-
 def refresh_shop():
     global shopItems, shopRefreshCount, freeRefreshAvailable
     
@@ -272,17 +261,6 @@ def refresh_shop():
     
     # 3개 랜덤 추출 (소모품은 항상 포함 가능하게 하거나 별도 비중 설정)
     shopItems = random.sample(available_pool, min(3, len(available_pool)))
-
-def handle_purchase(item):
-    global shopSubState, pendingItem, inventory
-    
-    if len(inventory) < 9:
-        inventory.append(item)
-        playerGold -= item["price"]
-    else:
-        # 인벤토리가 꽉 찼을 때
-        pendingItem = item
-        shopSubState = "CONFIRM_REPLACE"
 
 # 스테이지 클리어 시 이자 계산 (기존 gameState = 'SHOP' 변경 직전에 배치)
 def apply_interest():
@@ -1106,8 +1084,8 @@ while running:
                 
                 elif event.key == pygame.K_r:
                     cost = 0 if freeRefreshAvailable else (200 + 100 * shopRefreshCount)
-                    if playerGold >= cost:
-                        playerGold -= cost
+                    if stats["gold"] >= cost:
+                        stats["gold"] -= cost
                         if not freeRefreshAvailable: shopRefreshCount += 1
                         freeRefreshAvailable = False
                         refresh_shop()
@@ -1141,17 +1119,30 @@ while running:
                 # 2. 상점 아이템 구매 클릭 처리
                 for i, opt in enumerate(shopOptions):
                     card_rect = pygame.Rect(50 + i * 160, 100, 150, 200)
-                    if card_rect.collidepoint(mousePos) and not opt["sold"] and stats["gold"] >= opt["data"]["price"]:
-                        stats["gold"] -= opt["data"]["price"]
+                    if card_rect.collidepoint(mousePos) and not opt["sold"]:
+                        item_data = opt["data"]
+                        price = item_data["price"]
                         
-                        if len(inventory) < 9:
-                            # 자리 여유 시 즉시 장착
-                            inventory.append(opt["data"])
-                            opt["sold"] = True
-                            calculate_stats()
-                        else:
-                            # 9칸 꽉 찼을 경우 교체 대기 상태 진입
-                            pendingItem = opt
+                        if stats["gold"] >= price:
+                            # (1) 소모품 1회성 효과 처리
+                            if item_data.get("type") == "CONSUMABLE":
+                                if item_data["id"] == "cons_1": 
+                                    playerHp = min(stats['maxHp'], playerHp + 50)
+                                elif item_data["id"] == "cons_2": 
+                                    stats['specialAmmo'] += 1
+                                stats["gold"] -= price
+                                opt["sold"] = True
+                            
+                            # (2) 장비형 시너지 아이템 처리
+                            else:
+                                if len(inventory) < 9:
+                                    stats["gold"] -= price
+                                    inventory.append(item_data)
+                                    opt["sold"] = True
+                                    calculate_stats()
+                                else:
+                                    pendingItem = opt 
+                                    # 꽉 찼을 때는 UI 표기를 위해 변수 설정
                     
     # --- 게임 상태별 업데이트 및 렌더링 ---
     for p in particles[:]:
@@ -1332,32 +1323,25 @@ while running:
             p.update()
             hitThisFrame = False
 
+            # [기존의 복잡하고 존재하지 않는 속성을 찾는 로직 전체를 지우고 아래로 교체하세요]
+            
             # 보스 피격 판정
             if boss:
-                hit = False
-                hitSwarmWeak = False 
+                hit_radius = getattr(boss, 'hitboxRadius', 40) # 보스 클래스에 정의된 피격 반경 우선 사용
+                hitThisFrame = False
 
-                # 1. BossSwarm 처리: 내부 미니언(자식 개체)들 각각 충돌 체크
-                if hasattr(boss, 'minions'):
-                    for m in boss.minions:
-                        if p.pos.distance_to(m.pos) < getattr(m, 'radius', 20):
-                            boss.hp -= p.damage
+                # BossZero의 다중 코어(swarmCenters) 판정
+                if boss.type == "CRAZY" and boss.phase <= 3:
+                    for center in boss.swarmCenters:
+                        if p.pos.distance_to(center) < 20: # 코어 피격 반경
+                            boss.hp -= p.dmg # p.damage가 아니라 p.dmg 여야 합니다!
                             hitThisFrame = True
                             break
                 
-                # 2. BossZero 또는 파츠형 보스 처리 (segments가 있다고 가정)
-                elif hasattr(boss, 'segments'):
-                    for seg in boss.segments:
-                        if p.pos.distance_to(seg.pos) < getattr(seg, 'radius', 25):
-                            boss.hp -= p.damage
-                            hitThisFrame = True
-                            break
-                
-                # 3. 일반 보스 처리
-                else:
-                    if p.pos.distance_to(boss.pos) < getattr(boss, 'radius', 40):
-                        boss.hp -= p.damage
-                        hitThisFrame = True
+                # 일반적인 보스 본체 피격 판정
+                if not hitThisFrame and p.pos.distance_to(boss.pos) < hit_radius:
+                    boss.hp -= p.dmg
+                    hitThisFrame = True
                 
             # 일반 적 피격 판정 (보스를 맞추지 않았을 때만 체크하거나 관통 시 체크)
             if not hitThisFrame:
