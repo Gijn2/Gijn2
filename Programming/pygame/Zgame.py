@@ -65,24 +65,27 @@ except:
 base_stats = {"damage": 10, "speed": 5, "maxHp": 100, "pierce": False, "specialAmmo": 3}
 stats = base_stats.copy()
 stats['gold'] = 1000
-score = 0
-gameState = 'PLAYING'
-shootCooldown = 0
-specialEffectTimer = 0
-zeroTicket = False 
 STAGE_DURATION = 50 
 stageTimer = STAGE_DURATION
+
+bankBalance = 0        # 은행 잔고 초기화
 bossAlertTimer = 0
 currentStage = 1
-particles = []
+freeRefreshAvailable = False
+gameState = 'PLAYING'
 highScore = 0    
 hitboxRadius = 10
-bankBalance = 0        # 은행 잔고 초기화
-shopTab = "MARKET"     # 기본 상점 탭 설정
-pendingItem = None   # 인벤토리가 꽉 찼을 때 교체 대기 중인 아이템
 inventory = []       # 최대 9개 장착 가능
-shopOptions = []
+particles = []
+pendingItem = None   # 인벤토리가 꽉 찼을 때 교체 대기 중인 아이템
+score = 0
 screenShakeTimer = 0 # 화면 흔들림 카운터
+shootCooldown = 0
+specialEffectTimer = 0
+shopTab = "MARKET"     # 기본 상점 탭 설정
+shopOptions = []
+shopRefreshCount = 0
+zeroTicket = False 
 
 global playerHp
 playerHp = 100
@@ -94,15 +97,20 @@ invincibleTimer = 0
 SYNERGY_DATA = {
     "WEAPON": {
         2: {"name": "무기(2): 데미지 +5", "effect": {"damage": 5}},
-        4: {"name": "무기(4): 데미지 +10, 관통", "effect": {"damage": 10, "pierce": True}}
+        4: {"name": "무기(4): 데미지 +10, 관통", "effect": {"damage": 10, "pierce": True}},
+        6: {"name": "무기(6): 데미지 +20, 관통", "effect": {"damage": 20, "pierce": True}},
+        8: {"name": "무기(8): 데미지 +30, 관통", "effect": {"damage": 30, "pierce": True}},
     },
     "TECH": {
-        2: {"name": "기술(2): 이동속도 +3", "effect": {"speed": 3}},
-        4: {"name": "기술(4): 특수기 +3", "effect": {"specialAmmo": 3}}
+        3: {"name": "기술(2): 이동속도 +3", "effect": {"speed": 3}},
+        5: {"name": "기술(4): 특수기 +3", "effect": {"specialAmmo": 3}},
+        7: {"name": "기술(6): 이동속도 +5, 특수기 +5", "effect": {"speed": 5, "specialAmmo": 5}}
     },
     "ARMOR": {
         2: {"name": "장갑(2): 최대체력 +50", "effect": {"maxHp": 50}},
-        4: {"name": "장갑(4): 최대체력 +100", "effect": {"maxHp": 100}}
+        3: {"name": "장갑(4): 최대체력 +100", "effect": {"maxHp": 100}},
+        4: {"name": "장갑(6): 최대체력 +200", "effect": {"maxHp": 200}},
+        5: {"name": "장갑(8): 최대체력 +400", "effect": {"maxHp": 400}},
     },
     "SPEED": {2: {"name": "속도(2): 이속 +5", "effect": {"speed": 5}}},
     "GOLD": {2: {"name": "황금(2): 스테이지 클리어 보너스 +200", "effect": {}}},
@@ -110,6 +118,8 @@ SYNERGY_DATA = {
 }
 
 ITEM_POOL = [
+    {"id": "cons_1", "name": "수리 키트", "type": "CONSUMABLE", "price": 300, "desc": "체력 50 회복"},
+    {"id": "cons_2", "name": "에너지 셀", "type": "CONSUMABLE", "price": 500, "desc": "특수기 1회 충전"},
     {"id": "w1", "name": "화염 방사기", "tags": ["WEAPON", "TECH"], "price": 500, "desc": "무기, 기술"},
     {"id": "w2", "name": "초합금 검", "tags": ["WEAPON"], "price": 300, "desc": "무기"},
     {"id": "a1", "name": "나노 슈트", "tags": ["TECH", "ARMOR"], "price": 600, "desc": "기술, 장갑"},
@@ -193,8 +203,14 @@ def loadHighscoreSecure():
             return 0
     return 0
 
-# --- 유틸리티 함수 ---
-# (기존 getRandomEnemy 등은 유지)
+def take_damage(amount, shake, invinc):
+    global playerHp, shakeTimer, invincibleTimer
+    if invincibleTimer <= 0:
+        playerHp -= amount
+        shakeTimer = max(shakeTimer, shake) # 더 큰 화면 흔들림 유지
+        invincibleTimer = invinc
+        return True
+    return False
 
 # 스탯 재계산 로직 (DRY 원칙 적용)
 def calculate_stats():
@@ -233,10 +249,40 @@ def calculate_stats():
     if playerHp > stats["maxHp"]:
         playerHp = stats["maxHp"]
 
-
-
 def getShopItems():
     return [{"data": item, "sold": False} for item in random.sample(ITEM_POOL, 3)]
+
+def buy_item(item):
+    global playerGold, playerHp, specialAmmo
+    # 1. 소모품 처리
+    if item.get("type") == "CONSUMABLE":
+        if item["id"] == "cons_1": 
+            playerHp = min(stats['maxHp'], playerHp + 50)
+        elif item["id"] == "cons_2": 
+            stats['specialAmmo'] += 1
+        playerGold -= item["price"]
+        return True # 소모품은 인벤토리에 들어가지 않음
+
+def refresh_shop():
+    global shopItems, shopRefreshCount, freeRefreshAvailable
+    
+    # 인벤토리에 없는 아이템만 필터링 (중복 방지)
+    equipped_ids = [item['id'] for item in inventory]
+    available_pool = [i for i in ITEM_POOL if i['id'] not in equipped_ids]
+    
+    # 3개 랜덤 추출 (소모품은 항상 포함 가능하게 하거나 별도 비중 설정)
+    shopItems = random.sample(available_pool, min(3, len(available_pool)))
+
+def handle_purchase(item):
+    global shopSubState, pendingItem, inventory
+    
+    if len(inventory) < 9:
+        inventory.append(item)
+        playerGold -= item["price"]
+    else:
+        # 인벤토리가 꽉 찼을 때
+        pendingItem = item
+        shopSubState = "CONFIRM_REPLACE"
 
 # 스테이지 클리어 시 이자 계산 (기존 gameState = 'SHOP' 변경 직전에 배치)
 def apply_interest():
@@ -308,13 +354,13 @@ class Particle:
             surf.blit(p_surf, (self.pos[0]-3, self.pos[1]-3))
 
 class Projectile:
-    def __init__(self, x, y, vel, color, dmg, radius=5):
+    def __init__(self, x, y, vel, color, dmg, radius=5, isHoming=False):
         self.pos = pygame.Vector2(x, y)
         self.vel = vel
         self.color = color
         self.dmg = dmg
         self.radius = radius
-        self.isHoming = False
+        self.isHoming = isHoming
 
     def update(self): 
         self.pos += self.vel
@@ -392,8 +438,8 @@ class Meteor:
 class BossCrusher:
     def __init__(self):
         self.type = "Crusher"
-        self.hp = 800
-        self.maxHp = 800
+        self.hp = 80
+        self.maxHp = 80
         self.pos = pygame.Vector2(WIDTH // 2, 100)
         self.homePos = pygame.Vector2(WIDTH // 2, 100)
         self.mode = "IDLE"
@@ -1058,12 +1104,20 @@ while running:
                     gameState = 'PLAYING'
                     currentStage += 1
                 
+                elif event.key == pygame.K_r:
+                    cost = 0 if freeRefreshAvailable else (200 + 100 * shopRefreshCount)
+                    if playerGold >= cost:
+                        playerGold -= cost
+                        if not freeRefreshAvailable: shopRefreshCount += 1
+                        freeRefreshAvailable = False
+                        refresh_shop()
+
                 # 은행 입출금 기능 (은행 탭일 때만 작동)
                 if shopTab == "BANK":
-                    if event.key == pygame.K_d and stats["gold"] >= 100:
+                    if event.key == pygame.K_a and stats["gold"] >= 100:
                         stats["gold"] -= 100
                         bankBalance += 100
-                    elif event.key == pygame.K_a and bankBalance >= 100:
+                    elif event.key == pygame.K_d and bankBalance >= 100:
                         stats["gold"] += 100
                         bankBalance -= 100
 
@@ -1119,21 +1173,18 @@ while running:
         current_homing = keys[pygame.K_LSHIFT]  
         if keys[pygame.K_q] and shootCooldown <= 0:
             base_dir = pygame.Vector2(0, -10)  # 기본 위쪽 발사
-
             is_homing = keys[pygame.K_LSHIFT]
 
             new_proj = Projectile(
-                playerPos.x + 30,
-                playerPos.y,
-                base_dir,
-                CYAN,
-                stats["damage"],
-                5,
-                isHoming=keys[pygame.K_LSHIFT]
-            )
-
+                    playerPos.x + 30, 
+                    playerPos.y + 30, 
+                    pygame.Vector2(0, -10), 
+                    GREEN, 
+                    stats['damage'],
+                    isHoming=keys[pygame.K_LSHIFT] # 이제 정상적으로 인식됩니다.
+                )
             pProjs.append(new_proj)
-            shootCooldown = 15
+            shootCooldown = 15 # 발사 간격 조절
         shootCooldown = max(0, shootCooldown - 1)
         if invincibleTimer > 0: invincibleTimer -= 1
 
@@ -1173,12 +1224,12 @@ while running:
                     # boss = BossChernobog()
                     boss = BossCrusher()
                 elif currentStage == 2:
-                    boss = BossSwarm()
+                    boss = BossCrusher()
                 elif currentStage == 3:
-                    boss = BossZero()
+                    boss = BossCrusher()
                 else:
                     # 모든 지정된 스테이지 이후에는 무작위 혹은 기본 보스
-                    boss = random.choice([BossSwarm(), BossCrusher()])
+                    boss = random.choice([BossCrusher()])
 
             if len(enemies) < 10:
                 enemyType = getRandomEnemy(currentStage)
@@ -1190,6 +1241,7 @@ while running:
                     if random.random() < 0.25:
                         enemies.append(Enemy("type4", random.randint(0, 1000)))
             pass
+
 
         if boss:
             boss.update(eProjs, playerPos)
@@ -1224,9 +1276,8 @@ while running:
             
             # 플레이어 본체와 적 충돌 (원형 판정)
             if playerCenter.distance_to(eCenter) < hitboxRadius + 15 and invincibleTimer <= 0:
-                playerHp -= 15; shakeTimer = 15; invincibleTimer = 40
-                if e in enemies: enemies.remove(e)
-                continue
+                if take_damage(15, 15, 40):
+                    if e in enemies: enemies.remove(e)
 
             # 화면 하단 이탈 시 제거 (리스폰을 위함)
             if e.pos.y > HEIGHT + 50:
@@ -1259,13 +1310,25 @@ while running:
 
         # --- 플레이어 투사체(pProjs) 업데이트 및 적/보스 피격 판정 ---
         for p in pProjs[:]:
-            # [추가된 호밍 유도 로직]
-            if getattr(p, 'isHoming', False) and enemies:
-                target = min(enemies, key=lambda e: p.pos.distance_to(pygame.Vector2(e.pos.x+15, e.pos.y+15)))
-                target_dir = pygame.Vector2(target.pos.x+15, target.pos.y+15) - p.pos
-                if target_dir.length() > 0:
-                    p.vel = p.vel.lerp(target_dir.normalize() * 12, 0.15) # 부드럽게 유도됨
-
+            if getattr(p, 'isHoming', False):
+                valid_targets = []
+                
+                # 1. 몬스터 타겟 추가
+                for e in enemies:
+                    valid_targets.append(pygame.Vector2(e.pos.x + 15, e.pos.y + 15))
+                
+                # 2. 보스 타겟 추가
+                if boss and hasattr(boss, 'pos'):
+                    # 보스의 중심점 (보스 종류에 따라 세밀한 조정이 필요하다면 offset 추가 가능)
+                    valid_targets.append(pygame.Vector2(boss.pos.x, boss.pos.y))
+                
+                # 3. 가장 가까운 타겟 계산 및 속도 보정 (lerp)
+                if valid_targets:
+                    closest_target = min(valid_targets, key=lambda pos: p.pos.distance_to(pos))
+                    target_dir = closest_target - p.pos
+                    if target_dir.length() > 0:
+                        # 0.15의 가중치로 부드러운 유도 미사일 궤적 생성
+                        p.vel = p.vel.lerp(target_dir.normalize() * 12, 0.15)
             p.update()
             hitThisFrame = False
 
@@ -1273,27 +1336,29 @@ while running:
             if boss:
                 hit = False
                 hitSwarmWeak = False 
+
+                # 1. BossSwarm 처리: 내부 미니언(자식 개체)들 각각 충돌 체크
+                if hasattr(boss, 'minions'):
+                    for m in boss.minions:
+                        if p.pos.distance_to(m.pos) < getattr(m, 'radius', 20):
+                            boss.hp -= p.damage
+                            hitThisFrame = True
+                            break
                 
-                if boss.type == "CHERNOBOG" and boss.rect.collidepoint(p.pos): hit = True
-                elif boss.type == "SWARM":
-                    if hasattr(boss, 'swarms'):
-                        for i, s in enumerate(boss.swarms):
-                            # s.pos 또는 s.rect.center 등을 사용
-                            pass
-                elif boss.type == "ZERO" and p.pos.distance_to(boss.pos + pygame.Vector2(25,25)) < 40: hit = True
-                elif boss.type == "ROCK" and p.pos.distance_to(boss.pos) < 60: hit = True # 판정 범위 상향
-                elif boss.type == "Crusher" and p.pos.distance_to(boss.pos) < 60: hit = True
-
-                if hit:
-                    actualDmg = p.dmg
-                    if boss.type == "SWARM":
-                        actualDmg = p.dmg if hitSwarmWeak else p.dmg * 0.0001
-                    
-                    boss.hp -= actualDmg
-                    hitThisFrame = True
-                    if sndHit: sndHit.play() 
-                    for _ in range(5): particles.append(Particle(p.pos.x, p.pos.y, (255, 200, 50)))
-
+                # 2. BossZero 또는 파츠형 보스 처리 (segments가 있다고 가정)
+                elif hasattr(boss, 'segments'):
+                    for seg in boss.segments:
+                        if p.pos.distance_to(seg.pos) < getattr(seg, 'radius', 25):
+                            boss.hp -= p.damage
+                            hitThisFrame = True
+                            break
+                
+                # 3. 일반 보스 처리
+                else:
+                    if p.pos.distance_to(boss.pos) < getattr(boss, 'radius', 40):
+                        boss.hp -= p.damage
+                        hitThisFrame = True
+                
             # 일반 적 피격 판정 (보스를 맞추지 않았을 때만 체크하거나 관통 시 체크)
             if not hitThisFrame:
                 for e in enemies[:]:
@@ -1407,19 +1472,22 @@ while running:
         
         y_pos = 400
         for tag, count in synergy_counts.items():
-            # 왼쪽 출력
+            # 왼쪽 출력 (보유 태그 개수)
             tempSurf.blit(fontS.render(f"{tag}: {count}개", True, WHITE), (30, y_pos))
-            # 오른쪽 출력 (발동된 경우만)
+            
+            # 오른쪽 출력 (발동된 효과)
             if tag in SYNERGY_DATA:
                 valid_effects = [
                     (req, data) for req, data in SYNERGY_DATA[tag].items()
                     if count >= req
                 ]
                 if valid_effects:
-                    req, data = max(valid_effects, key=lambda x: x[0])  # ✅ 최고 단계만
-                    eff_txt = f"{tag}({req}): {data['name']}"
+                    req, data = max(valid_effects, key=lambda x: x[0])  # 최고 단계만 출력
+                    eff_txt = f"{data['name']}"
                     tempSurf.blit(fontS.render(eff_txt, True, CYAN), (CENTER_X // 2 + 30, y_pos))
-                    y_pos += 25
+            
+            # 💡 [수정됨] y_pos += 25를 if문 바깥으로 빼서 항상 줄바꿈이 되도록 맞춥니다.
+            y_pos += 25
 
         # --- [우측 영역: 인벤토리 9칸 (450 ~ 900px)] ---
         tempSurf.blit(fontM.render("INVENTORY", True, WHITE), (CENTER_X + 40, 120))
