@@ -4,10 +4,10 @@ import math
 import os
 import hashlib
 
-# --- 0. 경로 설정 ---
+# --- 경로 설정 ---
 IMGS_PATH = os.path.join(os.path.dirname(__file__), "imgs")
 
-# --- 1. 초기화 및 화면 설정 ---
+# --- 초기화 및 화면 설정 ---
 pygame.init()
 WIDTH, HEIGHT = 900, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -15,7 +15,7 @@ pygame.display.set_caption("Topdown Shooting Pygame: Limited Edition")
 
 clock = pygame.time.Clock()
 
-# --- 2. 에셋 로드 (화면 설정 후 로드해야 함) --
+# --- 에셋 로드 ---
 secretSalt = "MyPyGameTest2026"
 
 # 플레이어 및 적 이미지 로드
@@ -61,28 +61,28 @@ except:
     fontM = pygame.font.Font(None, 32)
     fontL = pygame.font.Font(None, 50)
 
-# --- 3. 게임 상태 관리 변수 ---
+# --- 게임 상태 관리 변수 ---
 base_stats = {"damage": 10, "speed": 5, "maxHp": 100, "pierce": False, "specialAmmo": 3}
 stats = base_stats.copy()
 stats['gold'] = 1000
 STAGE_DURATION = 50 
 stageTimer = STAGE_DURATION
 
-bankBalance = 0        # 은행 잔고 초기화
+bankBalance = 0         # 은행 잔고
 bossAlertTimer = 0
 currentStage = 1
 freeRefreshAvailable = False
 gameState = 'PLAYING'
 highScore = 0    
 hitboxRadius = 10
-inventory = []       # 최대 9개 장착 가능
+inventory = []          # 시너지 인벤토리
 particles = []
-pendingItem = None   # 인벤토리가 꽉 찼을 때 교체 대기 중인 아이템
+pendingItem = None      # 인벤토리가 꽉 찼을 때 교체 대기 중인 아이템
 score = 0
-screenShakeTimer = 0 # 화면 흔들림 카운터
+screenShakeTimer = 0    # 화면 흔들림 카운터
 shootCooldown = 0
 specialEffectTimer = 0
-shopTab = "MARKET"     # 기본 상점 탭 설정
+shopTab = "MARKET"      # 기본 상점 설정
 shopOptions = []
 shopRefreshCount = 0
 zeroTicket = False 
@@ -154,7 +154,6 @@ ENEMY_SPAWN_POOL = [
 ]
 
 # --- 유틸리티 함수 ---
-
 # 현재 스테이지보다 진입 조건이 같거나 낮은 몬스터만 필터링
 def getRandomEnemy(current_stage):
     available = [e for e in ENEMY_SPAWN_POOL if current_stage >= e["minStage"]]
@@ -173,7 +172,6 @@ def loadHighscore():
     return 0
 highScore = loadHighscore()
 
-# 해킹을 막기 위한 함수
 def saveHighscoreSecure(scoreValue):
     # 점수와 비밀키를 합쳐 해시값(Checksum) 생성
     dataStr = str(scoreValue) + secretSalt
@@ -207,7 +205,7 @@ def take_damage(amount, shake, invinc):
     global playerHp, shakeTimer, invincibleTimer
     if invincibleTimer <= 0:
         playerHp -= amount
-        shakeTimer = max(shakeTimer, shake) # 더 큰 화면 흔들림 유지
+        shakeTimer = max(shakeTimer, shake)
         invincibleTimer = invinc
         return True
     return False
@@ -230,7 +228,7 @@ def calculate_stats():
             active_tags.append(tag)
             synergy_counts[tag] = synergy_counts.get(tag, 0) + 1
 
-    # 2. 중복을 제거한 고유 태그 목록 생성
+    # 중복을 제거한 고유 태그 목록 생성
     unique_active_tags = sorted(list(set(active_tags)))
         
     # 시너지 효과 적용
@@ -262,18 +260,17 @@ def refresh_shop():
     # 3개 랜덤 추출 (소모품은 항상 포함 가능하게 하거나 별도 비중 설정)
     shopItems = random.sample(available_pool, min(3, len(available_pool)))
 
-# 스테이지 클리어 시 이자 계산 (기존 gameState = 'SHOP' 변경 직전에 배치)
+# 스테이지 클리어 시 이자 계산
 def apply_interest():
-    global bankBalance, stats  # global 키워드로 전역 변수임을 명시
     if bankBalance > 0:
         interest = int(bankBalance * 0.15)
         stats["gold"] += interest
 
-# --- 5. 클래스 정의 ---   
+# --- 클래스 정의 ---   
 class BossAssetManager:
     _cache = {}
 
-    # 1. 보스별 개별 설정 (이름: (가로, 세로, 확장자)) / 여기에 새 보스를 추가하기만 하면 자동으로 로드됩니다.
+    # 1. 보스별 개별 설정
     BOSS_CONFIG = {
         "bossSwarm": {"size": (100, 100), "ext": ".png"},
         "bossZero": {"size": (100, 150), "ext": ".png"},
@@ -298,12 +295,12 @@ class BossAssetManager:
             key = motion.upper()
 
             try:
-                # 0. 동적 파일 형식 지원 (png, gif 등 ext 설정에 따름)
+                # 0. 동적 파일 형식 지원
                 img = pygame.image.load(path).convert_alpha()
                 images[key] = pygame.transform.scale(img, size)
             except Exception as e:
                 print(f"Asset Error [{file_name}]: {e}")
-                # 대체 이미지 생성 (설정된 사이즈에 맞게)
+                # 대체 이미지 생성
                 placeholder = pygame.Surface(size, pygame.SRCALPHA)
                 color = (255, 0, 0) if key == "ATTACK" else (100, 100, 100)
                 pygame.draw.rect(placeholder, color, (0, 0, size[0], size[1]), 2)
@@ -316,14 +313,14 @@ class Particle:
     def __init__(self, x, y, color):
         self.pos = [x, y]
         self.vel = [random.uniform(-3, 3), random.uniform(-3, 3)]
-        self.life = 255  # 투명도 및 수명
+        self.life = 255  # 탄막 유지 시간
         self.color = color
         self.isHoming = False
 
     def update(self):
         self.pos[0] += self.vel[0]
         self.pos[1] += self.vel[1]
-        self.life -= 8  # 매 프레임 수명 감소
+        self.life -= 8 
 
     def draw(self, surf):
         if self.life > 0:
@@ -351,12 +348,11 @@ class HomingProjectile(Projectile):
     def __init__(self, x, y, vel, color, dmg, radius=5, turnSpeed=0.03):
         super().__init__(x, y, vel, color, dmg, radius)
         self.turnSpeed = turnSpeed
-        self.timer = 0  # 폭발 타이머 추가
         self.maxLife = 360 
+        self.timer = 0  # 폭발 타이머
         
     def updateTarget(self, targetPos, eProjs):
         self.timer += 1
-        
         # 6초가 지나면 폭발 및 분열
         if self.timer >= self.maxLife:
             self.explode(eProjs)
@@ -372,9 +368,9 @@ class HomingProjectile(Projectile):
     def explode(self, eProjs):
         for i in range(10):
             angle = i * 36
-            # 전방향(360도)으로 퍼지는 속도 벡터 계산
+            # 전방향으로 퍼지는 속도 벡터 계산
             splitVel = pygame.Vector2(0, 4).rotate(angle)
-            # 분열된 탄환은 일반 Projectile로 생성 (무한 분열 방지)
+            # 분열된 탄환은 일반 탄막으로 생성
             eProjs.append(Projectile(self.pos.x, self.pos.y, splitVel, self.color, self.dmg, 4))    
 
 class Meteor:
@@ -387,7 +383,7 @@ class Meteor:
         self.img = pygame.transform.scale(meteorImg, (self.radius * 2, self.radius * 2))
 
     def update(self, playerPos):
-        # 가속 낙하 로직
+        # 가속 낙하
         self.speed = min(14, self.speed + 0.6)
         direction = (self.target - self.pos)
         
@@ -399,7 +395,7 @@ class Meteor:
         if self.pos.distance_to(playerPos + pygame.Vector2(30, 30)) < self.radius + 10:
             return True # 충돌 발생 신호
             
-        # 목표 지점에 도달하거나 화면을 완전히 벗어나면 폭발 및 소멸 처리 (안전장치 추가)
+        # 목표 지점에 도달하거나 화면을 완전히 벗어나면 폭발 및 소멸 처리
         if (self.target - self.pos).length() < 10 or self.pos.y > HEIGHT + 100:
             self.alive = False
         return False
@@ -407,7 +403,6 @@ class Meteor:
     def draw(self, surf):
         shadow_surf = pygame.Surface((self.radius * 4, self.radius * 4), pygame.SRCALPHA)
         for r in range(self.radius, 0, -5):
-            # r이 작아질수록(중심으로 갈수록) 알파값(진하기) 증가
             alpha = int(150 * (1 - r/self.radius)) 
             pygame.draw.circle(shadow_surf, (0, 0, 0, alpha), (self.radius * 2, self.radius * 2), r)
         surf.blit(shadow_surf, (self.target.x - self.radius * 2, self.target.y - self.radius * 2))
@@ -436,7 +431,7 @@ class BossCrusher:
             if self.timer > 90:
                 self.mode = "TRAP_SHOOT"
                 self.timer = 0
-                
+
         elif self.mode == "TRAP_SHOOT":
             self.currentImg = self.images["ATTACK"]
             self.trapAngle += 0.05
@@ -449,7 +444,7 @@ class BossCrusher:
                 self.mode = "DASH"
                 self.targetPos = pygame.Vector2(pPos.x, pPos.y)
                 self.timer = 0
-                
+
         elif self.mode == "DASH":
             self.currentImg = self.images["ATTACK"]
             dirVec = self.targetPos - self.pos
@@ -459,11 +454,11 @@ class BossCrusher:
                 self.mode = "SPIN_SHOOT"
                 self.timer = 0
                 self.spinAngle = 0
-                
+
         elif self.mode == "SPIN_SHOOT":
             self.currentImg = self.images["ATTACK"]
             self.spinAngle += 0.1
-            # 화면을 가득 채우지만 매우 느리고 틈이 넓은 양방향 나선 탄막 아트
+
             if self.timer % 6 == 0:
                 for i in range(4): 
                     angle = (i * (math.pi / 2)) + self.spinAngle
@@ -475,7 +470,7 @@ class BossCrusher:
             if self.timer > 150:
                 self.mode = "RETURN"
                 self.timer = 0
-                
+    
         elif self.mode == "RETURN":
             dirVec = self.homePos - self.pos
             self.currentImg = self.images["STAND"]
@@ -506,7 +501,7 @@ class BossChernobog:
         self.orbitBullets = []
         self.orbitAngle = 0
 
-    def update(self, eProjs, pPos):
+    def update(self, eProjs):
         global shakeTimer
         self.timer += 1
         self.rect.topleft = (self.pos.x - 60, self.pos.y - 60)
@@ -567,7 +562,7 @@ class BossRock:
         self.meteors.append(Meteor(targetPos))
 
     def _explode_meteor(self, meteor, eProjs, piece_count=12, homing_count=0):
-        # 메테오 폭발 시 파편(탄막) 사방으로 방출 (Danmaku 스타일)
+        # 메테오 폭발 시 파편 사방으로 방출
         for angle in range(0, 360, int(360/piece_count)):
             dirVec = pygame.Vector2(0, random.uniform(3, 6)).rotate(angle)
             eProjs.append(Projectile(meteor.target.x, meteor.target.y, dirVec, RED, 8, 6))
@@ -584,11 +579,10 @@ class BossRock:
         elif self.timer < 3375: self.phase = 3
         else: self.phase = 4
 
-        # 대지의 중압감을 표현하는 묵직한 좌우 이동
         self.pos.x = WIDTH // 2 + math.sin(self.timer * 0.01) * 200 
 
         if self.phase == 1:
-            # [기] 무차별 낙하: 운석우 + 보스의 기본 산탄
+            # 무차별 낙하: 운석우 + 보스의 기본 산탄
             # 패턴 1: 무작위 지역에 끊임없는 메테오
             if self.timer % 25 == 0:
                 self._spawn_meteor(pygame.Vector2(random.randint(50, WIDTH-50), random.randint(100, HEIGHT-50)))
@@ -599,7 +593,7 @@ class BossRock:
                     eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, GOLD, 15, 6))
             
         elif self.phase == 2:
-            # [승] 정밀 타격과 화산 폭발
+            # 정밀 타격과 화산 폭발
             # 패턴 1: 플레이어를 끈질기게 노리는 메테오
             if self.timer % 30 == 0:
                 self._spawn_meteor(pygame.Vector2(playerPos.x, playerPos.y))
@@ -612,7 +606,6 @@ class BossRock:
                 eProjs.append(Projectile(self.pos.x, self.pos.y, (playerPos - self.pos).normalize() * 7, CYAN, 20, 8))
 
         elif self.phase == 3:
-            # [전] 메테오 트랩: 갇힌 공간에서의 회피
             # 패턴 1: 플레이어 주변을 포위하듯 떨어지는 3개의 메테오
             if self.timer % 50 == 0:
                 for angle in [0, 120, 240]:
@@ -627,7 +620,6 @@ class BossRock:
                     eProjs.append(Projectile(self.pos.x + x_offset, self.pos.y, pygame.Vector2(0, 6), RED, 8, 6))
             
         elif self.phase == 4:
-            # [결] 카타클리즘(대재앙): 화면 전체를 뒤덮는 메테오와 파편, 유도탄의 축제
             self.currentImg = self.images["ATTACK"]
             # 패턴 1: 초고속 랜덤 메테오 폭격
             if self.timer % 15 == 0:
@@ -654,7 +646,7 @@ class BossRock:
 
             if not meteor.alive:
                 # 페이즈가 오를수록 파편 개수가 증가하고 유도 파편이 추가됨
-                frag_count = 12 + (self.phase * 4) # 4페이즈엔 폭발당 28개의 파편
+                frag_count = 12 + (self.phase * 4) # 4페이즈: 폭발당 28개의 파편
                 homing = 2 if self.phase >= 3 else 0 # 3, 4페이즈엔 유도 파편 발생
                 self._explode_meteor(meteor, eProjs, piece_count=frag_count, homing_count=homing)
                 self.meteors.remove(meteor)
@@ -693,7 +685,6 @@ class BossRoll:
         self.orbitAngle += 0.05
 
         if self.phase == 1:
-            # [기] 육각성(Hexagram) 펄스
             # 패턴 1: 3중 나선 교차 (시계/반시계 동시 회전)
             if self.timer % 4 == 0:
                 for i in range(3):
@@ -712,7 +703,6 @@ class BossRoll:
                 eProjs.append(Projectile(self.pos.x, self.pos.y, dirVec, RED, 10, 5))
 
         elif self.phase == 2:
-            # [승] 통제된 회전: 풍차 모양의 거대한 레이저 탄막
             # 패턴 1: 4가닥의 촘촘한 회전 빔 (풍차)
             if self.timer % 3 == 0:
                 for i in range(4):
@@ -731,7 +721,6 @@ class BossRoll:
                     eProjs.append(Projectile(self.pos.x, self.pos.y, base_dir.rotate(a) * 7, RED, 7, 5))
 
         elif self.phase == 3:
-            # [전] 체크보드와 파도: 플레이어의 무빙을 강제하는 체스판 패턴
             # 패턴 1: 상하좌우로 이동하며 쏘는 격자형 탄막
             if self.timer % 15 == 0:
                 eProjs.append(Projectile(self.pos.x - 100, self.pos.y, pygame.Vector2(0, 5), WHITE, 10, 6))
@@ -748,7 +737,6 @@ class BossRoll:
                 eProjs.append(HomingProjectile(self.pos.x + 50, self.pos.y, pygame.Vector2(2, 2), CYAN, 15, 8))
 
         elif self.phase == 4:
-            # [결] 절대 영도 만다라: 극한의 밀도와 아름다움을 지닌 최종 패턴
             # 패턴 1: 7방향 초고속 회전 나선 (일정 주기마다 회전 방향 반전)
             direction = 1 if (self.timer // 150) % 2 == 0 else -1
             if self.timer % 3 == 0:
@@ -842,7 +830,6 @@ class BossZero:
         self.orbitBullets = []
         self.orbitAngle = 0
         self.phase = 1
-        # 구 Swarm의 다중 코어 로직 흡수
         self.swarmCenters = [pygame.Vector2(self.pos.x, self.pos.y) for _ in range(6)]
 
     def update(self, eProjs, pPos, ctx=None):
@@ -886,7 +873,6 @@ class BossZero:
                         eProjs.append(HomingProjectile(center.x, center.y, pygame.Vector2(0, -3), RED, 12, 6))
 
         else:
-            # 후반부: Zombie 특유의 궤도 및 압박 패턴 극대화
             if self.phase == 4:
                 # 거대 궤도 조준 발사
                 self.orbitBullets = [b for b in self.orbitBullets if b in eProjs]
@@ -932,7 +918,7 @@ class BossZero:
         pygame.draw.circle(surf, RED, (int(self.pos.x), int(self.pos.y)), 30, 0)
         pygame.draw.circle(surf, WHITE, (int(self.pos.x), int(self.pos.y)), 10)
         
-        # 1~3페이즈 Swarm 코어 렌더링
+        # 코어 렌더링
         if self.phase <= 3:
             for center in self.swarmCenters:
                 pygame.draw.circle(surf, CYAN, (int(center.x), int(center.y)), 10)
@@ -956,7 +942,7 @@ class Enemy:
         self.attackTimer = 0
         self.orbitBullets = [] # type3를 위한 회전 총알 저장소
         
-        # 타입별 초기화 로직 분리 (KISS)
+        # 타입별 초기화 로직 분리
         if eType == "type1":
             self.hp = 5
         elif eType == "type2":
@@ -996,7 +982,7 @@ class Enemy:
                 if self.eType == "type3":
                     self.orbitAngles = [i * 40 for i in range(9)]
                 
-        # 3. 공격 패턴 실행 (모션 동기화)
+        # 3. 공격 패턴 실행
         elif self.state == "ATTACK":
             self.attackTimer += 1
             
@@ -1040,13 +1026,13 @@ class Enemy:
         currentImg = ENEMY_IMGS.get(self.imgType, ENEMY_IMGS["type_1"])[self.state]
         surf.blit(currentImg, self.pos)
         
-        # type3의 회전하는 투사체 시각화 (STAND 전환 전까지)
+        # type3의 회전하는 투사체 시각화
         if self.state == "ATTACK" and self.eType == "type3":
             for angle in getattr(self, 'orbitAngles', []):
                 offset = pygame.Vector2(0, 25).rotate(angle)
                 pygame.draw.circle(surf, GOLD, (int(self.pos.x+25 + offset.x), int(self.pos.y+25 + offset.y)), 5)
 
-# --- 6. 메인 게임 루프 ---
+# --- 0. 메인 게임 루프 ---
 playerPos = pygame.Vector2(WIDTH//2, HEIGHT-80)
 enemies, pProjs, eProjs, boss = [], [], [], None
 shopOptions = []
@@ -1276,7 +1262,6 @@ while running:
                 continue
 
         # --- 2. 적 투사체(eProjs) 업데이트 및 플레이어 피격 판정 ---
-        # 중복 루프를 하나로 합쳐 속도 문제를 해결했습니다.
         for p in eProjs[:]:
             shouldRemove = False
             if isinstance(p, HomingProjectile):
@@ -1290,7 +1275,7 @@ while running:
                 if p in eProjs: eProjs.remove(p)
                 continue
 
-            # 플레이어 피격 판정 (원형 10px 기준)
+            # 플레이어 피격 판정
             p_radius = getattr(p, 'radius', 5)
             if p.pos.distance_to(playerCenter) < hitboxRadius + p_radius and invincibleTimer <= 0:
                 playerHp -= p.dmg
@@ -1322,8 +1307,6 @@ while running:
                         p.vel = p.vel.lerp(target_dir.normalize() * 12, 0.15)
             p.update()
             hitThisFrame = False
-
-            # [기존의 복잡하고 존재하지 않는 속성을 찾는 로직 전체를 지우고 아래로 교체하세요]
             
             # 보스 피격 판정
             if boss:
