@@ -85,6 +85,7 @@ specialEffectTimer = 0
 shopTab = "MARKET"      # 기본 상점 설정
 shopOptions = []
 shopRefreshCount = 0
+shopSubState = "NORMAL"
 zeroTicket = False 
 
 global playerHp
@@ -251,15 +252,26 @@ def getShopItems():
     return [{"data": item, "sold": False} for item in random.sample(ITEM_POOL, 3)]
 
 def refresh_shop():
-    global shopItems, shopRefreshCount, freeRefreshAvailable
+    global shopOptions, inventory
     
-    # 인벤토리에 없는 아이템만 필터링 (중복 방지)
+    # 1. 현재 인벤토리에 있는 아이템 ID 목록 추출
     equipped_ids = [item['id'] for item in inventory]
-    available_pool = [i for i in ITEM_POOL if i['id'] not in equipped_ids]
     
-    # 3개 랜덤 추출 (소모품은 항상 포함 가능하게 하거나 별도 비중 설정)
-    shopItems = random.sample(available_pool, min(3, len(available_pool)))
-
+    # 2. 인벤토리에 없는 아이템만 후보군으로 필터링
+    # 소모품(CONSUMABLE)은 항상 등장 가능하게 설정
+    available_pool = [
+        item for item in ITEM_POOL 
+        if item['id'] not in equipped_ids or item.get('type') == 'CONSUMABLE'
+    ]
+    
+    # 3. 랜덤으로 3개 선택 (후보가 3개보다 적으면 전체 선택)
+    selected = random.sample(available_pool, min(3, len(available_pool)))
+    
+    # 4. 상점 옵션 객체 생성
+    shopOptions = []
+    for item in selected:
+        shopOptions.append({"data": item, "sold": False})
+        
 # 스테이지 클리어 시 이자 계산
 def apply_interest():
     if bankBalance > 0:
@@ -1059,23 +1071,7 @@ while running:
         if event.type == pygame.KEYDOWN:
 
             if gameState == 'SHOP':
-                if event.key == pygame.K_z:
-                    shopTab = "BANK" if shopTab == "MARKET" else "MARKET"
                 
-                # S키로 스테이지 시작
-                elif event.key == pygame.K_s:
-                    apply_interest()
-                    gameState = 'PLAYING'
-                    currentStage += 1
-                
-                elif event.key == pygame.K_r:
-                    cost = 0 if freeRefreshAvailable else (200 + 100 * shopRefreshCount)
-                    if stats["gold"] >= cost:
-                        stats["gold"] -= cost
-                        if not freeRefreshAvailable: shopRefreshCount += 1
-                        freeRefreshAvailable = False
-                        refresh_shop()
-
                 # 은행 입출금 기능 (은행 탭일 때만 작동)
                 if shopTab == "BANK":
                     if event.key == pygame.K_a and stats["gold"] >= 100:
@@ -1085,50 +1081,93 @@ while running:
                         stats["gold"] += 100
                         bankBalance -= 100
 
-        # 마우스 클릭 처리 (UI 분리 및 로직 통합)
-        if event.type == pygame.MOUSEBUTTONDOWN and gameState == 'SHOP':
-            mousePos = pygame.mouse.get_pos()
-            
-            # 1. 인벤토리가 꽉 차서 교체 대기 중일 때 인벤토리 클릭 처리
-            if pendingItem is not None:
-                for i in range(len(inventory)):
-                    row = i // 3
-                    col = i % 3
-                    slotRect = pygame.Rect(550 + col * 100, 100 + row * 100, 90, 90)
-                    if slotRect.collidepoint(mousePos):
-                        inventory[i] = pendingItem["data"] # 기존 아이템 대체
-                        pendingItem["sold"] = True
-                        pendingItem = None
-                        calculate_stats()
-                        break
-            else:
-                # 2. 상점 아이템 구매 클릭 처리
-                for i, opt in enumerate(shopOptions):
-                    card_rect = pygame.Rect(50 + i * 160, 100, 150, 200)
-                    if card_rect.collidepoint(mousePos) and not opt["sold"]:
-                        item_data = opt["data"]
-                        price = item_data["price"]
-                        
-                        if stats["gold"] >= price:
-                            # (1) 소모품 1회성 효과 처리
-                            if item_data.get("type") == "CONSUMABLE":
-                                if item_data["id"] == "cons_1": 
-                                    playerHp = min(stats['maxHp'], playerHp + 50)
-                                elif item_data["id"] == "cons_2": 
-                                    stats['specialAmmo'] += 1
-                                stats["gold"] -= price
-                                opt["sold"] = True
-                            
-                            # (2) 장비형 시너지 아이템 처리
-                            else:
-                                if len(inventory) < 9:
-                                    stats["gold"] -= price
-                                    inventory.append(item_data)
-                                    opt["sold"] = True
-                                    calculate_stats()
-                                else:
-                                    pendingItem = opt 
-                                    # 꽉 찼을 때는 UI 표기를 위해 변수 설정
+                if event.key == pygame.K_z:
+                    shopTab = "BANK" if shopTab == "MARKET" else "MARKET"
+                
+                # S키로 스테이지 시작
+                elif event.key == pygame.K_s:
+                    apply_interest()
+                    gameState = 'PLAYING'
+                    currentStage += 1
+                
+                # R키: 상점 새로고침
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                    cost = 0 if freeRefreshAvailable else (200 + 100 * shopRefreshCount)
+                    if stats['gold'] >= cost:
+                        stats['gold'] -= cost
+                        if not freeRefreshAvailable:
+                            shopRefreshCount += 1
+                        freeRefreshAvailable = False
+                        refresh_shop()  # 아이템 교체 실행
+
+                # 마우스 클릭: 아이템 구매 및 인벤토리 관리
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    mousePos = pygame.mouse.get_pos()
+                    
+                    # 일반 상점 아이템 클릭 체크
+                    if shopSubState == "NORMAL":
+                        for opt in shopOptions:
+                            # 아이템 카드 영역 체크 (기존 Rect 좌표 사용)
+                            card_rect = pygame.Rect(...) # 기존에 작성하신 카드 위치
+                            if card_rect.collidepoint(mousePos) and not opt["sold"]:
+                                item = opt["data"]
+                                if stats['gold'] >= item['price']:
+                                    
+                                    # [요구사항 3] 소모품 처리
+                                    if item.get("type") == "CONSUMABLE":
+                                        stats['gold'] -= item['price']
+                                        if item["id"] == "cons_1": playerHp = min(stats['maxHp'], playerHp + 50)
+                                        elif item["id"] == "cons_2": stats['specialAmmo'] += 1
+                                        opt["sold"] = True
+                                        
+                                    # [요구사항 4] 인벤토리 교체 및 장착
+                                    else:
+                                        if len(inventory) < 9:
+                                            stats['gold'] -= item['price']
+                                            inventory.append(item)
+                                            opt["sold"] = True
+                                            calculate_stats()
+                                        else:
+                                            # 인벤토리가 꽉 찼을 때 교체 모드 진입
+                                            pendingItem = opt
+                                            shopSubState = "CONFIRM_REPLACE"
+
+                    # 교체 확인 모드 처리
+                    elif shopSubState == "CONFIRM_REPLACE":
+                        # UI 렌더링 부와 동일한 좌표의 Rect 생성
+                        btn_yes = pygame.Rect(330, HEIGHT//2 + 50, 100, 40)
+                        btn_no = pygame.Rect(470, HEIGHT//2 + 50, 100, 40)
+
+                        if btn_yes.collidepoint(mousePos):
+                            shopSubState = "SELECT_REMOVE"
+                        elif btn_no.collidepoint(mousePos):
+                            shopSubState = "NORMAL"
+                            pendingItem = None
+
+                    # 제거할 아이템 선택 모드 처리
+                    elif shopSubState == "SELECT_REMOVE":
+                        CENTER_X = WIDTH // 2
+                        # 인벤토리 9칸 순회하며 클릭된 슬롯 확인
+                        for i in range(len(inventory)):
+                            row, col = i // 3, i % 3
+                            slotRect = pygame.Rect(CENTER_X + 50 + col * 110, 160 + row * 110, 100, 100)
+
+                            if slotRect.collidepoint(mousePos):
+                                # 1. 돈 차감
+                                stats['gold'] -= pendingItem["data"]["price"]
+                                
+                                # 2. 아이템 교체 (기존 삭제 후 신규 추가)
+                                inventory.pop(i)
+                                inventory.append(pendingItem["data"])
+                                
+                                # 3. 상점 내 품절 처리
+                                pendingItem["sold"] = True
+                                
+                                # 4. 상태 초기화 및 스탯 재적용
+                                shopSubState = "NORMAL"
+                                pendingItem = None
+                                calculate_stats()
+                                break
                     
     # --- 게임 상태별 업데이트 및 렌더링 ---
     for p in particles[:]:
@@ -1452,8 +1491,6 @@ while running:
                     req, data = max(valid_effects, key=lambda x: x[0])  # 최고 단계만 출력
                     eff_txt = f"{data['name']}"
                     tempSurf.blit(fontS.render(eff_txt, True, CYAN), (CENTER_X // 2 + 30, y_pos))
-            
-            # 💡 [수정됨] y_pos += 25를 if문 바깥으로 빼서 항상 줄바꿈이 되도록 맞춥니다.
             y_pos += 25
 
         # --- [우측 영역: 인벤토리 9칸 (450 ~ 900px)] ---
@@ -1469,6 +1506,27 @@ while running:
                 item_txt = fontS.render(inventory[i]["name"][:6], True, CYAN)
                 tempSurf.blit(item_txt, (slotRect.x + 10, slotRect.y + 40))
 
+        if shopSubState == "CONFIRM_REPLACE":
+            # 화면 중앙 팝업창 배경
+            popup_rect = pygame.Rect(300, HEIGHT//2 - 50, 300, 160)
+            pygame.draw.rect(tempSurf, (40, 40, 50), popup_rect, border_radius=10)
+            pygame.draw.rect(tempSurf, GOLD, popup_rect, 2, border_radius=10)
+            
+            # 안내 문구
+            tempSurf.blit(fontS.render("인벤토리가 꽉 찼습니다.", True, WHITE), (355, HEIGHT//2 - 30))
+            tempSurf.blit(fontS.render("기존 아이템을 버리고 장착하시겠습니까?", True, GOLD), (315, HEIGHT//2 - 5))
+            
+            # YES 버튼 (x=330, y=HEIGHT//2+50)
+            pygame.draw.rect(tempSurf, GREEN, (330, HEIGHT//2 + 50, 100, 40), border_radius=5)
+            tempSurf.blit(fontM.render("YES", True, BLACK), (355, HEIGHT//2 + 55))
+            
+            # NO 버튼 (x=470, y=HEIGHT//2+50)
+            pygame.draw.rect(tempSurf, RED, (470, HEIGHT//2 + 50, 100, 40), border_radius=5)
+            tempSurf.blit(fontM.render("NO", True, WHITE), (500, HEIGHT//2 + 55))
+            
+        elif shopSubState == "SELECT_REMOVE":
+            # 인벤토리 영역 위에 붉은색 경고/안내 문구 표시
+            tempSurf.blit(fontM.render("버릴 아이템을 클릭하세요!", True, RED), (CENTER_X + 50, 90))
         # 스탯 렌더링
         stat_text = f"DMG: {stats['damage']} | SPD: {stats['speed']} | MAX_HP: {stats['maxHp']} | 관통: {'ON' if stats['pierce'] else 'OFF'} | W: {stats['specialAmmo']}"
         tempSurf.blit(fontS.render(stat_text, True, WHITE), (300, HEIGHT - 30))
