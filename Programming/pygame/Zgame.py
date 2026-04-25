@@ -1100,29 +1100,20 @@ while running:
                         freeRefreshAvailable = False
                         refresh_shop()  # 아이템 교체 실행
 
-                # 마우스 클릭: 아이템 구매 및 인벤토리 관리
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    mousePos = pygame.mouse.get_pos()
-                    
-                    # 일반 상점 아이템 클릭 체크
-                    if shopSubState == "NORMAL":
-                        for opt in shopOptions:
-                            # 아이템 카드 영역 체크 
-                            card_index = shopOptions.index(opt)
-                            card_rect = pygame.Rect(50 + card_index * 160, 100, 150, 200)
-
-                            if card_rect.collidepoint(mousePos) and not opt["sold"]:
+                # 숫자키 1, 2, 3으로 아이템 구매
+                elif event.key in [pygame.K_1, pygame.K_2, pygame.K_3]:
+                    if shopTab == "MARKET" and shopSubState == "NORMAL":
+                        idx = event.key - pygame.K_1 # K_1은 0, K_2는 1, K_3은 2로 매핑
+                        if idx < len(shopOptions):
+                            opt = shopOptions[idx]
+                            if not opt["sold"]:
                                 item = opt["data"]
                                 if stats['gold'] >= item['price']:
-                                    
-                                    # [요구사항 3] 소모품 처리
                                     if item.get("type") == "CONSUMABLE":
                                         stats['gold'] -= item['price']
                                         if item["id"] == "cons_1": playerHp = min(stats['maxHp'], playerHp + 50)
                                         elif item["id"] == "cons_2": stats['specialAmmo'] += 1
                                         opt["sold"] = True
-                                        
-                                    # [요구사항 4] 인벤토리 교체 및 장착
                                     else:
                                         if len(inventory) < 9:
                                             stats['gold'] -= item['price']
@@ -1130,9 +1121,41 @@ while running:
                                             opt["sold"] = True
                                             calculate_stats()
                                         else:
-                                            # 인벤토리가 꽉 찼을 때 교체 모드 진입
                                             pendingItem = opt
                                             shopSubState = "CONFIRM_REPLACE"
+
+                # 마우스 클릭: 아이템 구매 및 인벤토리 관리
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if gameState == 'SHOP':
+                        mousePos = pygame.mouse.get_pos()
+                        
+                        # 1. 일반 상점 아이템 구매
+                        if shopSubState == "NORMAL" and shopTab == "MARKET":
+                            for i, opt in enumerate(shopOptions):
+                                # (수정됨) UI 화면 그리기 코드와 완벽히 일치하도록 좌표 수정
+                                card_rect = pygame.Rect(30 + i * 135, 170, 125, 180)
+
+                                if card_rect.collidepoint(mousePos) and not opt["sold"]:
+                                    item = opt["data"]
+                                    if stats['gold'] >= item['price']:
+                                        
+                                        # 소모품 처리
+                                        if item.get("type") == "CONSUMABLE":
+                                            stats['gold'] -= item['price']
+                                            if item["id"] == "cons_1": playerHp = min(stats['maxHp'], playerHp + 50)
+                                            elif item["id"] == "cons_2": stats['specialAmmo'] += 1
+                                            opt["sold"] = True
+                                            
+                                        # 인벤토리 장착 처리
+                                        else:
+                                            if len(inventory) < 9:
+                                                stats['gold'] -= item['price']
+                                                inventory.append(item)
+                                                opt["sold"] = True
+                                                calculate_stats()
+                                            else:
+                                                pendingItem = opt
+                                                shopSubState = "CONFIRM_REPLACE"
 
                     # 교체 확인 모드 처리
                     elif shopSubState == "CONFIRM_REPLACE":
@@ -1149,22 +1172,19 @@ while running:
                     # 제거할 아이템 선택 모드 처리
                     elif shopSubState == "SELECT_REMOVE":
                         CENTER_X = WIDTH // 2
-                        # 인벤토리 9칸 순회하며 클릭된 슬롯 확인
+                        # 인벤토리 순회하며 클릭된 슬롯 확인
                         for i in range(len(inventory)):
                             row, col = i // 3, i % 3
                             slotRect = pygame.Rect(CENTER_X + 50 + col * 110, 160 + row * 110, 100, 100)
 
                             if slotRect.collidepoint(mousePos):
-                                # 1. 돈 차감
+                                # 돈 차감 및 아이템 교체 및 상점 내 품절 처리
                                 stats['gold'] -= pendingItem["data"]["price"]
-                                
-                                # 2. 아이템 교체 및 상점 내 품절 처리
-                                stats['gold'] -= pendingItem["data"]["price"]
-                                inventory.pop(i) # 선택한 기존 아이템 제거
-                                inventory.append(pendingItem["data"]) # 새 아이템 추가
+                                inventory.pop(i)
+                                inventory.append(pendingItem["data"])
                                 pendingItem["sold"] = True
 
-                                # 3. 상태 초기화 및 스탯 재적용
+                                # 상태 초기화 및 스탯 재적용
                                 shopSubState = "NORMAL"
                                 pendingItem = None
                                 calculate_stats()
