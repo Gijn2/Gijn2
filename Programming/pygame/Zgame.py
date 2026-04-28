@@ -75,11 +75,14 @@ freeRefreshAvailable = False
 gameState = 'PLAYING'
 highScore = 0    
 hitboxRadius = 10
+invincibleTimer = 0
 inventory = []          # 시너지 인벤토리
 particles = []
 pendingItem = None      # 인벤토리가 꽉 찼을 때 교체 대기 중인 아이템
+playerHp = 100
 score = 0
-screenShakeTimer = 0    # 화면 흔들림 카운터
+screenShakeTimer = 0 
+shakeTimer = 0
 shootCooldown = 0
 specialEffectTimer = 0
 shopTab = "MARKET"      # 기본 상점 설정
@@ -87,13 +90,6 @@ shopOptions = []
 shopRefreshCount = 0
 shopSubState = "NORMAL"
 zeroTicket = False 
-
-global playerHp
-playerHp = 100
-global shakeTimer
-shakeTimer = 0
-global invincibleTimer
-invincibleTimer = 0
 
 SYNERGY_DATA = {
     "WEAPON": {
@@ -648,10 +644,8 @@ class BossRock:
         for meteor in self.meteors[:]:
             hitPlayer = meteor.update(playerPos)
             if hitPlayer and invincibleTimer <= 0:
-                playerHp -= 25
-                invincibleTimer = 40
-                shakeTimer = 25
-                meteor.alive = False
+                if take_damage(25, 25, 40):
+                    meteor.alive = False
 
             if not meteor.alive:
                 # 페이즈가 오를수록 파편 개수가 증가하고 유도 파편이 추가됨
@@ -1088,7 +1082,7 @@ while running:
                         currentStage += 1
                 
                     # R키: 상점 새로고침
-                    if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                    if event.key == pygame.K_r:
                         cost = 0 if freeRefreshAvailable else (200 + 100 * shopRefreshCount)
                         if stats['gold'] >= cost:
                             stats['gold'] -= cost
@@ -1267,11 +1261,8 @@ while running:
         else:
             if boss.type == "SWARM":
                 if len(enemies) < 5: 
-                    # 너무 자주 스폰되지 않도록 낮은 확률 부여
                     if random.random() < 0.25:
                         enemies.append(Enemy("type4", random.randint(0, 1000)))
-            pass
-
 
         if boss:
             boss.update(eProjs, playerPos)
@@ -1282,8 +1273,8 @@ while running:
             elif hasattr(boss, 'pos') and boss.pos.distance_to(playerCenter) < hitboxRadius + 25: # 반경 25로 보스 둥근 몸체 가정
                 hit_by_boss = True
 
-            if hit_by_boss and invincibleTimer <= 0:
-                playerHp -= 20; shakeTimer = 20; invincibleTimer = 60
+            if hit_by_boss:
+                take_damage(20, 20, 60)
 
             if boss.hp <= 0:
                 boss = None
@@ -1330,10 +1321,9 @@ while running:
 
             # 플레이어 피격 판정
             p_radius = getattr(p, 'radius', 5)
-            if p.pos.distance_to(playerCenter) < hitboxRadius + p_radius and invincibleTimer <= 0:
+            if p.pos.distance_to(playerCenter) < hitboxRadius + p_radius:
                 playerHp -= p.dmg
                 if p in eProjs: eProjs.remove(p)
-                shakeTimer = 10; invincibleTimer = 30
             elif p.pos.y > HEIGHT: 
                 if p in eProjs: eProjs.remove(p)
 
