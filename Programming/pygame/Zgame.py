@@ -111,7 +111,11 @@ SYNERGY_DATA = {
     },
     "SPEED": {2: {"name": "속도(2): 이속 +5", "effect": {"speed": 5}}},
     "GOLD": {2: {"name": "황금(2): 스테이지 클리어 보너스 +200", "effect": {}}},
-    "LIFE": {2: {"name": "생명(2): 최대체력 +100", "effect": {"maxHp": 100}}}
+    "LIFE": {2: {"name": "생명(2): 최대체력 +100", "effect": {"maxHp": 100}}},
+    "ALLOY": {
+        2: {"name": "반응형 합금(2): 피격 시 1초 무적", "effect": {"invincibility_bonus": 30}},
+        4: {"name": "나노 프로그래머블(4): 피격 시 주변 폭발", "effect": {"nano_explosion": True}}
+    }
 }
 
 ITEM_POOL = [
@@ -200,10 +204,17 @@ def loadHighscoreSecure():
 
 def take_damage(amount, shake, invinc):
     global playerHp, shakeTimer, invincibleTimer
+    invinc_frames = invinc + stats.get("invincibility_bonus", 0)
+    
     if invincibleTimer <= 0:
         playerHp -= amount
         shakeTimer = max(shakeTimer, shake)
-        invincibleTimer = invinc
+        invincibleTimer = invinc_frames
+        
+        # 나노 프로그래머블 시너지: 피격 시 적에게 반사 폭발 데미지
+        if stats.get("nano_explosion", False):
+            # pProjs 리스트에 전방향 파편 투사체 생성 로직 추가 (추후 메인 루프 연동 필요)
+            pass 
         return True
     return False
 
@@ -313,7 +324,22 @@ class BossAssetManager:
 
         BossAssetManager._cache[boss_name] = images
         return images
+
+class BossBase:
+    def __init__(self, bossType, maxHp, start_pos):
+        self.type = bossType
+        self.maxHp = maxHp
+        self.hp = maxHp
+        self.pos = pygame.Vector2(start_pos)
+        self.timer = 0
+        self.hitboxRadius = 50
         
+    def draw_hp_bar(self, surf, offset_y=60, width=120, height=8):
+        # 체력바를 그리는 공통 비즈니스 로직
+        hpRatio = max(0, self.hp / self.maxHp)
+        pygame.draw.rect(surf, (200, 50, 50), (self.pos.x - width//2, self.pos.y + offset_y, width, height))
+        pygame.draw.rect(surf, (50, 255, 50), (self.pos.x - width//2, self.pos.y + offset_y, width * hpRatio, height))
+
 class Particle:
     def __init__(self, x, y, color):
         self.pos = [x, y]
