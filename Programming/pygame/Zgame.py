@@ -183,23 +183,22 @@ def saveHighscoreSecure(scoreValue):
         f.write(f"{scoreValue}\n{checksum}")
 
 def loadHighscoreSecure():
-    if os.path.exists("highscore.dat"):
-        try:
-            with open("highscore.dat", "r") as f:
-                lines = f.readlines()
-                scoreValue = int(lines[0].strip())
-                savedChecksum = lines[1].strip()
+    try:
+        if not os.path.exists("highscore.dat"): return 0
+        with open("highscore.dat", "r", encoding="utf-8") as f:
+            lines = f.read().splitlines()
+            if len(lines) < 2: return 0
+            scoreValue = int(lines[0].strip())
+            savedChecksum = lines[1].strip()
+            calcChecksum = hashlib.sha256((str(scoreValue) + secretSalt).encode()).hexdigest()
                 
-                # 파일을 읽을 때 동일한 공식으로 해시를 재계산하여 검증
-                calcChecksum = hashlib.sha256((str(scoreValue) + secretSalt).encode()).hexdigest()
-                
-                if savedChecksum == calcChecksum:
-                    return scoreValue
-                else:
-                    print("점수 조작이 감지되었습니다.")
-                    return 0 # 조작 감지 시 0점으로 초기화
-        except Exception:
-            return 0
+            if savedChecksum == calcChecksum:
+                return scoreValue
+            else:
+                print("점수 조작이 감지되었습니다.")
+                return 0 # 조작 감지 시 0점으로 초기화
+    except (IOError, ValueError, IndexError):
+        return 0
     return 0
 
 def take_damage(amount, shake, invinc):
