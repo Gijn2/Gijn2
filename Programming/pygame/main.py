@@ -103,6 +103,10 @@ shootCooldown = 0
 specialEffectTimer = 0
 zeroTicket = False 
 
+
+
+
+
 # --- 임시 객체 저장소 ---
 playerPos = pygame.Vector2(WIDTH//2, HEIGHT-80)
 enemies, pProjs, eProjs, boss = [], [], [], None

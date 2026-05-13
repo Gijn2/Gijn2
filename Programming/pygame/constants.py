@@ -66,12 +66,12 @@ ITEM_POOL = [
 ]
 
 ENEMY_CONFIG = {
-    "type1": {"hp": 5,  "vy": 1.5, "img": "type_1"},
-    "type2": {"hp": 8,  "vy": 1.5, "img": "type_2"},
-    "type3": {"hp": 6,  "vy": 1.0, "img": "type_3"},
-    "type4": {"hp": 5,  "vy": 0.0, "img": "type_4"},
-    "type5": {"hp": 10, "vy": 1.2, "img": "type_5"}, 
-    "elite": {"hp": 50, "vy": 0.5, "img": "type_1"},
+    "type1": {"hp": 5,  "vy": 1.5, "img_key": "type_1"},
+    "type2": {"hp": 8,  "vy": 1.5, "img_key": "type_2"},
+    "type3": {"hp": 6,  "vy": 1.0, "img_key": "type_3"},
+    "type4": {"hp": 5,  "vy": 0.0, "img_key": "type_4"},
+    "type5": {"hp": 10, "vy": 1.2, "img_key": "type_5"}, 
+    "elite": {"hp": 50, "vy": 0.5, "img_key": "type_1"},
 }
 
 ENEMY_SPAWN_POOL = [
