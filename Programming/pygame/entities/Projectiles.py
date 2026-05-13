@@ -1,8 +1,9 @@
 # 투사체 관리: Projectile, HomingProjectile, Meteor, Particle
 import pygame
 import random
-from assetManager import meteorImg
-from constants import WHITE, HEIGHT
+from constants import *
+from main import meteorImg
+from assetManager import *
 
 class Particle:
     def __init__(self, x, y, color):

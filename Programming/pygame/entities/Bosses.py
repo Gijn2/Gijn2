@@ -1,11 +1,7 @@
 # BossBase 및 각종 보스 클래스들
-
-import pygame
 import math
 import random
 import os
-from entities.Projectiles import *
-from assetManager import *
 from constants import *
 from main import *
 from systems.CollisionManager import take_damage

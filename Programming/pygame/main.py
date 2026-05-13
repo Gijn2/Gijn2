@@ -6,11 +6,11 @@ import os
 import random
 
 # 분리된 모듈 임포트
-from constants import stats, inventory, SYNERGY_DATA
+from constants import SYNERGY_DATA
 from assetManager import assets
 from entities.Enemy import Enemy, getRandomEnemy
 from systems.ShopManager import refresh_shop, apply_interest, shopTab, shopSubState, shopRefreshCount, bankBalance, shopOptions
-from systems.StatsManager import calculate_stats
+from systems.StatsManager import calculate_stats, stats, inventory
 from utils.fileIO import saveHighscoreSecure
 from entities.Bosses import *
 from entities.Projectiles import *
