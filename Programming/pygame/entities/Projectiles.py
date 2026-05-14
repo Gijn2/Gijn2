@@ -2,8 +2,7 @@
 import pygame
 import random
 from constants import *
-from main import meteorImg
-from assetManager import *
+from assetManager import assets
 
 class Particle:
     def __init__(self, x, y, color):
@@ -76,7 +75,7 @@ class Meteor:
         self.speed = 0
         self.radius = random.randint(20, 55)
         self.alive = True
-        self.img = pygame.transform.scale(meteorImg, (self.radius * 2, self.radius * 2))
+        self.img = pygame.transform.scale(assets.images['meteor'], (self.radius * 2, self.radius * 2))
 
     def update(self, playerPos):
         # 가속 낙하

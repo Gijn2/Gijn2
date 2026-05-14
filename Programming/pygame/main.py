@@ -6,7 +6,7 @@ import os
 import random
 
 # 분리된 모듈 임포트
-from constants import SYNERGY_DATA
+from constants import SYNERGY_DATA, WIDTH, HEIGHT, STAGE_DURATION, BLACK, RED, GREEN, CYAN, GRAY, WHITE, GOLD, MAX_ENEMY_TYPES
 from assetManager import assets
 from entities.Enemy import Enemy, getRandomEnemy
 from systems.ShopManager import refresh_shop, apply_interest, shopTab, shopSubState, shopRefreshCount, bankBalance, shopOptions
@@ -15,27 +15,17 @@ from utils.fileIO import saveHighscoreSecure
 from entities.Bosses import *
 from entities.Projectiles import *
 
-
-
-# --- 경로 설정 ---
-IMGS_PATH = os.path.join(os.path.dirname(__file__), "imgs")
-
 # --- 초기화 및 화면 설정 ---
 pygame.init()
-WIDTH, HEIGHT = 900, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Topdown Shooting Pygame: Limited Edition")
-
 clock = pygame.time.Clock()
-
-# --- 에셋 로드 ---
-secretSalt = "MyPyGameTest2026"
+assets.loadAllAssets()     # 에셋 로드 함수를 별도의 모듈로 분리하여 관리 (SRP 원칙 반영)
 
 # 플레이어 및 적 이미지 로드
 bgImg = pygame.image.load(os.path.join(IMGS_PATH, "background.png")).convert()
 playerImg = pygame.image.load(os.path.join(IMGS_PATH, "player.png")).convert_alpha()
 playerImg = pygame.transform.scale(playerImg, (60, 60))
-
 
 ENEMY_IMGS = {}
 for i in range(1, MAX_ENEMY_TYPES + 1):
@@ -78,8 +68,6 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Topdown Shooting Pygame: Limited Edition")
 clock = pygame.time.Clock()
 
-# --- 화면 생성 이후 에셋 일괄 로드 ---
-assets.loadAllAssets()
 
 # --- 게임 상태 관리 변수 초기화 ---
 stageTimer = STAGE_DURATION

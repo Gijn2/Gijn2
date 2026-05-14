@@ -4,6 +4,9 @@ import pygame
 import os
 from constants import MAX_ENEMY_TYPES
 
+# --- 에셋 로드 ---
+secretSalt = "MyPyGameTest2026"
+
 # --- 경로 설정 ---
 IMGS_PATH = os.path.join(os.path.dirname(__file__), "imgs")
 

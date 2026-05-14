@@ -1,10 +1,13 @@
 # BossBase 및 각종 보스 클래스들
+import pygame
 import math
 import random
 import os
 from constants import *
-from main import *
-from systems.CollisionManager import take_damage
+from entities.Projectiles import Projectile, HomingProjectile, Meteor
+from systems.CollisionManager import take_damage 
+
+IMGS_PATH = os.path.join(os.path.dirname(__file__), "imgs")
 
 class BossAssetManager:
     _cache = {}

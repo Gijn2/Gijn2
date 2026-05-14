@@ -1,9 +1,10 @@
 # 일반 몬스터 로직
+import pygame
 import math
 import random
 from entities.Projectiles import Projectile, HomingProjectile
 from constants import *
-from main import *
+from assetManager import assets
 
 
 def getRandomEnemy(current_stage):
@@ -21,7 +22,7 @@ class Enemy:
         config = ENEMY_CONFIG.get(eType, ENEMY_CONFIG["type1"])
         self.hp = config["hp"]
         self.vy = config["vy"]
-        self.imgType = config["img"]
+        self.imgType = config["img_key"]
 
         # 공통 로직
         self.pos = pygame.Vector2(random.randint(50, WIDTH-50), -50)
@@ -114,7 +115,7 @@ class Enemy:
                     self.state = "STAND"; self.shootDelay = 90
 
     def draw(self, surf):
-        currentImg = ENEMY_IMGS.get(self.imgType, ENEMY_IMGS["type_1"])[self.state]
+        currentImg = assets.enemyImgs.get(self.imgType, assets.enemyImgs["type_1"])[self.state]
         surf.blit(currentImg, self.pos)
         
         # type3의 회전하는 투사체 시각화
