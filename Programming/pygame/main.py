@@ -14,6 +14,7 @@ from systems.StatsManager import calculate_stats, stats, inventory
 from utils.fileIO import saveHighscoreSecure
 from entities.Bosses import *
 from entities.Projectiles import *
+from systems.SharedState import state, stats
 
 # --- 초기화 및 화면 설정 ---
 pygame.init()
@@ -21,53 +22,6 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Topdown Shooting Pygame: Limited Edition")
 clock = pygame.time.Clock()
 assets.loadAllAssets()     # 에셋 로드 함수를 별도의 모듈로 분리하여 관리 (SRP 원칙 반영)
-
-# 플레이어 및 적 이미지 로드
-bgImg = pygame.image.load(os.path.join(IMGS_PATH, "background.png")).convert()
-playerImg = pygame.image.load(os.path.join(IMGS_PATH, "player.png")).convert_alpha()
-playerImg = pygame.transform.scale(playerImg, (60, 60))
-
-ENEMY_IMGS = {}
-for i in range(1, MAX_ENEMY_TYPES + 1):
-    type_key = f"type_{i}"
-    try:
-        ENEMY_IMGS[type_key] = {
-            "STAND": pygame.transform.scale(pygame.image.load(os.path.join(IMGS_PATH, f"normalEnemy_{i}_stand.png")).convert_alpha(), (50, 50)),
-            "ATTACK": pygame.transform.scale(pygame.image.load(os.path.join(IMGS_PATH, f"normalEnemy_{i}_attack.png")).convert_alpha(), (50, 50)),
-        }
-    except FileNotFoundError:
-        ENEMY_IMGS[type_key] = ENEMY_IMGS.get("type_1")
-
-
-try:
-    meteorImg = pygame.image.load(os.path.join(IMGS_PATH, "meteor.png")).convert_alpha()
-    meteorImg = pygame.transform.scale(meteorImg, (60, 60))
-except:
-    meteorImg = pygame.Surface((60, 60), pygame.SRCALPHA)
-    pygame.draw.circle(meteorImg, (100, 100, 100), (30, 30), 30)
-
-try:
-    sndHit = pygame.mixer.Sound(os.path.join(IMGS_PATH, "hit.wav"))
-    sndExpl = pygame.mixer.Sound(os.path.join(IMGS_PATH, "explosion.wav"))
-except Exception as e:
-    sndHit = None
-    sndExpl = None
-
-try:
-    fontS = pygame.font.SysFont("malgungothic", 16)
-    fontM = pygame.font.SysFont("malgungothic", 24)
-    fontL = pygame.font.SysFont("malgungothic", 40)
-except:
-    fontS = pygame.font.Font(None, 20)
-    fontM = pygame.font.Font(None, 32)
-    fontL = pygame.font.Font(None, 50)
-
-# --- 파이게임 초기화 및 화면 설정 ---
-pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Topdown Shooting Pygame: Limited Edition")
-clock = pygame.time.Clock()
-
 
 # --- 게임 상태 관리 변수 초기화 ---
 stageTimer = STAGE_DURATION
@@ -78,24 +32,14 @@ currentStage = 1
 freeRefreshAvailable = False
 gameState = 'PLAYING'
 highScore = 0 # 추후 loadHighscoreSecure() 사용   
-hitboxRadius = 10
-invincibleTimer = 0
-       
+hitboxRadius = 10   
 particles = []
 pendingItem = None      
-playerHp = 100
-score = 0
 screenShakeTimer = 0 
-shakeTimer = 0
 shootCooldown = 0
 specialEffectTimer = 0
-zeroTicket = False 
 
 
-
-
-
-# --- 임시 객체 저장소 ---
 playerPos = pygame.Vector2(WIDTH//2, HEIGHT-80)
 enemies, pProjs, eProjs, boss = [], [], [], None
 running = True
@@ -275,7 +219,8 @@ while running:
             stats["specialAmmo"] -= 1
             specialEffectTimer = 40  
             shakeTimer = 10         
-            if sndExpl: sndExpl.play()
+            if assets.sounds['explosion']:
+                assets.sounds['explosion'].play()
             
             # 1. 화면의 모든 적 투사체(총알) 즉시 삭제
             eProjs.clear() 
@@ -482,7 +427,7 @@ while running:
         
         # --- 수정된 렌더링 코드 ---
         if invincibleTimer % 4 == 0: 
-            tempSurf.blit(playerImg, playerPos)
+            tempSurf.blit(assets.images['player'], playerPos)
             hitboxRadius = 5
 
             # 1. 원형 테두리 (이건 투명도가 필요 없으므로 그대로 유지)
@@ -495,7 +440,7 @@ while running:
             pygame.draw.rect(tempSurf, GRAY, (WIDTH//2-100, 20, 200, 8))
             pygame.draw.rect(tempSurf, CYAN, (WIDTH//2-100, 20, (stageTimer/STAGE_DURATION)*200, 8))
             if bossAlertTimer > 0:
-                tempSurf.blit(fontL.render("-!!! WARNING !!!-", True, RED), (WIDTH//2-250, HEIGHT//2-50))
+                tempSurf.blit(assets.fonts['large'].render("-!!! WARNING !!!-", True, assets.colors['red']), (WIDTH//2-250, HEIGHT//2-50))
                 bossAlertTimer -= 1
 
     # --- 메인 루프 내부 그리기 영역 ---
@@ -505,34 +450,34 @@ while running:
         CENTER_X = WIDTH // 2  # 450px
 
         # 0. 상단 공통 타이틀 및 안내
-        tempSurf.blit(fontM.render(f"보유 골드: {stats['gold']}G", True, GOLD), (30, 30))
-        tempSurf.blit(fontS.render("[Z] 전환 | [S] 시작", True, WHITE), (30, 70))
+        tempSurf.blit(assets.fonts['medium'].render(f"보유 골드: {stats['gold']}G", True, assets.colors['gold']), (30, 30))
+        tempSurf.blit(assets.fonts['small'].render("[Z] 전환 | [S] 시작", True, assets.colors['white']), (30, 70))
 
         # --- [좌측 영역: 상점 및 시너지 (0 ~ 450px)] ---
         if shopTab == "MARKET":
-            tempSurf.blit(fontM.render("MARKET ITEMS", True, CYAN), (30, 120))
+            tempSurf.blit(assets.fonts['medium'].render("MARKET ITEMS", True, assets.colors['cyan']), (30, 120))
             for i, opt in enumerate(shopOptions):
                 cardRect = pygame.Rect(30 + i * 135, 170, 125, 180)
                 color = (40, 40, 50) if not opt["sold"] else (20, 20, 20)
                 pygame.draw.rect(tempSurf, color, cardRect, border_radius=10)
                 if not opt["sold"]:
-                    tempSurf.blit(fontS.render(opt['data']['name'][:8], True, WHITE), (cardRect.x+10, cardRect.y+15))
-                    tempSurf.blit(fontS.render(f"{opt['data']['price']}G", True, GOLD), (cardRect.x+10, cardRect.y+150))
+                    tempSurf.blit(assets.fonts['small'].render(opt['data']['name'][:8], True, assets.colors['white']), (cardRect.x+10, cardRect.y+15))
+                    tempSurf.blit(assets.fonts['small'].render(f"{opt['data']['price']}G", True, assets.colors['gold']), (cardRect.x+10, cardRect.y+150))
         elif shopTab == "BANK":
             # 은행 전용 인터페이스 추가
-            tempSurf.blit(fontM.render("GALACTIC BANK", True, GOLD), (30, 120))
+            tempSurf.blit(assets.fonts['medium'].render("GALACTIC BANK", True, assets.colors['gold']), (30, 120))
             # 은행 잔고 및 조작 안내
             bank_info = f"은행 잔고: {bankBalance}G"
-            tempSurf.blit(fontM.render(bank_info, True, WHITE), (60, 180))
-            tempSurf.blit(fontS.render("[A] 100G 예금 | [D] 100G 출금", True, CYAN), (60, 230))
-            tempSurf.blit(fontS.render("이자는 라운드 종료 시 15% 지급됩니다.", True, GREEN), (60, 270))
+            tempSurf.blit(assets.fonts['medium'].render(bank_info, True, assets.colors['white']), (60, 180))
+            tempSurf.blit(assets.fonts['small'].render("[A] 100G 예금 | [D] 100G 출금", True, assets.colors['cyan']), (60, 230))
+            tempSurf.blit(assets.fonts['small'].render("이자는 라운드 종료 시 15% 지급됩니다.", True, assets.colors['green']), (60, 270))
             
         # [좌측 하단: 시너지 이원화 표시]
-        pygame.draw.line(tempSurf, GRAY, (20, 350), (CENTER_X - 20, 350), 2)
+        pygame.draw.line(tempSurf, assets.colors['gray'], (20, 350), (CENTER_X - 20, 350), 2)
         # 왼쪽 칸: 보유 현황
-        tempSurf.blit(fontS.render("[ 보유 시너지 ]", True, GOLD), (30, 365))
+        tempSurf.blit(assets.fonts['small'].render("[ 보유 시너지 ]", True, assets.colors['gold']), (30, 365))
         # 오른쪽 칸: 발동 효과
-        tempSurf.blit(fontS.render("[ 발동 효과 ]", True, GREEN), (CENTER_X // 2 + 30, 365))
+        tempSurf.blit(assets.fonts['small'].render("[ 발동 효과 ]", True, assets.colors['green']), (CENTER_X // 2 + 30, 365))
         
         synergy_counts = {}
         for item in inventory:
@@ -542,7 +487,7 @@ while running:
         y_pos = 400
         for tag, count in synergy_counts.items():
             # 왼쪽 출력 (보유 태그 개수)
-            tempSurf.blit(fontS.render(f"{tag}: {count}개", True, WHITE), (30, y_pos))
+            tempSurf.blit(assets.fonts['small'].render(f"{tag}: {count}개", True, assets.colors['white']), (30, y_pos))
             
             # 오른쪽 출력 (발동된 효과)
             if tag in SYNERGY_DATA:
@@ -553,49 +498,49 @@ while running:
                 if valid_effects:
                     req, data = max(valid_effects, key=lambda x: x[0])  # 최고 단계만 출력
                     eff_txt = f"{data['name']}"
-                    tempSurf.blit(fontS.render(eff_txt, True, CYAN), (CENTER_X // 2 + 30, y_pos))
+                    tempSurf.blit(assets.fonts['small'].render(eff_txt, True, assets.colors['cyan']), (CENTER_X // 2 + 30, y_pos))
             y_pos += 25
 
         # --- [우측 영역: 인벤토리 9칸 (450 ~ 900px)] ---
-        tempSurf.blit(fontM.render("INVENTORY", True, WHITE), (CENTER_X + 40, 120))
+        tempSurf.blit(assets.fonts['medium'].render("INVENTORY", True, assets.colors['white']), (CENTER_X + 40, 120))
         for i in range(9):
             row, col = i // 3, i % 3
             slotRect = pygame.Rect(CENTER_X + 50 + col * 110, 160 + row * 110, 100, 100)
             pygame.draw.rect(tempSurf, (25, 25, 35), slotRect, border_radius=5)
-            pygame.draw.rect(tempSurf, GRAY, slotRect, 2, border_radius=5)
+            pygame.draw.rect(tempSurf, assets.colors['gray'], slotRect, 2, border_radius=5)
             
             if i < len(inventory):
                 # 아이템 장착 시 표시
-                item_txt = fontS.render(inventory[i]["name"][:6], True, CYAN)
+                item_txt = assets.fonts['small'].render(inventory[i]["name"][:6], True, assets.colors['cyan'])
                 tempSurf.blit(item_txt, (slotRect.x + 10, slotRect.y + 40))
 
         if shopSubState == "CONFIRM_REPLACE":
             # 화면 중앙 팝업창 배경
             popup_rect = pygame.Rect(300, HEIGHT//2 - 50, 300, 160)
             pygame.draw.rect(tempSurf, (40, 40, 50), popup_rect, border_radius=10)
-            pygame.draw.rect(tempSurf, GOLD, popup_rect, 2, border_radius=10)
+            pygame.draw.rect(tempSurf, assets.colors['gold'], popup_rect, 2, border_radius=10)
             
             # 안내 문구
-            tempSurf.blit(fontS.render("인벤토리가 꽉 찼습니다.", True, WHITE), (355, HEIGHT//2 - 30))
-            tempSurf.blit(fontS.render("기존 아이템을 버리고 장착하시겠습니까?", True, GOLD), (315, HEIGHT//2 - 5))
+            tempSurf.blit(assets.fonts['small'].render("인벤토리가 꽉 찼습니다.", True, assets.colors['white']), (355, HEIGHT//2 - 30))
+            tempSurf.blit(assets.fonts['small'].render("기존 아이템을 버리고 장착하시겠습니까?", True, assets.colors['gold']), (315, HEIGHT//2 - 5))
             
             # YES 버튼 (x=330, y=HEIGHT//2+50)
-            pygame.draw.rect(tempSurf, GREEN, (330, HEIGHT//2 + 50, 100, 40), border_radius=5)
-            tempSurf.blit(fontM.render("YES", True, BLACK), (355, HEIGHT//2 + 55))
+            pygame.draw.rect(tempSurf, assets.colors['green'], (330, HEIGHT//2 + 50, 100, 40), border_radius=5)
+            tempSurf.blit(assets.fonts['medium'].render("YES", True, assets.colors['black']), (355, HEIGHT//2 + 55))
             
             # NO 버튼 (x=470, y=HEIGHT//2+50)
-            pygame.draw.rect(tempSurf, RED, (470, HEIGHT//2 + 50, 100, 40), border_radius=5)
-            tempSurf.blit(fontM.render("NO", True, WHITE), (500, HEIGHT//2 + 55))
+            pygame.draw.rect(tempSurf, assets.colors['red'], (470, HEIGHT//2 + 50, 100, 40), border_radius=5)
+            tempSurf.blit(assets.fonts['medium'].render("NO", True, assets.colors['white']), (500, HEIGHT//2 + 55))
             
         elif shopSubState == "SELECT_REMOVE":
             # 인벤토리 영역 위에 붉은색 경고/안내 문구 표시
-            tempSurf.blit(fontM.render("버릴 아이템을 클릭하세요!", True, RED), (CENTER_X + 50, 90))
+            tempSurf.blit(assets.fonts['medium'].render("버릴 아이템을 클릭하세요!", True, assets.colors['red']), (CENTER_X + 50, 90))
         # 스탯 렌더링
         stat_text = f"DMG: {stats['damage']} | SPD: {stats['speed']} | MAX_HP: {stats['maxHp']} | 관통: {'ON' if stats['pierce'] else 'OFF'} | W: {stats['specialAmmo']}"
-        tempSurf.blit(fontS.render(stat_text, True, WHITE), (300, HEIGHT - 30))
+        tempSurf.blit(assets.fonts['small'].render(stat_text, True, assets.colors['white']), (300, HEIGHT - 30))
 
     # 1. 가장 밑바닥에 배경 먼저 그리기
-    screen.blit(bgImg, (0, 0))
+    screen.blit(assets.images['background'], (0, 0))
     screen.blit(tempSurf, (0, 0))
         
     # W 특수기 효과
@@ -617,19 +562,19 @@ while running:
     if gameState != 'SHOP':
         # 체력바 배경 현재 체력(초록색)
         pygame.draw.rect(screen, GREEN, (10, 10, max(0, (playerHp/stats['maxHp'])*200), 20))    
-        screen.blit(fontS.render(f"{int(playerHp)} / {stats['maxHp']}", True, BLACK), (80, 10))
+        screen.blit(assets.fonts['small'].render(f"{int(playerHp)} / {stats['maxHp']}", True, assets.colors['black']), (80, 10))
         
         # 정보 텍스트 (점수, 최고점수, 스테이지 정보 그룹화)
-        infoTxt1 = fontS.render(f"SCORE: {score} | HI-SCORE: {highScore} | STAGE: {currentStage}", True, WHITE)
+        infoTxt1 = assets.fonts['small'].render(f"SCORE: {score} | HI-SCORE: {highScore} | STAGE: {currentStage}", True, assets.colors['white'])
         screen.blit(infoTxt1, (10, 35))
         
         # 재화 및 특수기 개수 표기 (눈에 띄도록 골드 색상 강조)
-        infoTxt2 = fontS.render(f"GOLD: {stats['gold']} G | SPECIAL (W): {stats['specialAmmo']} 개", True, GOLD)
+        infoTxt2 = assets.fonts['small'].render(f"GOLD: {stats['gold']} G | SPECIAL (W): {stats['specialAmmo']} 개", True, assets.colors['gold'])
         screen.blit(infoTxt2, (10, 55))
         
         # 제로 티켓 활성화 상태
         if zeroTicket: 
-            screen.blit(fontS.render("★ ZERO TICKET ACTIVE ★", True, CYAN), (10, 75))
+            screen.blit(assets.fonts['small'].render("★ ZERO TICKET ACTIVE ★", True, assets.colors['cyan']), (10, 75))
             
     # UI 업데이트 및 프레임 제한
     pygame.display.flip()
