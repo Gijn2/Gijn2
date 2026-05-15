@@ -2,7 +2,7 @@
 from constants import baseStats
 
 state = {
-    "playerHp": 100,
+    "playerHp": 125,
     "shakeTimer": 0,
     "invincibleTimer": 0,
     "score": 0,
