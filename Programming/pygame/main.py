@@ -9,7 +9,7 @@ import random
 from constants import SYNERGY_DATA, WIDTH, HEIGHT, STAGE_DURATION, BLACK, RED, GREEN, CYAN, GRAY, WHITE, GOLD, MAX_ENEMY_TYPES
 from assetManager import assets
 from entities.Enemy import Enemy, getRandomEnemy
-from systems.ShopManager import refresh_shop, apply_interest, shopTab, shopSubState, shopRefreshCount, bankBalance, shopOptions
+from systems.ShopManager import apply_interest, shopTab, shopSubState, shopRefreshCount, bankBalance, shopOptions # refresh_shop, 고장
 from systems.StatsManager import calculate_stats, stats, inventory
 from utils.fileIO import saveHighscoreSecure
 from entities.Bosses import *
