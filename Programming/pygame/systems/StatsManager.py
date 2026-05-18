@@ -29,29 +29,21 @@ SYNERGY_DATA = {
     }
 }
 
-
-# 스탯 재계산 로직 (DRY 원칙 적용)
-def calculate_stats():
-    global stats, playerHp
+def calculateStats():
+    global stats
     current_gold = stats.get("gold", 0)
     
-    # 기본 스탯으로 초기화
     stats.clear()
     stats.update(baseStats)
     stats["gold"] = current_gold
     
-    # 시너지 태그 카운트
     synergy_counts = {}
     active_tags = []
     for item in state["inventory"]:
         for tag in item.get('tags', []):
             active_tags.append(tag)
             synergy_counts[tag] = synergy_counts.get(tag, 0) + 1
-
-    # 중복을 제거한 고유 태그 목록 생성
-    # unique_active_tags = sorted(list(set(active_tags)))
         
-    # 시너지 효과 적용
     for tag, count in synergy_counts.items():
         if tag in SYNERGY_DATA:
             for req, data in sorted(SYNERGY_DATA[tag].items()):
@@ -62,6 +54,5 @@ def calculate_stats():
                         else:
                             stats[k] += v
 
-    # 최대 체력 변동에 따른 현재 체력 보정
     if state["playerHp"] > stats["maxHp"]:
         state["playerHp"] = stats["maxHp"]

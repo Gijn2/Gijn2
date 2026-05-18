@@ -5,7 +5,7 @@ import random
 import os
 from constants import *
 from entities.Projectiles import Projectile, HomingProjectile, Meteor
-from systems.CollisionManager import take_damage 
+from systems.CollisionManager import takeDamage 
 
 IMGS_PATH = os.path.join(os.path.dirname(__file__), "imgs")
 
@@ -298,8 +298,8 @@ class BossRock:
         # 공통 메테오 충돌 및 폭발 로직
         for meteor in self.meteors[:]:
             hitPlayer = meteor.update(playerPos)
-            if hitPlayer and invincibleTimer <= 0:
-                if take_damage(25, 25, 40):
+            if hitPlayer and state["invincibleTimer"] <= 0:
+                if takeDamage(25, 25, 40):
                     meteor.alive = False
 
             if not meteor.alive:
