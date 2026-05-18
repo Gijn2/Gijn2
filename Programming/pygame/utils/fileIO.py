@@ -1,7 +1,7 @@
 # loadHighscoreSecure, saveHighscoreSecure (try-catch 포함)
 import os
 import hashlib
-from constants import secretSalt
+from constants import SECRET_SALT
 
 
 def loadHighscore():
@@ -16,7 +16,7 @@ highScore = loadHighscore()
 
 def saveHighscoreSecure(scoreValue):
     # 점수와 비밀키를 합쳐 해시값(Checksum) 생성
-    dataStr = str(scoreValue) + secretSalt
+    dataStr = str(scoreValue) + SECRET_SALT
     checksum = hashlib.sha256(dataStr.encode()).hexdigest()
     
     with open("highscore.dat", "w") as f:
@@ -31,7 +31,7 @@ def loadHighscoreSecure():
             if len(lines) < 2: return 0
             scoreValue = int(lines[0].strip())
             savedChecksum = lines[1].strip()
-            calcChecksum = hashlib.sha256((str(scoreValue) + secretSalt).encode()).hexdigest()
+            calcChecksum = hashlib.sha256((str(scoreValue) + SECRET_SALT).encode()).hexdigest()
                 
             if savedChecksum == calcChecksum:
                 return scoreValue

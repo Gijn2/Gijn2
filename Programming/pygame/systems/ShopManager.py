@@ -1,26 +1,15 @@
 # 상점 생성, 새로고침, 구매 로직 (refresh_shop 등)
 
 import random
-from constants import ITEM_POOL, baseStats
-from main import inventory, stats, bankBalance
-
-stats = baseStats.copy()
-stats['gold'] = 1000
-bankBalance = 0 
-inventory = []   
-shopTab = "MARKET"      
-shopOptions = []
-shopRefreshCount = 0
-shopSubState = "NORMAL"
+from constants import ITEM_POOL
+from systems.SharedState import state, stats 
 
 def refresh_shop():
-    global shopOptions, inventory
     
     # 1. 현재 인벤토리에 있는 아이템 ID 목록 추출
-    equipped_ids = [item['id'] for item in inventory]
+    equipped_ids = [item['id'] for item in state["inventory"]]
     
     # 2. 인벤토리에 없는 아이템만 후보군으로 필터링
-    # 소모품(CONSUMABLE)은 항상 등장 가능하게 설정
     available_pool = [
         item for item in ITEM_POOL 
         if item['id'] not in equipped_ids or item.get('type') == 'CONSUMABLE'
@@ -36,6 +25,7 @@ def refresh_shop():
         
 # 스테이지 클리어 시 이자 계산
 def apply_interest():
-    if bankBalance > 0:
-        interest = int(bankBalance * 0.15)
-        stats["gold"] += interest
+    pass
+    # if state["bankBalance"] > 0:
+    #     interest = int(state["bankBalance"] * 0.15)
+    #     stats["gold"] += interest

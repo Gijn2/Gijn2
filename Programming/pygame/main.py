@@ -1,20 +1,22 @@
 # 게임의 진입점 및 메인 루프 (이벤트 처리, 화면 렌더링)
 
 # main.py
+from asyncio import constants
+
 import pygame
 import os
 import random
 
 # 분리된 모듈 임포트
-from constants import SYNERGY_DATA, WIDTH, HEIGHT, STAGE_DURATION, BLACK, RED, GREEN, CYAN, GRAY, WHITE, GOLD, MAX_ENEMY_TYPES
+from constants import *
 from assetManager import assets
 from entities.Enemy import Enemy, getRandomEnemy
-from systems.ShopManager import apply_interest, shopTab, shopSubState, shopRefreshCount, bankBalance, shopOptions # refresh_shop, 고장
-from systems.StatsManager import calculate_stats, stats, inventory
+from systems.ShopManager import refresh_shop, apply_interest
+from systems.SharedState import state, stats
+from systems.StatsManager import calculate_stats
 from utils.fileIO import saveHighscoreSecure
 from entities.Bosses import *
 from entities.Projectiles import *
-from systems.SharedState import state, stats
 
 # --- 초기화 및 화면 설정 ---
 pygame.init()
@@ -50,9 +52,12 @@ while running:
     
     # 화면 흔들림 계산
     render_offset = pygame.Vector2(0, 0)
-    if shakeTimer > 0:
-        render_offset = pygame.Vector2(random.randint(-7, 7), random.randint(-7, 7))
-        shakeTimer -= 1
+    if state["shakeTimer"] > 0:
+        render_offset = (random.randint(-state["shakeTimer"], state["shakeTimer"]), 
+                        random.randint(-state["shakeTimer"], state["shakeTimer"]))
+        state["shakeTimer"] -= 1
+    else:
+        render_offset = (0, 0)
 
     # 투명도를 지원하는 도화지 생성
     tempSurf = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
@@ -98,20 +103,20 @@ while running:
                     elif event.key in [pygame.K_1, pygame.K_2, pygame.K_3]:
                         if shopTab == "MARKET" and shopSubState == "NORMAL":
                             idx = event.key - pygame.K_1 # K_1은 0, K_2는 1, K_3은 2로 매핑
-                            if idx < len(shopOptions):
-                                opt = shopOptions[idx]
+                            if idx < len(stats["shopOptions"]):
+                                opt = stats["shopOptions"][idx]
                                 if not opt["sold"]:
                                     item = opt["data"]
                                     if stats['gold'] >= item['price']:
                                         if item.get("type") == "CONSUMABLE":
                                             stats['gold'] -= item['price']
-                                            if item["id"] == "cons_1": playerHp = min(stats['maxHp'], playerHp + 50)
+                                            if item["id"] == "cons_1": state["playerHp"] = min(stats['maxHp'], state["playerHp"] + 50)
                                             elif item["id"] == "cons_2": stats['specialAmmo'] += 1
                                             opt["sold"] = True
                                         else:
-                                            if len(inventory) < 9:
+                                            if len(state["inventory"]) < 9:
                                                 stats['gold'] -= item['price']
-                                                inventory.append(item)
+                                                state["inventory"].append(item)
                                                 opt["sold"] = True
                                                 calculate_stats()
                                             else:
@@ -125,7 +130,7 @@ while running:
                 
                 # 1. 일반 상점 아이템 구매
                 if shopSubState == "NORMAL" and shopTab == "MARKET":
-                    for i, opt in enumerate(shopOptions):
+                    for i, opt in enumerate(stats["shopOptions"]):
                         card_rect = pygame.Rect(30 + i * 135, 170, 125, 180)
 
                         if card_rect.collidepoint(mousePos) and not opt["sold"]:
@@ -134,14 +139,14 @@ while running:
                                 # 소모품 처리
                                 if item.get("type") == "CONSUMABLE":
                                     stats['gold'] -= item['price']
-                                    if item["id"] == "cons_1": playerHp = min(stats['maxHp'], playerHp + 50)
+                                    if item["id"] == "cons_1": state["playerHp"] = min(stats['maxHp'], state["playerHp"] + 50)
                                     elif item["id"] == "cons_2": stats['specialAmmo'] += 1
                                     opt["sold"] = True
                                 # 인벤토리 장착 처리
                                 else:
-                                    if len(inventory) < 9:
+                                    if len(state["inventory"]) < 9:
                                         stats['gold'] -= item['price']
-                                        inventory.append(item)
+                                        state["inventory"].append(item)
                                         opt["sold"] = True
                                         calculate_stats()
                                     else:
@@ -163,15 +168,15 @@ while running:
                 elif shopSubState == "SELECT_REMOVE":
                     CENTER_X = WIDTH // 2
                     # 인벤토리 순회하며 클릭된 슬롯 확인
-                    for i in range(len(inventory)):
+                    for i in range(len(state["inventory"])):
                         row, col = i // 3, i % 3
                         slotRect = pygame.Rect(CENTER_X + 50 + col * 110, 160 + row * 110, 100, 100)
 
                         if slotRect.collidepoint(mousePos):
                             # 돈 차감 및 아이템 교체 및 상점 내 품절 처리
                             stats['gold'] -= pendingItem["data"]["price"]
-                            inventory.pop(i)
-                            inventory.append(pendingItem["data"])
+                            state["inventory"].pop(i)
+                            state["inventory"].append(pendingItem["data"])
                             pendingItem["sold"] = True
 
                             # 상태 초기화 및 스탯 재적용
@@ -213,12 +218,12 @@ while running:
             pProjs.append(new_proj)
             shootCooldown = 15 # 발사 간격 조절
         shootCooldown = max(0, shootCooldown - 1)
-        if invincibleTimer > 0: invincibleTimer -= 1
+        if state["invincibleTimer"] > 0: state["invincibleTimer"] -= 1
 
-        if keys[pygame.K_w] and stats["specialAmmo"] > 0 and specialEffectTimer <= 0:
+        if keys[pygame.K_w] and stats["specialAmmo"] > 0 and state["specialEffectTimer"] <= 0:
             stats["specialAmmo"] -= 1
-            specialEffectTimer = 40  
-            shakeTimer = 10         
+            state["specialEffectTimer"] = 40  
+            state["shakeTimer"] = 10         
             if assets.sounds['explosion']:
                 assets.sounds['explosion'].play()
             
@@ -232,10 +237,10 @@ while running:
                     e.hp -= 30
                     if e.hp <= 0:
                         if e in enemies: enemies.remove(e)
-                        score += 150
+                        state["score"] += 150
                         # 처치 이펙트 생성 (선택 사항)
                         for _ in range(5): 
-                            particles.append(Particle(e.pos.x+15, e.pos.y+15, (255, 255, 255)))
+                            state["particles"].append(Particle(e.pos.x+15, e.pos.y+15, (255, 255, 255)))
             
             # 3. 보스가 있다면 보스에게도 데미지
             if boss:
@@ -245,7 +250,7 @@ while running:
             stageTimer -= 1
             if stageTimer == 120: bossAlertTimer = 120
             if stageTimer <= 0:
-                if zeroTicket: boss = BossZero(); zeroTicket = False
+                if state['zeroTicket']: boss = BossZero(); state['zeroTicket'] = False
                 elif currentStage == 1:
                     # boss = BossSwarm()
                     # boss = BossZero()
@@ -283,8 +288,8 @@ while running:
             if boss.hp <= 0:
                 boss = None
                 stats["gold"] += 1500
-                score += 5000
-                gameState = 'SHOP'
+                state["score"] += 5000
+                state["gameState"] = 'SHOP'
                 refresh_shop()
 
 # --- [준비 단계] 공통 변수 계산 (DRY 원칙) ---
@@ -326,7 +331,7 @@ while running:
             # 플레이어 피격 판정
             p_radius = getattr(p, 'radius', 5)
             if p.pos.distance_to(playerCenter) < hitboxRadius + p_radius:
-                playerHp -= p.dmg
+                state["playerHp"] -= p.dmg
                 if p in eProjs: eProjs.remove(p)
             elif p.pos.y > HEIGHT: 
                 if p in eProjs: eProjs.remove(p)
@@ -387,9 +392,9 @@ while running:
                             stats["gold"] += 35
                             
                             earned_score = 40 if getattr(p, 'isHoming', False) else 100
-                            score += earned_score
+                            state["score"] += earned_score
                             
-                            for _ in range(10): particles.append(Particle(eCenter.x, eCenter.y, (255, 50, 50)))
+                            for _ in range(10): state["particles"].append(Particle(eCenter.x, eCenter.y, (255, 50, 50)))
                         break
 
             # 투사체 소멸 처리 (관통 업그레이드 여부 확인)
@@ -399,10 +404,10 @@ while running:
                 if p in pProjs: pProjs.remove(p)
 
         # --- 게임 오버 체크 ---
-        if playerHp <= 0:
-            if score > highScore: 
+        if state["playerHp"] <= 0:
+            if state["score"] > state["highScore"]:
                 try:
-                    saveHighscoreSecure(score) # 보안 저장 함수로 변경
+                    saveHighscoreSecure(state["score"]) # 보안 저장 함수로 변경
                 except Exception as e:
                     print(f"점수 저장 실패: {e}") # try-catch 예외 처리 규칙 반영
             running = False
@@ -415,8 +420,8 @@ while running:
     tempSurf = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     tempSurf.fill((0, 0, 0, 0))
 
-    if gameState == 'PLAYING':
-        for p in particles: p.draw(tempSurf)
+    if state["gameState"] == 'PLAYING':
+        for p in state["particles"]: p.draw(tempSurf)
         for e in enemies: e.draw(tempSurf) 
             
         if boss:
@@ -426,15 +431,15 @@ while running:
         for p in eProjs: p.draw(tempSurf)
         
         # --- 수정된 렌더링 코드 ---
-        if invincibleTimer % 4 == 0: 
+        if state["invincibleTimer"] % 4 == 0: 
             tempSurf.blit(assets.images['player'], playerPos)
-            hitboxRadius = 5
+            state["hitboxRadius"] = 5
 
             # 1. 원형 테두리 (이건 투명도가 필요 없으므로 그대로 유지)
-            pygame.draw.circle(tempSurf, CYAN, playerCenter, hitboxRadius, 2)
-            fillSurf = pygame.Surface((hitboxRadius * 2, hitboxRadius * 2), pygame.SRCALPHA)
-            pygame.draw.circle(fillSurf, (0, 255, 255, 80), (hitboxRadius, hitboxRadius), hitboxRadius - 2)
-            tempSurf.blit(fillSurf, (playerCenter[0] - hitboxRadius, playerCenter[1] - hitboxRadius))
+            pygame.draw.circle(tempSurf, CYAN, playerCenter, state["hitboxRadius"], 2)
+            fillSurf = pygame.Surface((state["hitboxRadius"] * 2, state["hitboxRadius"] * 2), pygame.SRCALPHA)
+            pygame.draw.circle(fillSurf, (0, 255, 255, 80), (state["hitboxRadius"], state["hitboxRadius"]), state["hitboxRadius"] - 2)
+            tempSurf.blit(fillSurf, (playerCenter[0] - state["hitboxRadius"], playerCenter[1] - state["hitboxRadius"]))
             
         if boss is None:
             pygame.draw.rect(tempSurf, GRAY, (WIDTH//2-100, 20, 200, 8))
@@ -456,7 +461,7 @@ while running:
         # --- [좌측 영역: 상점 및 시너지 (0 ~ 450px)] ---
         if shopTab == "MARKET":
             tempSurf.blit(assets.fonts['medium'].render("MARKET ITEMS", True, assets.colors['cyan']), (30, 120))
-            for i, opt in enumerate(shopOptions):
+            for i, opt in enumerate(stats["shopOptions"]):
                 cardRect = pygame.Rect(30 + i * 135, 170, 125, 180)
                 color = (40, 40, 50) if not opt["sold"] else (20, 20, 20)
                 pygame.draw.rect(tempSurf, color, cardRect, border_radius=10)
@@ -480,7 +485,7 @@ while running:
         tempSurf.blit(assets.fonts['small'].render("[ 발동 효과 ]", True, assets.colors['green']), (CENTER_X // 2 + 30, 365))
         
         synergy_counts = {}
-        for item in inventory:
+        for item in state["inventory"]:
             for tag in item["tags"]:
                 synergy_counts[tag] = synergy_counts.get(tag, 0) + 1
         
@@ -509,9 +514,9 @@ while running:
             pygame.draw.rect(tempSurf, (25, 25, 35), slotRect, border_radius=5)
             pygame.draw.rect(tempSurf, assets.colors['gray'], slotRect, 2, border_radius=5)
             
-            if i < len(inventory):
+            if i < len(state["inventory"]):
                 # 아이템 장착 시 표시
-                item_txt = assets.fonts['small'].render(inventory[i]["name"][:6], True, assets.colors['cyan'])
+                item_txt = assets.fonts['small'].render(state["inventory"][i]["name"][:6], True, assets.colors['cyan'])
                 tempSurf.blit(item_txt, (slotRect.x + 10, slotRect.y + 40))
 
         if shopSubState == "CONFIRM_REPLACE":
@@ -561,20 +566,20 @@ while running:
     # 4. 전투 시에만 보이는 UI
     if gameState != 'SHOP':
         # 체력바 배경 현재 체력(초록색)
-        pygame.draw.rect(screen, GREEN, (10, 10, max(0, (playerHp/stats['maxHp'])*200), 20))    
-        screen.blit(assets.fonts['small'].render(f"{int(playerHp)} / {stats['maxHp']}", True, assets.colors['black']), (80, 10))
+        pygame.draw.rect(screen, GREEN, (10, 10, max(0, (state['playerHp']/stats['maxHp'])*200), 20))    
+        screen.blit(assets.fonts['small'].render(f"{int(state['playerHp'])} / {stats['maxHp']}", True, BLACK), (80, 10))
         
         # 정보 텍스트 (점수, 최고점수, 스테이지 정보 그룹화)
-        infoTxt1 = assets.fonts['small'].render(f"SCORE: {score} | HI-SCORE: {highScore} | STAGE: {currentStage}", True, assets.colors['white'])
+        infoTxt1 = assets.fonts['small'].render(f"SCORE: {state['score']} | HI-SCORE: {highScore} | STAGE: {currentStage}", True, WHITE)
         screen.blit(infoTxt1, (10, 35))
         
         # 재화 및 특수기 개수 표기 (눈에 띄도록 골드 색상 강조)
-        infoTxt2 = assets.fonts['small'].render(f"GOLD: {stats['gold']} G | SPECIAL (W): {stats['specialAmmo']} 개", True, assets.colors['gold'])
+        infoTxt2 = assets.fonts['small'].render(f"GOLD: {stats['gold']} G | SPECIAL (W): {stats['specialAmmo']} 개", True, GOLD)
         screen.blit(infoTxt2, (10, 55))
         
         # 제로 티켓 활성화 상태
-        if zeroTicket: 
-            screen.blit(assets.fonts['small'].render("★ ZERO TICKET ACTIVE ★", True, assets.colors['cyan']), (10, 75))
+        if state['zeroTicket']: 
+            screen.blit(assets.fonts['small'].render("★ ZERO TICKET ACTIVE ★", True, CYAN), (10, 75))
             
     # UI 업데이트 및 프레임 제한
     pygame.display.flip()

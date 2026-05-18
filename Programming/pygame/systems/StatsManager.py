@@ -1,7 +1,6 @@
 # 시너지 계산 및 스탯 재계산 로직 (calculateStats)
-from main import inventory, stats, playerHp
-from constants import baseStats
-from entities.Bosses import *
+from constants import baseStats, SYNERGY_DATA
+from systems.SharedState import state, stats
 
 SYNERGY_DATA = {
     "WEAPON": {
@@ -44,18 +43,17 @@ def calculate_stats():
     # 시너지 태그 카운트
     synergy_counts = {}
     active_tags = []
-    for item in inventory:
+    for item in state["inventory"]:
         for tag in item.get('tags', []):
             active_tags.append(tag)
             synergy_counts[tag] = synergy_counts.get(tag, 0) + 1
 
     # 중복을 제거한 고유 태그 목록 생성
-    unique_active_tags = sorted(list(set(active_tags)))
+    # unique_active_tags = sorted(list(set(active_tags)))
         
     # 시너지 효과 적용
     for tag, count in synergy_counts.items():
         if tag in SYNERGY_DATA:
-            # 요구 조건을 오름차순으로 정렬하여 모두 적용
             for req, data in sorted(SYNERGY_DATA[tag].items()):
                 if count >= req:
                     for k, v in data["effect"].items():
@@ -65,5 +63,5 @@ def calculate_stats():
                             stats[k] += v
 
     # 최대 체력 변동에 따른 현재 체력 보정
-    if playerHp > stats["maxHp"]:
-        playerHp = stats["maxHp"]
+    if state["playerHp"] > stats["maxHp"]:
+        state["playerHp"] = stats["maxHp"]
