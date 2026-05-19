@@ -161,7 +161,7 @@ while running:
 
                         if slotRect.collidepoint(mousePos):
                             # 돈 차감 및 아이템 교체 및 상점 내 품절 처리
-                            state["gold"] -= state["pendingItem"]["data"]["price"]
+                            stats["gold"] -= state["pendingItem"]["data"]["price"]
                             state["inventory"].pop(i)
                             state["inventory"].append(state["pendingItem"]["data"])
                             state["pendingItem"]["sold"] = True
@@ -276,6 +276,11 @@ while running:
                 stats["gold"] += 1500
                 state["score"] += 5000
                 state["gameState"] = 'SHOP'
+
+                stageTimer = STAGE_DURATION 
+                
+                state["freeRefreshAvailable"] = True
+                state["shopRefreshCount"] = 0
                 refreshShop()
     
     # 2026-05-19: 시너지 효과 처리 (기본 스탯 확장에 따른 업데이트)
@@ -421,6 +426,7 @@ while running:
     tempSurf.fill((0, 0, 0, 0))
 
     if state["gameState"] == 'PLAYING':
+
         for p in state["particles"]: p.draw(tempSurf)
         for e in enemies: e.draw(tempSurf) 
             
@@ -458,17 +464,16 @@ while running:
             if state["bossAlertTimer"] > 0:
                 tempSurf.blit(assets.fonts['large'].render("-!!! WARNING !!!-", True, RED), (WIDTH//2-250, HEIGHT//2-50))
                 state["bossAlertTimer"] -= 1
+        drawCombatUI(screen)
+    elif state["gameState"] == 'SHOP':
+        drawShopUI(screen)
+    drawSpecialEffect(screen)
 
     # 1. 가장 밑바닥에 배경 먼저 그리기
     screen.blit(assets.images['background'], (0, 0))
     
     # 2. 플레이어, 적, 파티클 등이 그려진 tempSurf 덮어씌우기
     screen.blit(tempSurf, (0, 0))
-        
-    # 3. 분리된 모듈을 통한 UI 및 이펙트 렌더링 (순서 중요)
-    drawShopUI(screen)
-    drawSpecialEffect(screen)
-    drawCombatUI(screen)
             
     # UI 업데이트 및 프레임 제한
     pygame.display.flip()
