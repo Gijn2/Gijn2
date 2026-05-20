@@ -24,8 +24,9 @@ baseStats = {"damage": 10,
              "specialAmmo": 3,
 
              # 2026-05-19 기본 스탯 확장에 특수효과 플래그 추가
-            "damage": 10, "speed": 5, "maxHp": 100, "pierce": False, "specialAmmo": 3,
-            "hp_regen": 0, "celest_shield": False, "burn_damage": False
+            "hp_regen": 0,
+            "celest_shield": False,
+            "burn_damage": False
             }
 
 # --- 시너지 데이터 ---

@@ -5,10 +5,10 @@ import random
 import os
 from constants import *
 from entities.Projectiles import Projectile, HomingProjectile, Meteor
-from systems.CollisionManager import takeDamage 
+from systems.CollisionManager import takeDamage
 from systems.SharedState import state
 
-IMGS_PATH = os.path.join(os.path.dirname(__file__), "imgs")
+IMGS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "imgs")
 
 class BossAssetManager:
     _cache = {}

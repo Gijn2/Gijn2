@@ -200,15 +200,15 @@ while running:
                     pygame.Vector2(0, -10), 
                     GREEN, 
                     stats["damage"],
-                    isHoming=keys[pygame.K_LSHIFT] # 이제 정상적으로 인식됩니다.
+                    isHoming=keys[pygame.K_LSHIFT]
                 )
             pProjs.append(new_proj)
             state["shootCooldown"] = 15 # 발사 간격 조절
         state["shootCooldown"] = max(0, state["shootCooldown"] - 1)
         if state["invincibleTimer"] > 0: state["invincibleTimer"] -= 1
 
-        if keys[pygame.K_w] and state["specialAmmo"] > 0 and state["specialEffectTimer"] <= 0:
-            state["specialAmmo"] -= 1
+        if keys[pygame.K_w] and stats["specialAmmo"] > 0 and state["specialEffectTimer"] <= 0:
+            stats["specialAmmo"] -= 1
             state["specialEffectTimer"] = 40  
             state["shakeTimer"] = 10         
             if assets.sounds['explosion']:
