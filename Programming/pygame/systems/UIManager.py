@@ -24,6 +24,7 @@ def drawShopUI(screen):
             if not opt["sold"]:
                 tempSurf.blit(assets.fonts['small'].render(opt['data']['name'][:8], True, WHITE), (cardRect.x+10, cardRect.y+15))
                 tempSurf.blit(assets.fonts['small'].render(f"{opt['data']['price']}G", True, GOLD), (cardRect.x+10, cardRect.y+150))
+                
     elif state["shopTab"] == "BANK":
         tempSurf.blit(assets.fonts['medium'].render("GALACTIC BANK", True, GOLD), (30, 120))
         bankInfo = f"은행 잔고: {state['bankBalance']}G"

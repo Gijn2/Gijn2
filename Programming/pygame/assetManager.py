@@ -17,6 +17,8 @@ class AssetManager:
         self.sounds = {}
         self.fonts = {}
         self.enemyImgs = {}
+        self.itemImgs = {}
+        self.bossAttackImgs = {}
 
     def loadAllAssets(self):
         # 1. 이미지 로드

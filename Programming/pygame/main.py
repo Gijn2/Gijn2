@@ -51,10 +51,10 @@ while running:
 
     # [1] Input & Event Handling (책임 분리)
     for event in pygame.event.get():
-        if event.type == pygame.QUIT: running = False
+        if event.type == pygame.QUIT:
+            running = False
         
         if event.type == pygame.KEYDOWN:
-
             if state["gameState"] == 'SHOP':
                 if state["shopSubState"] == "NORMAL":
                     # 은행 입출금 기능 (은행 탭일 때만 작동)
@@ -273,12 +273,17 @@ while running:
 
             if boss.hp <= 0:
                 boss = None
+                enemies.clear()
+                pProjs.clear()
+                eProjs.clear()
                 stats["gold"] += 1500
                 state["score"] += 5000
+
+                applyInterest()
+                state["currentStage"] += 1
                 state["gameState"] = 'SHOP'
 
-                stageTimer = STAGE_DURATION 
-                
+                stageTimer = STAGE_DURATION                 
                 state["freeRefreshAvailable"] = True
                 state["shopRefreshCount"] = 0
                 refreshShop()
@@ -426,7 +431,9 @@ while running:
     tempSurf.fill((0, 0, 0, 0))
 
     if state["gameState"] == 'PLAYING':
-
+        screen.blit(assets.images['background'], (0, 0))
+        drawCombatUI(screen)
+        drawSpecialEffect(screen)
         for p in state["particles"]: p.draw(tempSurf)
         for e in enemies: e.draw(tempSurf) 
             
@@ -464,18 +471,11 @@ while running:
             if state["bossAlertTimer"] > 0:
                 tempSurf.blit(assets.fonts['large'].render("-!!! WARNING !!!-", True, RED), (WIDTH//2-250, HEIGHT//2-50))
                 state["bossAlertTimer"] -= 1
+        screen.blit(tempSurf, (0, 0))
         drawCombatUI(screen)
     elif state["gameState"] == 'SHOP':
         drawShopUI(screen)
-    drawSpecialEffect(screen)
-
-    # 1. 가장 밑바닥에 배경 먼저 그리기
-    screen.blit(assets.images['background'], (0, 0))
-    
-    # 2. 플레이어, 적, 파티클 등이 그려진 tempSurf 덮어씌우기
-    screen.blit(tempSurf, (0, 0))
-            
-    # UI 업데이트 및 프레임 제한
+        
     pygame.display.flip()
 
 pygame.quit()
