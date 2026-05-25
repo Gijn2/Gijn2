@@ -19,9 +19,19 @@ def refreshShop():
         shopOptions.append({"data": item, "sold": False})
         
     state["shopOptions"] = shopOptions
+    pass
 
 # 스테이지 클리어 시 이자 계산
 def applyInterest():
-    if state.get("bankBalance", 0) > 0:
-        interest = int(state["bankBalance"] * 0.15)
+    current_gold = stats.get("gold", 0)
+    if current_gold > 0:
+        # 2. 보유 골드의 15%를 이자로 계산
+        interest = int(current_gold * 0.15)
+        
+        # 3. 게임 밸런스 붕괴 방지를 위한 최대 이자 제한 (예: 최대 50G)
+        # (이 값은 필요에 따라 constants.py로 분리하여 관리하면 유지보수에 좋습니다.)
+        MAX_INTEREST = 50 
+        interest = min(interest, MAX_INTEREST)
+        
+        # 4. 플레이어의 골드에 이자 추가
         stats["gold"] += interest
