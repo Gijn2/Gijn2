@@ -23,15 +23,12 @@ def refreshShop():
 
 # 스테이지 클리어 시 이자 계산
 def applyInterest():
-    current_gold = stats.get("gold", 0)
-    if current_gold > 0:
-        # 2. 보유 골드의 15%를 이자로 계산
-        interest = int(current_gold * 0.15)
-        
-        # 3. 게임 밸런스 붕괴 방지를 위한 최대 이자 제한 (예: 최대 50G)
-        # (이 값은 필요에 따라 constants.py로 분리하여 관리하면 유지보수에 좋습니다.)
+    # stats["gold"] 대신 state["bankBalance"]를 기준으로 변경
+    current_bank = state.get("bankBalance", 0)
+    if current_bank > 0:
+        interest = int(current_bank * 0.15)
         MAX_INTEREST = 50 
         interest = min(interest, MAX_INTEREST)
-        
-        # 4. 플레이어의 골드에 이자 추가
-        stats["gold"] += interest
+
+        # 이자를 은행 잔고에 추가할지, 소지금에 바로 줄지 선택하여 반영
+        state["bankBalance"] += interest  # 은행 잔고에 이자 누적 예시
