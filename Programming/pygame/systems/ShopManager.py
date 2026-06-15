@@ -26,9 +26,7 @@ def applyInterest():
     # stats["gold"] 대신 state["bankBalance"]를 기준으로 변경
     current_bank = state.get("bankBalance", 0)
     if current_bank > 0:
-        interest = int(current_bank * 0.15)
-        MAX_INTEREST = 50 
-        interest = min(interest, MAX_INTEREST)
+        interest = int(current_bank * 0.05)
 
         # 이자를 은행 잔고에 추가할지, 소지금에 바로 줄지 선택하여 반영
         state["bankBalance"] += interest  # 은행 잔고에 이자 누적 예시

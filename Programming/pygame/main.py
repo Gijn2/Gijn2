@@ -71,7 +71,6 @@ while running:
                     
                     # S키로 스테이지 시작
                     elif event.key == pygame.K_s:
-                        applyInterest()
                         state["gameState"] = 'PLAYING'
                         state["currentStage"] += 1
                         stageTimer = STAGE_DURATION

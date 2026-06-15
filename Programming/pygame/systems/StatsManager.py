@@ -18,9 +18,14 @@ def calculateStats():
             synergy_counts[tag] = synergy_counts.get(tag, 0) + 1
         
     for tag, count in synergy_counts.items():
-        if tag in SYNERGY_DATA:
-            for req, data in sorted(SYNERGY_DATA[tag].items()):
-                if count >= req:
+            if tag in SYNERGY_DATA:
+                # 현재 활성화 조건 조건을 만족하는 req(개수) 목록 필터링
+                valid_reqs = [req for req in SYNERGY_DATA[tag].keys() if count >= req]
+                if valid_reqs:
+                    # 활성화된 단계 중 가장 높은 단계(가장 큰 값)의 데이터만 추출
+                    max_req = max(valid_reqs)
+                    data = SYNERGY_DATA[tag][max_req]
+                    
                     for k, v in data["effect"].items():
                         if type(v) == bool:
                             stats[k] = v

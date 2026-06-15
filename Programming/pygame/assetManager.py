@@ -38,8 +38,17 @@ class AssetManager:
                     "ATTACK": pygame.transform.scale(pygame.image.load(os.path.join(self.imgsPath, f"normalEnemy_{i}_attack.png")).convert_alpha(), (50, 50)),
                 }
             except FileNotFoundError:
-                self.enemyImgs[typeKey] = self.enemyImgs.get("type_1", None)
-
+                # 1번 타입 이미지가 이미 안전하게 로드되어 있다면 그것으로 대체
+                if "type_1" in self.enemyImgs and self.enemyImgs["type_1"] is not None:
+                    self.enemyImgs[typeKey] = self.enemyImgs["type_1"]
+                else:
+                    # 1번 이미지마저 없다면 튕기지 않도록 에러 예방용 임시 색상 상자 생성
+                    fallback_stand = pygame.Surface((50, 50))
+                    fallback_stand.fill((255, 50, 50))    # 빨간 사각형
+                    fallback_attack = pygame.Surface((50, 50))
+                    fallback_attack.fill((255, 150, 50))  # 주황 사각형
+                    self.enemyImgs[typeKey] = {"STAND": fallback_stand, "ATTACK": fallback_attack}
+                    
         # 메테오 이미지 예외 처리
         try:
             meteorImg = pygame.image.load(os.path.join(self.imgsPath, "meteor.png")).convert_alpha()
@@ -58,15 +67,16 @@ class AssetManager:
             self.sounds['hit'] = None
             self.sounds['explosion'] = None
 
-        # 3. 폰트 로드
+        # 3. 폰트 로드 (Windows, Mac, Linux 호환성을 위한 한글 폰트 우선순위 리스트 설정)
+        ko_fonts = ["malgungothic", "applesgothic", "nanumgothic", "notosanscjkkr", "sans"]
         try:
-            self.fonts['small'] = pygame.font.SysFont("malgungothic", 16)
-            self.fonts['medium'] = pygame.font.SysFont("malgungothic", 24)
-            self.fonts['large'] = pygame.font.SysFont("malgungothic", 40)
+            self.fonts['small'] = pygame.font.SysFont(ko_fonts, 16)
+            self.fonts['medium'] = pygame.font.SysFont(ko_fonts, 24)
+            self.fonts['large'] = pygame.font.SysFont(ko_fonts, 40)
         except Exception:
             self.fonts['small'] = pygame.font.Font(None, 20)
             self.fonts['medium'] = pygame.font.Font(None, 32)
             self.fonts['large'] = pygame.font.Font(None, 50)
-
+            
 # 싱글톤 인스턴스 생성
 assets = AssetManager()
