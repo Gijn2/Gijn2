@@ -177,7 +177,7 @@ while running:
         if p.life <= 0: state["particles"].remove(p)
 
     if state["gameState"] == 'PLAYING':
-        playerCenter = playerPos + pygame.Vector2(30, 30)
+        # 1. 키 입력 및 이동 처리
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT]: playerPos.x -= stats["speed"]
         if keys[pygame.K_RIGHT]: playerPos.x += stats["speed"]
@@ -187,10 +187,9 @@ while running:
         if playerPos.x < -30: playerPos.x = WIDTH
         elif playerPos.x > WIDTH: playerPos.x = -30
         playerPos.y = max(0, min(HEIGHT-40, playerPos.y))
+        playerCenter = playerPos + pygame.Vector2(30, 30)
         
-        current_homing = keys[pygame.K_LSHIFT]  
         if keys[pygame.K_q] and state["shootCooldown"] <= 0:
-            base_dir = pygame.Vector2(0, -10)  # 기본 위쪽 발사
             is_homing = keys[pygame.K_LSHIFT]
 
             new_proj = Projectile(
@@ -430,8 +429,7 @@ while running:
     tempSurf.fill((0, 0, 0, 0))
 
     if state["gameState"] == 'PLAYING':
-        screen.blit(assets.images['background'], (0, 0))
-        drawCombatUI(screen)
+        screen.blit(assets.images['background'], render_offset)
         drawSpecialEffect(screen)
         for p in state["particles"]: p.draw(tempSurf)
         for e in enemies: e.draw(tempSurf) 
@@ -442,10 +440,8 @@ while running:
         for p in pProjs: p.draw(tempSurf)
         for p in eProjs: p.draw(tempSurf)
         
-        # --- 수정된 렌더링 코드 ---
-        if state["invincibleTimer"] % 4 == 0: 
+        if state["invincibleTimer"] <= 0 or (state["invincibleTimer"] % 4 == 0):
             tempSurf.blit(assets.images['player'], playerPos)
-            state["hitboxRadius"] = 5
 
             # 1. 원형 테두리 (이건 투명도가 필요 없으므로 그대로 유지)
             pygame.draw.circle(tempSurf, CYAN, playerCenter, state["hitboxRadius"], 2)
@@ -470,7 +466,7 @@ while running:
             if state["bossAlertTimer"] > 0:
                 tempSurf.blit(assets.fonts['large'].render("-!!! WARNING !!!-", True, RED), (WIDTH//2-250, HEIGHT//2-50))
                 state["bossAlertTimer"] -= 1
-        screen.blit(tempSurf, (0, 0))
+        screen.blit(tempSurf, render_offset)
         drawCombatUI(screen)
     elif state["gameState"] == 'SHOP':
         drawShopUI(screen)
