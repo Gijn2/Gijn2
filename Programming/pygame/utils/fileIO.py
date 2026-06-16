@@ -1,43 +1,47 @@
-# loadHighscoreSecure, saveHighscoreSecure (try-catch 포함)
 import os
 import hashlib
+import json
 from constants import SECRET_SALT
+from systems.SharedState import state
 
-
-def loadHighscore():
-    if os.path.exists("highscore.txt"):
-        try:
-            with open("highscore.txt", "r") as f:
-                return int(f.read())
-        except Exception:
-            return 0
-    return 0
-highScore = loadHighscore()
-
-def saveHighscoreSecure(scoreValue):
-    # 점수와 비밀키를 합쳐 해시값(Checksum) 생성
-    dataStr = str(scoreValue) + SECRET_SALT
-    checksum = hashlib.sha256(dataStr.encode()).hexdigest()
+def saveGameDataSecure():
+    """최고기록, 당시 아이템 목록, 해금된 스토리 진행 상황을 묶어서 암호화 저장합니다."""
+    # 1. 저장할 데이터 구조화
+    save_data = {
+        "highScore": state["highScore"],
+        "highScoreItems": state["highScoreItems"],
+        "unlockedStories": state["unlockedStories"]
+    }
+    # 2. JSON 문자열로 직렬화
+    data_str = json.dumps(save_data, ensure_ascii=False)
     
-    with open("highscore.dat", "w") as f:
-        # 점수와 해시값을 같이 저장
-        f.write(f"{scoreValue}\n{checksum}")
+    # 3. 데이터 변조 방지용 체크섬 생성
+    checksum = hashlib.sha256((data_str + SECRET_SALT).encode('utf-8')).hexdigest()
+    
+    # 4. 파일에 기록
+    with open("gamedata.dat", "w", encoding="utf-8") as f:
+        f.write(f"{data_str}\n{checksum}")
 
-def loadHighscoreSecure():
+def loadGameDataSecure():
+    """보안 데이터 파일을 불러와 검증 후 게임 상태에 적용합니다."""
     try:
-        if not os.path.exists("highscore.dat"): return 0
-        with open("highscore.dat", "r", encoding="utf-8") as f:
+        if not os.path.exists("gamedata.dat"): 
+            return
+        with open("gamedata.dat", "r", encoding="utf-8") as f:
             lines = f.read().splitlines()
-            if len(lines) < 2: return 0
-            scoreValue = int(lines[0].strip())
-            savedChecksum = lines[1].strip()
-            calcChecksum = hashlib.sha256((str(scoreValue) + SECRET_SALT).encode()).hexdigest()
-                
-            if savedChecksum == calcChecksum:
-                return scoreValue
+            if len(lines) < 2: return
+            
+            data_str = lines[0]
+            saved_checksum = lines[1]
+            
+            # 체크섬 검증
+            calc_checksum = hashlib.sha256((data_str + SECRET_SALT).encode('utf-8')).hexdigest()
+            if saved_checksum == calc_checksum:
+                loaded_data = json.loads(data_str)
+                state["highScore"] = loaded_data.get("highScore", 0)
+                state["highScoreItems"] = loaded_data.get("highScoreItems", [])
+                state["unlockedStories"] = loaded_data.get("unlockedStories", ["intro"])
             else:
-                print("점수 조작이 감지되었습니다.")
-                return 0 # 조작 감지 시 0점으로 초기화
-    except (IOError, ValueError, IndexError):
-        return 0
-    return 0
+                print("⚠️ 경고: 세이브 파일이 변조되었거나 훼손되어 불러올 수 없습니다.")
+    except Exception as e:
+        print(f"데이터 파일 로드 오류: {e}")
