@@ -25,7 +25,10 @@ state = {
     "pendingItem": None,
     "screenShakeTimer": 0,
     "shootCooldown": 0,
-    "specialEffectTimer": 0
+    "specialEffectTimer": 0,
+    "regenCounter": 0,
+    "highScoreItems": [],
+    "unlockedStories": [],
 }
 
 stats = baseStats.copy()

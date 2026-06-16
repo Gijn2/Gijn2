@@ -30,7 +30,7 @@ def drawShopUI(screen):
         bankInfo = f"은행 잔고: {state['bankBalance']}G"
         tempSurf.blit(assets.fonts['medium'].render(bankInfo, True, WHITE), (60, 180))
         tempSurf.blit(assets.fonts['small'].render("[A] 100G 예금 | [D] 100G 출금", True, CYAN), (60, 230))
-        tempSurf.blit(assets.fonts['small'].render("이자는 라운드 종료 시 15% 지급됩니다.", True, GREEN), (60, 270))
+        tempSurf.blit(assets.fonts['small'].render("이자는 라운드 종료 시 5% 지급됩니다.", True, GREEN), (60, 270))
         
     pygame.draw.line(tempSurf, GRAY, (20, 350), (centerX - 20, 350), 2)
     tempSurf.blit(assets.fonts['small'].render("[ 보유 시너지 ]", True, GOLD), (30, 365))

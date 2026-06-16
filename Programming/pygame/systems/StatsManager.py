@@ -5,10 +5,12 @@ from systems.SharedState import state, stats
 def calculateStats():
     global stats
     current_gold = stats.get("gold", 0)
+    current_ammo = stats.get("specialAmmo", 3)
     
     stats.clear()
     stats.update(baseStats)
     stats["gold"] = current_gold
+    stats["specialAmmo"] = current_ammo
     
     synergy_counts = {}
     active_tags = []

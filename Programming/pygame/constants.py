@@ -38,15 +38,15 @@ SYNERGY_DATA = {
         8: {"name": "무기(8): 데미지 +30, 관통", "effect": {"damage": 30, "pierce": True}},
     },
     "TECH": {
-        3: {"name": "기술(2): 이동속도 +3", "effect": {"speed": 3}},
-        5: {"name": "기술(4): 특수기 +3", "effect": {"specialAmmo": 3}},
-        7: {"name": "기술(6): 이동속도 +5, 특수기 +5", "effect": {"speed": 5, "specialAmmo": 5}}
+        3: {"name": "기술(3): 이동속도 +3", "effect": {"speed": 3}},
+        5: {"name": "기술(5): 특수기 +3", "effect": {"specialAmmo": 3}},
+        7: {"name": "기술(7): 이동속도 +5, 특수기 +5", "effect": {"speed": 5, "specialAmmo": 5}}
     },
     "ARMOR": {
         2: {"name": "장갑(2): 최대체력 +50", "effect": {"maxHp": 50}},
-        3: {"name": "장갑(4): 최대체력 +100", "effect": {"maxHp": 100}},
-        4: {"name": "장갑(6): 최대체력 +200", "effect": {"maxHp": 200}},
-        5: {"name": "장갑(8): 최대체력 +400", "effect": {"maxHp": 400}},
+        3: {"name": "장갑(3): 최대체력 +100", "effect": {"maxHp": 100}},
+        4: {"name": "장갑(4): 최대체력 +200", "effect": {"maxHp": 200}},
+        5: {"name": "장갑(5): 최대체력 +400", "effect": {"maxHp": 400}},
     },
     "SPEED": {2: {"name": "속도(2): 이속 +5", "effect": {"speed": 5}}},
     "GOLD": {2: {"name": "황금(2): 스테이지 클리어 보너스 +200", "effect": {}}},

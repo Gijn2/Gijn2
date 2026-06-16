@@ -159,11 +159,15 @@ while running:
                         slotRect = pygame.Rect(CENTER_X + 50 + col * 110, 160 + row * 110, 100, 100)
 
                         if slotRect.collidepoint(mousePos):
-                            # 돈 차감 및 아이템 교체 및 상점 내 품절 처리
-                            stats["gold"] -= state["pendingItem"]["data"]["price"]
-                            state["inventory"].pop(i)
-                            state["inventory"].append(state["pendingItem"]["data"])
-                            state["pendingItem"]["sold"] = True
+                            item_price = state["pendingItem"]["data"]["price"]
+                            if stats["gold"] >= item_price:
+                                # 돈 차감 및 아이템 교체 및 상점 내 품절 처리
+                                stats["gold"] -= item_price
+                                state["inventory"].pop(i)
+                                state["inventory"].append(state["pendingItem"]["data"])
+                                state["pendingItem"]["sold"] = True
+                            else:
+                                print("골드가 부족하여 아이템 교체 구매가 취소되었습니다.")
 
                             # 상태 초기화 및 스탯 재적용
                             state["shopSubState"] = "NORMAL"
@@ -289,10 +293,10 @@ while running:
     # 2026-05-19: 시너지 효과 처리 (기본 스탯 확장에 따른 업데이트)
     # [신규] 마녀회(2) 시너지: 틱당 체력 재생 (약 1초마다 1씩 회복)
         if stats.get("hp_regen", 0) > 0 and state["playerHp"] > 0:
-            # 60프레임 기준으로 대략 1초에 한 번 발동되도록 설정
-            if pygame.time.get_ticks() % 1000 < 37: 
+            state["regenCounter"] += 1
+            if state["regenCounter"] >= 37:  # 37.5프레임이 약 1초이므로 37프레임 주기 설정
                 state["playerHp"] = min(stats["maxHp"], state["playerHp"] + stats["hp_regen"])
-
+                state["regenCounter"] = 0  # 타이머 초기화
     # [신규] 여신교(2) 시너지: 이동 시 화염 잔상 파티클 생성
         if stats.get("burn_damage"):
             if keys[pygame.K_LEFT] or keys[pygame.K_RIGHT] or keys[pygame.K_UP] or keys[pygame.K_DOWN]:
