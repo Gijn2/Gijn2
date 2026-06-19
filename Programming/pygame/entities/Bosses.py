@@ -421,7 +421,7 @@ class BossZero:
     def __init__(self):
         self.type = "CRAZY"
         self.pos = pygame.Vector2(WIDTH // 2, 200)
-        self.hp = 122
+        self.hp = 120
         self.maxHp = 18000
         self.timer = 0
         self.orbitBullets = []

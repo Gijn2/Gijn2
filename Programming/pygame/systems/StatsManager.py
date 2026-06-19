@@ -32,7 +32,7 @@ def calculateStats():
                         if type(v) == bool:
                             stats[k] = v
                         else:
-                            stats[k] += v
+                            stats[k] = stats.get(k, 0) + v
 
     if state["playerHp"] > stats["maxHp"]:
         state["playerHp"] = stats["maxHp"]

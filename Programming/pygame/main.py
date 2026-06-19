@@ -14,7 +14,7 @@ from systems.SharedState import state, stats
 from systems.StatsManager import calculateStats
 from systems.CollisionManager import takeDamage
 from systems.UIManager import drawShopUI, drawCombatUI, drawSpecialEffect
-from utils.fileIO import saveHighscoreSecure
+from utils.fileIO import saveGameDataSecure
 from entities.Bosses import *
 from entities.Projectiles import *
 
@@ -418,10 +418,11 @@ while running:
         # --- 게임 오버 체크 ---
         if state["playerHp"] <= 0:
             if state["score"] > state["highScore"]:
+                state["highScore"] = state["score"]
                 try:
-                    saveHighscoreSecure(state["score"]) # 보안 저장 함수로 변경
+                    saveGameDataSecure()
                 except Exception as e:
-                    print(f"점수 저장 실패: {e}") # try-catch 예외 처리 규칙 반영
+                    print(f"점수 저장 실패: {e}")
             running = False
 
     # --- 최종 렌더링 부 ---
