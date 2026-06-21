@@ -99,6 +99,12 @@ def drawCombatUI(screen):
     
     if state['zeroTicket']: 
         screen.blit(assets.fonts['small'].render("★ ZERO TICKET ACTIVE ★", True, CYAN), (10, 75))
+    
+    if state["combo"] >= 2:
+        comboTxt = assets.fonts['medium'].render(f"{state['combo']} COMBO!", True, (255, 100, 50))
+        screen.blit(comboTxt, (WIDTH - 150, 20))
+        pygame.draw.rect(screen, GRAY, (WIDTH - 150, 50, 100, 5))
+        pygame.draw.rect(screen, (255, 150, 50), (WIDTH - 150, 50, (state["comboTimer"]/120)*100, 5))
 
 def drawSpecialEffect(screen):
     if state["specialEffectTimer"] <= 0:

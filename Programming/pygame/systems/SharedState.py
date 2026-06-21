@@ -27,6 +27,8 @@ state = {
     "shootCooldown": 0,
     "specialEffectTimer": 0,
     "regenCounter": 0,
+    "combo": 0,
+    "comboTimer": 0,
     "highScoreItems": [],
     "unlockedStories": [],
 }

@@ -329,6 +329,18 @@ while running:
         # --- 2. 적 투사체(eProjs) 업데이트 및 플레이어 피격 판정 ---
         for p in eProjs[:]:
             shouldRemove = False
+
+            if isinstance(p, LaserBeam):
+                shouldRemove = p.update()
+                # 조준선 시간(30프레임)이 지나 본 레이저가 발사 중일 때
+                if (p.max_life - p.life) >= 30:
+                    if p.pos.x - p.width//2 < playerCenter.x < p.pos.x + p.width//2:
+                        state["playerHp"] -= 0.5 # 레이저 안에 있으면 지속 데미지
+                
+                if shouldRemove:
+                    if p in eProjs: eProjs.remove(p)
+                continue
+
             if isinstance(p, HomingProjectile):
                 shouldRemove = p.updateTarget(playerPos, eProjs)
             else:
@@ -403,8 +415,13 @@ while running:
                             if e in enemies: enemies.remove(e)
                             stats["gold"] += 35
                             
+                            # 콤보 시스템
+                            state["combo"] += 1
+                            state["comboTimer"] = 120 # 약 3초 유지 (37.5fps)
+                            combo_multiplier = 1.0 + (state["combo"] * 0.01) # 1콤보당 1% 추가 점수
+
                             earned_score = 40 if getattr(p, 'isHoming', False) else 100
-                            state["score"] += earned_score
+                            state["score"] += int(earned_score * combo_multiplier) # 배율 곱하기
                             
                             for _ in range(10): state["particles"].append(Particle(eCenter.x, eCenter.y, (255, 50, 50)))
                         break
@@ -464,7 +481,10 @@ while running:
                 shieldSurf = pygame.Surface((shield_radius * 2, shield_radius * 2), pygame.SRCALPHA)
                 pygame.draw.circle(shieldSurf, (100, 200, 255, 40), (shield_radius, shield_radius), shield_radius)
                 tempSurf.blit(shieldSurf, (playerCenter[0] - shield_radius, playerCenter[1] - shield_radius))
-
+        if state["comboTimer"] > 0:
+            state["comboTimer"] -= 1
+            if state["comboTimer"] <= 0:
+                state["combo"] = 0
         if boss is None:
             pygame.draw.rect(tempSurf, GRAY, (WIDTH//2-100, 20, 200, 8))
             pygame.draw.rect(tempSurf, CYAN, (WIDTH//2-100, 20, (stageTimer/STAGE_DURATION)*200, 8))

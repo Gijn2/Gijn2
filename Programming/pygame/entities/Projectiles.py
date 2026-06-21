@@ -102,3 +102,27 @@ class Meteor:
             pygame.draw.circle(shadow_surf, (0, 0, 0, alpha), (self.radius * 2, self.radius * 2), r)
         surf.blit(shadow_surf, (self.target.x - self.radius * 2, self.target.y - self.radius * 2))
         surf.blit(self.img, (self.pos.x - self.radius, self.pos.y - self.radius))
+
+class LaserBeam:
+    def __init__(self, x, y, width, max_life, color):
+        self.pos = pygame.Vector2(x, y)
+        self.width = width
+        self.max_life = max_life
+        self.life = max_life
+        self.color = color
+        self.isHoming = False
+
+    def update(self):
+        self.life -= 1
+        return self.life <= 0 # 수명이 다하면 삭제 신호
+
+    def draw(self, surf):
+        # 발사 전 30프레임 동안은 조준선(경고)만 얇게 보여줍니다
+        if self.max_life - self.life < 30:
+            pygame.draw.line(surf, (255, 0, 0, 100), (self.pos.x, self.pos.y), (self.pos.x, HEIGHT), 2)
+        else:
+            # 본 레이저 발사
+            alpha = max(0, min(255, self.life * 5)) 
+            rect_surf = pygame.Surface((self.width, HEIGHT - self.pos.y), pygame.SRCALPHA)
+            rect_surf.fill((*self.color, alpha))
+            surf.blit(rect_surf, (self.pos.x - self.width//2, self.pos.y))
