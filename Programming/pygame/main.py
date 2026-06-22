@@ -194,18 +194,19 @@ while running:
         playerCenter = playerPos + pygame.Vector2(30, 30)
         
         if keys[pygame.K_q] and state["shootCooldown"] <= 0:
+            cur_weapon = state["weapons"][state["currentWeaponIdx"]]
             is_homing = keys[pygame.K_LSHIFT]
 
             new_proj = Projectile(
-                    playerPos.x + 30, 
-                    playerPos.y + 30, 
-                    pygame.Vector2(0, -10), 
-                    GREEN, 
-                    stats["damage"],
-                    isHoming=keys[pygame.K_LSHIFT]
-                )
+                            playerPos.x + 30, 
+                            playerPos.y + 30, 
+                            pygame.Vector2(0, -cur_weapon["speed"]), 
+                            cur_weapon["color"], 
+                            max(1, stats["damage"] + cur_weapon["dmg"]),
+                            isHoming=cur_weapon["isHoming"]
+                        )
             pProjs.append(new_proj)
-            state["shootCooldown"] = 15 # 발사 간격 조절
+            state["shootCooldown"] = cur_weapon["cooldown"] # 발사 간격 조절
         state["shootCooldown"] = max(0, state["shootCooldown"] - 1)
         if state["invincibleTimer"] > 0: state["invincibleTimer"] -= 1
 
@@ -234,6 +235,8 @@ while running:
             # 3. 보스가 있다면 보스에게도 데미지
             if boss:
                 boss.hp -= 100
+        if event.key == pygame.K_e and stats.get("weapon_swap_unlocked", False):
+                    state["currentWeaponIdx"] = (state["currentWeaponIdx"] + 1) % len(state["weapons"])
 
         if boss is None:
             stageTimer -= 1

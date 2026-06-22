@@ -106,6 +106,16 @@ def drawCombatUI(screen):
         pygame.draw.rect(screen, GRAY, (WIDTH - 150, 50, 100, 5))
         pygame.draw.rect(screen, (255, 150, 50), (WIDTH - 150, 50, (state["comboTimer"]/120)*100, 5))
 
+    # 해금 여부에 맞춰 무기 이름 렌더링 문구 분기 처리
+    cur_weapon = state["weapons"][state["currentWeaponIdx"]]
+    if stats.get("weapon_swap_unlocked", False):
+        weapon_text = f"무기(E): {cur_weapon['name']}"
+    else:
+        weapon_text = f"무기: {cur_weapon['name']} (부무기 잠김)"
+
+    infoTxt2 = assets.fonts['small'].render(f"GOLD: {stats['gold']} G | W: {stats['specialAmmo']}개 | {weapon_text}", True, GOLD)
+    screen.blit(infoTxt2, (10, 55))
+
 def drawSpecialEffect(screen):
     if state["specialEffectTimer"] <= 0:
         return
