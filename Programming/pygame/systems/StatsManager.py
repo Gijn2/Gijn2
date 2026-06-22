@@ -14,7 +14,11 @@ def calculateStats():
     
     synergy_counts = {}
     active_tags = []
+
     for item in state["inventory"]:
+        if item.get("id") == "h1":
+            stats["weapon_swap_unlocked"] = True
+
         for tag in item.get('tags', []):
             active_tags.append(tag)
             synergy_counts[tag] = synergy_counts.get(tag, 0) + 1

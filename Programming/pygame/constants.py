@@ -23,10 +23,12 @@ baseStats = {"damage": 10,
              "pierce": False,
              "specialAmmo": 3,
 
-             # 2026-05-19 기본 스탯 확장에 특수효과 플래그 추가
+            # 2026-05-19 기본 스탯 확장에 특수효과 플래그 추가
             "hp_regen": 0,
             "celest_shield": False,
-            "burn_damage": False
+            "burn_damage": False,
+            # 2026-06-23 무기 교체 시스템 해금 여부 플래그
+            "weapon_swap_unlocked": False
             }
 
 # --- 시너지 데이터 ---
@@ -56,7 +58,7 @@ SYNERGY_DATA = {
         4: {"name": "나노 프로그래머블(4): 피격 시 주변 폭발", "effect": {"nano_explosion": True}}
     },
 
-    # [신규] 진영 (별빛과 재생)
+    # 세력 관련 시너지
     "GODDESS_FIRE": {
         2: {"name": "화산재(2): 이동 시 화염, 데미지 +5", "effect": {"burn_damage": True, "damage": 5}},
         4: {"name": "용암(4): 관통, 데미지 +15", "effect": {"pierce": True, "damage": 15}}
@@ -84,6 +86,8 @@ ITEM_POOL = [
     {"id": "l1", "name": "재생의 갑옷", "tags": ["ARMOR", "LIFE", "WITCH"], "price": 700, "desc": "피격 시 10% 확률로 무적"},
     {"id": "m1", "name": "마법 지팡이", "tags": ["MAGIC", "WEAPON", "WITCH"], "price": 550, "desc": "투사체 크기 증가"},
     {"id": "v1", "name": "흡혈귀의 이빨", "tags": ["WEAPON", "LIFE"], "price": 1000, "desc": "적 처치 시 체력 1 회복(고유)"},
+    {"id": "h1", "name": "무기 전환: 홀스터", "tags": ["WEAPON", "TECH"], "price": 4500, "desc": "부무기가 해금되며, [E] 키로 주무기 교체기능 해제", "type": "UPGRADE"},
+
 ]
 
 ENEMY_CONFIG = {
