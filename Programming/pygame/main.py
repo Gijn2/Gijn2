@@ -235,7 +235,7 @@ while running:
             # 3. 보스가 있다면 보스에게도 데미지
             if boss:
                 boss.hp -= 100
-        if event.key == pygame.K_e and stats.get("weapon_swap_unlocked", False):
+        if pygame.key.get_pressed()[pygame.K_e] and stats.get("weapon_swap_unlocked", False):
                     state["currentWeaponIdx"] = (state["currentWeaponIdx"] + 1) % len(state["weapons"])
 
         if boss is None:
