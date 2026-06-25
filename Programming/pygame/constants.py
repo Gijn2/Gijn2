@@ -96,6 +96,7 @@ ENEMY_CONFIG = {
     "type3": {"hp": 6,  "vy": 1.0, "img_key": "type_3"},
     "type4": {"hp": 5,  "vy": 0.0, "img_key": "type_4"},
     "type5": {"hp": 10, "vy": 1.2, "img_key": "type_5"}, 
+    "type6": {"hp": 15, "vy": 1.0, "img_key": "type_3"},
     "elite": {"hp": 50, "vy": 0.5, "img_key": "type_1"},
 }
 
@@ -103,6 +104,8 @@ ENEMY_SPAWN_POOL = [
     {"type": "type1", "weight": 50.0, "minStage": 1},
     {"type": "type2", "weight": 15.0, "minStage": 2},
     {"type": "type3", "weight": 15.0, "minStage": 3},
-    {"type": "type4", "weight": 18.5, "minStage": 5}, 
+    {"type": "type4", "weight": 18.5, "minStage": 5},
+    {"type": "type5", "weight": 10.0, "minStage": 2}, 
+    {"type": "type6", "weight": 10.0, "minStage": 3},
     {"type": "elite", "weight": 1.5, "minStage": 5},
 ]
