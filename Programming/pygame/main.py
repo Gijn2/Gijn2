@@ -51,6 +51,10 @@ while running:
 
     # [1] Input & Event Handling (책임 분리)
     for event in pygame.event.get():
+        if state["gameState"] == 'PLAYING':
+                if event.key == pygame.K_e and stats.get("weapon_swap_unlocked", False):
+                    state["currentWeaponIdx"] = (state["currentWeaponIdx"] + 1) % len(state["weapons"])
+
         if event.type == pygame.QUIT:
             running = False
         
@@ -235,9 +239,7 @@ while running:
             # 3. 보스가 있다면 보스에게도 데미지
             if boss:
                 boss.hp -= 100
-        if pygame.key.get_pressed()[pygame.K_e] and stats.get("weapon_swap_unlocked", False):
-                    state["currentWeaponIdx"] = (state["currentWeaponIdx"] + 1) % len(state["weapons"])
-
+        
         if boss is None:
             stageTimer -= 1
             if stageTimer == 120: state["bossAlertTimer"] = 120
@@ -257,7 +259,17 @@ while running:
 
             if len(enemies) < 10:
                 enemyType = getRandomEnemy(state['currentStage'])
-                enemies.append(Enemy(enemyType, random.randint(0, 1000)))
+                
+                # 편대 비행 몬스터(type5, type6)가 확률에 의해 뽑혔을 때의 무리 스폰 조건
+                if enemyType in ["type5", "type6"]:
+                    # 무리가 생성될 여유 공간이 있을 때만 편대(4마리) 생성
+                    if len(enemies) <= 6:
+                        for i in range(4):
+                            enemies.append(Enemy(eType=enemyType, offset=i))
+                else:
+                    # 일반 몬스터는 기존처럼 1마리씩 스폰
+                    enemies.append(Enemy(enemyType, random.randint(0, 1000)))
+
         else:
             if boss.type == "SWARM":
                 if len(enemies) < 5: 
@@ -338,7 +350,8 @@ while running:
                 # 조준선 시간(30프레임)이 지나 본 레이저가 발사 중일 때
                 if (p.max_life - p.life) >= 30:
                     if p.pos.x - p.width//2 < playerCenter.x < p.pos.x + p.width//2:
-                        state["playerHp"] -= 0.5 # 레이저 안에 있으면 지속 데미지
+                        if state["invincibleTimer"] <= 0:
+                            takeDamage(5, 5, 10) # 5데미지, 흔들림 5, 무적시간 10프레임 부여
                 
                 if shouldRemove:
                     if p in eProjs: eProjs.remove(p)
@@ -358,7 +371,8 @@ while running:
             # 플레이어 피격 판정
             p_radius = getattr(p, 'radius', 5)
             if p.pos.distance_to(playerCenter) < state["hitboxRadius"] + p_radius:
-                state["playerHp"] -= p.dmg
+                if state["invincibleTimer"] <= 0:
+                    takeDamage(p.dmg, 5, 10)
                 if p in eProjs: eProjs.remove(p)
             elif p.pos.y > HEIGHT: 
                 if p in eProjs: eProjs.remove(p)
