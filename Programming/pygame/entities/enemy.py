@@ -21,14 +21,13 @@ class Enemy:
 
         config = ENEMY_CONFIG.get(eType, ENEMY_CONFIG["type1"])
         self.hp = config["hp"]
-        self.vy = config["vy"]
         self.imgType = config["img_key"]
 
         # 공통 로직
         self.pos = pygame.Vector2(random.randint(50, WIDTH-50), -50)
         self.offset = offset
         self.vx = 0
-        self.vy = 1.5  
+        self.vy = config["vy"] 
         self.state = "STAND"
         self.shootDelay = random.randint(80, 160)
         self.attackTimer = 0
@@ -37,11 +36,15 @@ class Enemy:
         # 타입별 초기화 로직 분리
         if eType == "type1":
             self.hp = 5
+            self.imgType = "type_1"
         elif eType == "type2":
             self.hp = 8
+            self.imgType = "type_2"
         elif eType == "type3":
             self.hp = 6
             self.vy = 1.0
+            self.imgType = "type_3"
+            self.orbitAngles = [0, 90, 180, 270]
         elif eType == "type5":
             self.hp = 10
             self.vy = 1.2
@@ -156,10 +159,11 @@ class Enemy:
                 self.movement_timer += 0.04
                 self.pos.x = self.spawn_center_x + math.sin(self.movement_timer) * 90
                 self.pos.y += self.vy 
-                self.shootDelay -= 1
-                if self.shootDelay <= 0:
-                    eProjs.append(HomingProjectile(self.pos.x + 15, self.pos.y + 15, pygame.Vector2(0, 4.5), RED, 5, 7))
-                    self.shootDelay = 140
+                if 0 <= self.pos.y <= HEIGHT:
+                    self.shootDelay -= 1
+                    if self.shootDelay <= 0:
+                        eProjs.append(HomingProjectile(self.pos.x + 15, self.pos.y + 15, pygame.Vector2(0, 4.5), RED, 5, 7))
+                        self.shootDelay = 140
                     
             # 나선형 원형 궤도 비행 (type6)
             elif self.eType == "type6":
@@ -167,11 +171,12 @@ class Enemy:
                 self.angle += self.turn_speed
                 self.pos.x = self.center_x + math.cos(self.angle) * self.radius
                 self.pos.y = self.center_y + math.sin(self.angle) * self.radius
-                self.shootDelay -= 1
-                if self.shootDelay <= 0:
-                    dirVec = pygame.Vector2(math.cos(self.angle), math.sin(self.angle)) * 5
-                    eProjs.append(Projectile(self.pos.x + 15, self.pos.y + 15, dirVec, PURPLE, 5, 6))
-                    self.shootDelay = 80
+                if 0 <= self.pos.y <= HEIGHT:
+                    self.shootDelay -= 1
+                    if self.shootDelay <= 0:
+                        dirVec = pygame.Vector2(math.cos(self.angle), math.sin(self.angle)) * 5
+                        eProjs.append(Projectile(self.pos.x + 15, self.pos.y + 15, dirVec, PURPLE, 5, 6))
+                        self.shootDelay = 80
 
     def draw(self, surf):
         currentImg = assets.enemyImgs.get(self.imgType, assets.enemyImgs["type_1"])[self.state]

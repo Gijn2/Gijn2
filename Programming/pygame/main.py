@@ -51,13 +51,13 @@ while running:
 
     # [1] Input & Event Handling (책임 분리)
     for event in pygame.event.get():
-        if state["gameState"] == 'PLAYING':
+        if event.type == pygame.QUIT:
+            running = False
+        if event.type == pygame.KEYDOWN:
+            if state["gameState"] == 'PLAYING':
                 if event.key == pygame.K_e and stats.get("weapon_swap_unlocked", False):
                     state["currentWeaponIdx"] = (state["currentWeaponIdx"] + 1) % len(state["weapons"])
 
-        if event.type == pygame.QUIT:
-            running = False
-        
         if event.type == pygame.KEYDOWN:
             if state["gameState"] == 'SHOP':
                 if state["shopSubState"] == "NORMAL":
