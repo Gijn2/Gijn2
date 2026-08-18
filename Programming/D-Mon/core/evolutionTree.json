@@ -1,0 +1,17 @@
+{
+    "Koromon": {
+        "stage": "In-Training",
+        "evolvesTo": [
+            {"name": "Agumon", "reqLevel": 5, "reqAffinity": 10}
+        ],
+        "degeneratesTo": ["Botamon"]
+    },
+    "Agumon": {
+        "stage": "Rookie",
+        "evolvesTo": [
+            {"name": "Greymon", "reqLevel": 15, "reqAffinity": 50},
+            {"name": "Tyrannomon", "reqLevel": 15, "reqAffinity": 20}
+        ],
+        "degeneratesTo": ["Koromon"]
+    }
+}
